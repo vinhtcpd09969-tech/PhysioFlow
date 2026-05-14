@@ -18,3 +18,5 @@
 - Implemented and verified Backend Authentication Module (JWT, bcryptjs) using raw SQL `pg`. 
 - Created `refresh_tokens` table and seeded `nguoi_dung` table with mock admin user.
 - **Architectural Change:** Migrated the entire Backend to TypeScript. Updated context/planning files, installed `@types` and `ts-node`, and converted all code (`.js` -> `.ts`) ensuring 100% strict type safety.
+- **Git Rules:** Executed connection to GitHub repository. Enforced Auto-commit policy and end-of-session push checks.
+- **Frontend Auth & Login:** Implemented the Frontend Login module. Migrated Vite app to TypeScript (`.tsx`). Integrated `zod` for validation on both frontend (react-hook-form) and backend. Created `authStore.ts` (Zustand) and `axios.ts` interceptors. Designed login screen matching wireframes with Tailwind CSS and glassmorphism.

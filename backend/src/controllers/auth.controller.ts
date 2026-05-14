@@ -96,7 +96,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<any> =>
 
   try {
     const decoded = jwt.verify(refreshTokenStr, process.env.JWT_REFRESH_SECRET as string) as any;
-    
+
     // verify in DB
     const { rows } = await pool.query('SELECT * FROM refresh_tokens WHERE token = $1 AND expires_at > NOW()', [refreshTokenStr]);
     if (rows.length === 0) {

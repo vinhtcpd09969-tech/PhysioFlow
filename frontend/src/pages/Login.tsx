@@ -125,28 +125,41 @@ export default function Login() {
       </div>
 
       {/* Right Panel - Graphic */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#E0F2F1] to-[#B2DFDB] relative overflow-hidden items-center justify-center p-12">
-        {/* Ambient shapes */}
-        <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-primary opacity-10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-accent opacity-20 rounded-full blur-3xl"></div>
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12">
+        {/* Background Image Setup */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700 hover:scale-105"
+          style={{ backgroundImage: "url('/images/login-bg.png')" }}
+        ></div>
         
-        {/* Abstract human figure placeholder */}
-        <div className="relative w-full h-full max-h-[600px] flex items-center justify-center">
-          <div className="w-64 h-64 bg-gradient-to-tr from-primary to-accent opacity-30 rounded-full blur-2xl absolute"></div>
+        {/* Soft Overlay (Glassy/Mờ) */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-[#0F172A]/40 backdrop-blur-[4px]"></div>
+
+        {/* Ambient shapes to add depth */}
+        <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-primary opacity-40 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-accent opacity-30 rounded-full blur-[100px] pointer-events-none"></div>
+        
+        {/* Logo at Top Left (Rule of Thirds grid intersection) */}
+        <div className="absolute top-12 left-12 font-heading font-bold text-4xl text-white drop-shadow-lg flex items-center gap-2 z-20">
+          <span>P</span> physio<span className="font-light">waves</span>
+        </div>
+
+        {/* Content Container positioned according to Rule of Thirds (Bottom Third) and generous whitespace */}
+        <div className="relative w-full h-full flex flex-col justify-end items-start z-20 pb-8 pl-8">
           
-          {/* Testimonial Card - Glassmorphism */}
-          <div className="absolute bottom-10 left-10 right-10 bg-white/80 backdrop-blur-[20px] border border-white/50 rounded-[24px] p-8 shadow-[0_8px_32px_0_rgba(15,23,42,0.1)]">
-            <div className="text-primary text-4xl font-serif leading-none mb-2">"</div>
-            <p className="text-secondary text-[18px] leading-[1.6] mb-6 relative z-10">
+          {/* Testimonial Card - Premium Glassmorphism */}
+          <div className="w-full max-w-[480px] bg-white/70 backdrop-blur-xl border border-white/50 rounded-[24px] p-8 shadow-[0_16px_40px_0_rgba(15,23,42,0.15)] group hover:bg-white/80 transition-all duration-500">
+            <div className="text-primary text-5xl font-serif leading-none mb-[-10px] opacity-80">"</div>
+            <p className="text-secondary text-[16px] leading-[1.6] font-medium mb-6 relative z-10">
               "PhysioFlow đã thay đổi hoàn toàn cách tôi tiếp cận quá trình phục hồi. Giao diện trực quan và các bài tập được cá nhân hóa giúp tôi cảm thấy được hỗ trợ mỗi ngày."
             </p>
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gray-300 rounded-full overflow-hidden">
+              <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-300">
                 <img src="https://i.pravatar.cc/150?img=11" alt="Avatar" className="w-full h-full object-cover" />
               </div>
               <div>
-                <h4 className="font-semibold text-secondary">Nguyễn Văn A</h4>
-                <p className="text-sm text-gray-500">Bệnh nhân phục hồi chức năng</p>
+                <h4 className="font-bold text-secondary text-sm">Nguyễn Văn A</h4>
+                <p className="text-xs text-gray-600 font-medium">Bệnh nhân phục hồi chức năng</p>
               </div>
             </div>
           </div>
