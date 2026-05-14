@@ -13,7 +13,7 @@ Xây dựng nền tảng quản lý và cung cấp dịch vụ vật lý trị l
 
 ## Tech Stack
 - **Backend:** Node.js, Express, TypeScript, PostgreSQL, `pg` driver (Raw SQL), JWT Auth, Multer, Zod/Joi.
-- **Frontend:** React (TSX/Vite), Tailwind CSS, Zustand, Zod, Axios, React Router v6.
+- **Frontend:** React (Vite), Tailwind CSS, Zustand, Zod, Axios, React Router v6.
 
 ## Cấu trúc thư mục dự kiến
 ```

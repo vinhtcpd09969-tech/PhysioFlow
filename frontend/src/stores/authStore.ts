@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export interface User {
+interface User {
   id: string;
   ho_ten: string;
   email: string;
@@ -13,28 +13,25 @@ interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
-  isAuthenticated: boolean;
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  updateAccessToken: (accessToken: string) => void;
   logout: () => void;
+  isAuthenticated: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       accessToken: null,
       refreshToken: null,
-      isAuthenticated: false,
-      setAuth: (user, accessToken, refreshToken) =>
-        set({ user, accessToken, refreshToken, isAuthenticated: true }),
-      setTokens: (accessToken, refreshToken) =>
-        set({ accessToken, refreshToken }),
-      logout: () =>
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+      setAuth: (user, accessToken, refreshToken) => set({ user, accessToken, refreshToken }),
+      updateAccessToken: (accessToken) => set({ accessToken }),
+      logout: () => set({ user: null, accessToken: null, refreshToken: null }),
+      isAuthenticated: () => !!get().accessToken,
     }),
     {
-      name: 'physioflow-auth',
+      name: 'auth-storage',
     }
   )
 );

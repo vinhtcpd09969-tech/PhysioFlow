@@ -1,23 +1,25 @@
 # Next Session Prompt
 
 ## Current Progress
-The entire project has been successfully migrated to a full TypeScript stack (Node/Express TS backend, Vite/React TSX frontend). The Authentication flow is fully complete from end to end: Backend APIs (Login/Refresh/Me), Database (Refresh Tokens table), and Frontend UI (Login Form, Zustand Store, Axios Interceptors, Protected Routes).
+Node.js environment has been fully restored and packages installed. Docker Compose is running successfully with PostgreSQL. The Backend Authentication API (Login, Refresh Token, GetMe) is completely built and tested. The entire Backend architecture has been successfully migrated to **Express + TypeScript** with full type safety (`strict: true`). Context and Planning files have been updated to reflect the new Tech Stack.
 
 ## Current Working Files
-- `d:\VLTT\VLTT\frontend\src\pages\Login.tsx`
-- `d:\VLTT\VLTT\frontend\src\App.tsx`
+- `d:\VLTT\VLTT\backend\src\index.ts`
+- `d:\VLTT\VLTT\backend\tsconfig.json`
 
 ## Next Tasks
-1. Build the main Dashboard Shell layout (Sidebar, Header, Content Area) for authenticated users.
-2. Implement Role-Based Routing to show different Dashboard sidebars based on `user.vai_tro_id` (Khách hàng, Lễ tân, KTV, Admin).
-3. Test the full Login flow by spinning up both frontend and backend servers.
+1. Start the backend development server using `npm run dev`.
+2. Implement Axios Interceptors on the Frontend to handle JWT automatically.
+3. Setup Zustand global store for Auth state (`useAuthStore`).
+4. Build a modern, highly aesthetic Login Page UI in React using Tailwind CSS.
 
 ## Unresolved Bugs
 - None.
 
 ## Architecture Constraints
 - Backend uses TypeScript, Express, and Raw SQL (`pg`).
-- Frontend MUST use Zustand for state management (No Redux) and Axios for fetching.
+- Frontend MUST use Zustand for state management (No Redux).
+- Authentication logic MUST use the V2 Database schema structure.
 - Always use high-quality modern design principles for the React UI.
 
 ## Agent Workflow Rules
@@ -25,4 +27,4 @@ The entire project has been successfully migrated to a full TypeScript stack (No
 - Before ending any session, the Agent MUST explicitly ask the user: "Sếp có muốn tôi push toàn bộ code mới nhất lên GitHub không?".
 
 ## Recommended Next Action
-Read this file, start both the frontend (`npm run dev`) and backend (`npm run dev`) servers, verify the Login UI works visually, and begin building the Dashboard Layout Shell.
+Read this file, review the `walkthrough.md` artifact from the backend TypeScript migration, and begin building the Frontend Login UI and Zustand Auth Store.

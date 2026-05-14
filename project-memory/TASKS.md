@@ -7,8 +7,5 @@
 - [x] Run `docker-compose up -d` to initialize the database container.
 - [x] Implement initial Authentication module (Backend).
 - [x] Migrate Backend to Express + TypeScript.
-- [x] Migrate Frontend to React + TypeScript (TSX).
-- [x] Implement Frontend Authentication Logic (Zustand, Axios interceptors).
-- [x] Build Login Page UI (React/Tailwind).
-- [ ] Implement Dashboard Layout Shell.
-- [ ] Implement Role-Based Access Control (RBAC) routing on Frontend.
+- [ ] Implement Frontend Authentication Logic (Zustand, Axios interceptors).
+- [ ] Build Login Page UI (React/Tailwind).

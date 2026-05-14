@@ -10,7 +10,7 @@ Dự án PhysioFlow gồm hai phần tách biệt hoàn toàn:
 ### Frontend — Admin Dashboard & Giao diện Khách hàng
 | Mục | Công nghệ |
 |-----|-----------|
-| Framework | **React (TSX)** (bundler: Vite) |
+| Framework | **React** (bundler: Vite) |
 | Styling | **Tailwind CSS** — utility-first, không dùng CSS modules hay styled-components |
 | State Management | **Zustand** — không dùng Redux/Context API cho global state |
 | Validation | **Zod** — validate form và response schema |

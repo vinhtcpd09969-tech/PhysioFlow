@@ -1,111 +1,155 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { useAuthStore } from '../stores/useAuthStore';
-import { Activity, Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Eye, EyeOff } from 'lucide-react';
+import api from '../api/axios';
+import { useAuthStore } from '../stores/authStore';
+import { useNavigate, Link } from 'react-router-dom';
+
+const loginSchema = z.object({
+  email: z.string().min(1, 'Vui lòng nhập email hoặc số điện thoại'),
+  password: z.string().min(6, 'Mật khẩu phải từ 6 ký tự'),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
-  const [email, setEmail] = useState('admin@physioflow.com');
-  const [password, setPassword] = useState('admin123');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const [showPassword, setShowPassword] = useState(false);
+  const [serverError, setServerError] = useState('');
+  const setAuth = useAuthStore(state => state.setAuth);
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema)
+  });
 
+  const onSubmit = async (data: LoginFormValues) => {
     try {
-      const { data } = await axios.post('http://localhost:5000/api/auth/login', {
-        email,
-        password,
-      });
-
-      setAuth(data.user, data.accessToken, data.refreshToken);
-      navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
+      setServerError('');
+      const response = await api.post('/auth/login', data);
+      const { user, accessToken, refreshToken } = response.data;
+      setAuth(user, accessToken, refreshToken);
+      // Navigate based on role
+      if (user.vai_tro_id === 4) {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
+      setServerError(error.response?.data?.message || 'Lỗi kết nối máy chủ');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80')] opacity-10 mix-blend-overlay bg-cover bg-center"></div>
-      
-      <div className="relative w-full max-w-md p-8 bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
-        
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/20 text-cyan-400 mb-6 ring-1 ring-cyan-400/50 shadow-[0_0_15px_rgba(34,211,238,0.3)]">
-            <Activity size={32} />
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">PhysioFlow</h1>
-          <p className="text-blue-200 mt-2 text-sm font-medium">Hệ thống quản lý vật lý trị liệu</p>
+    <div className="min-h-screen flex font-sans bg-background">
+      {/* Left Panel - Form */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-16 lg:px-24 xl:px-32 relative z-10">
+        <div className="absolute top-8 left-8 sm:left-16 lg:left-24 font-heading font-bold text-primary text-xl tracking-wide">
+          PHYSIOFLOW
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/50 text-red-200 text-sm flex items-center text-center justify-center">
-            {error}
+        <div className="w-full max-w-md mx-auto">
+          <div className="mb-8 flex gap-8 border-b border-gray-200">
+            <span className="pb-2 border-b-2 border-primary text-primary font-semibold text-sm">Đăng nhập</span>
+            <span className="pb-2 text-gray-400 font-semibold text-sm cursor-pointer hover:text-gray-600 transition-colors">Đăng ký</span>
           </div>
-        )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-blue-200 ml-1">Email</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-blue-400">
-                <Mail size={18} />
-              </div>
+          <h1 className="font-heading text-[32px] lg:text-[48px] font-bold text-secondary leading-tight mb-2">Chào mừng trở lại</h1>
+          <p className="text-[16px] text-gray-500 mb-8">Theo dõi hành trình phục hồi của bạn</p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div>
+              <label className="block text-[12px] font-semibold uppercase tracking-wider text-gray-500 mb-2">SỐ ĐIỆN THOẠI / EMAIL</label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-11 pr-4 py-3.5 bg-slate-900/50 border border-blue-500/30 rounded-xl focus:ring-2 focus:ring-cyan-400 focus:border-transparent text-white placeholder-blue-300/30 transition-all outline-none"
-                placeholder="Nhập email của bạn"
-                required
+                {...register('email')}
+                type="text"
+                className="w-full bg-[#F1F5F9] border border-transparent focus:bg-white focus:border-primary rounded-[16px] px-4 py-3 outline-none transition-all duration-300 text-[16px]"
+                placeholder="Nhập email hoặc số điện thoại"
               />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
             </div>
-          </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-blue-200 ml-1">Mật khẩu</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-blue-400">
-                <Lock size={18} />
+            <div>
+              <div className="flex justify-between mb-2">
+                <label className="block text-[12px] font-semibold uppercase tracking-wider text-gray-500">MẬT KHẨU</label>
+                <Link to="#" className="text-[12px] font-semibold text-primary hover:text-opacity-80">Quên mật khẩu?</Link>
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-11 pr-4 py-3.5 bg-slate-900/50 border border-blue-500/30 rounded-xl focus:ring-2 focus:ring-cyan-400 focus:border-transparent text-white placeholder-blue-300/30 transition-all outline-none"
-                placeholder="Nhập mật khẩu"
-                required
-              />
+              <div className="relative">
+                <input
+                  {...register('password')}
+                  type={showPassword ? "text" : "password"}
+                  className="w-full bg-[#F1F5F9] border border-transparent focus:bg-white focus:border-primary rounded-[16px] px-4 py-3 outline-none transition-all duration-300 text-[16px]"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-400 focus:ring-offset-slate-900 shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
-          >
-            <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:scale-x-100 scale-x-0 origin-left transition-transform duration-300 ease-out"></span>
-            <span className="relative flex items-center">
-              {isLoading ? (
-                <Loader2 className="animate-spin -ml-1 mr-2" size={18} />
-              ) : null}
-              {isLoading ? 'Đang xác thực...' : 'Đăng nhập'}
-              {!isLoading && <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />}
-            </span>
-          </button>
-        </form>
+            {serverError && (
+              <div className="p-3 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm">
+                {serverError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-primary text-white font-semibold rounded-[16px] py-3 hover:bg-opacity-90 transition-all duration-300 shadow-[0_4px_14px_0_rgba(46,196,182,0.39)] disabled:opacity-50"
+            >
+              {isSubmitting ? 'Đang xử lý...' : 'Đăng nhập'}
+            </button>
+
+            <div className="relative flex items-center justify-center mt-8">
+              <div className="border-t border-gray-200 w-full"></div>
+              <span className="bg-background px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider absolute">HOẶC TIẾP TỤC VỚI</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <button type="button" className="flex items-center justify-center gap-2 border border-gray-200 rounded-[16px] py-3 hover:bg-gray-50 transition-colors">
+                <span className="text-sm font-semibold">Google</span>
+              </button>
+              <button type="button" className="flex items-center justify-center gap-2 border border-gray-200 rounded-[16px] py-3 hover:bg-gray-50 transition-colors">
+                <span className="text-sm font-semibold">Facebook</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {/* Right Panel - Graphic */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#E0F2F1] to-[#B2DFDB] relative overflow-hidden items-center justify-center p-12">
+        {/* Ambient shapes */}
+        <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-primary opacity-10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-accent opacity-20 rounded-full blur-3xl"></div>
         
-        <div className="mt-8 text-center">
-          <p className="text-xs text-blue-300/50">Bảo mật bởi PhysioFlow Enterprise</p>
+        {/* Abstract human figure placeholder */}
+        <div className="relative w-full h-full max-h-[600px] flex items-center justify-center">
+          <div className="w-64 h-64 bg-gradient-to-tr from-primary to-accent opacity-30 rounded-full blur-2xl absolute"></div>
+          
+          {/* Testimonial Card - Glassmorphism */}
+          <div className="absolute bottom-10 left-10 right-10 bg-white/80 backdrop-blur-[20px] border border-white/50 rounded-[24px] p-8 shadow-[0_8px_32px_0_rgba(15,23,42,0.1)]">
+            <div className="text-primary text-4xl font-serif leading-none mb-2">"</div>
+            <p className="text-secondary text-[18px] leading-[1.6] mb-6 relative z-10">
+              "PhysioFlow đã thay đổi hoàn toàn cách tôi tiếp cận quá trình phục hồi. Giao diện trực quan và các bài tập được cá nhân hóa giúp tôi cảm thấy được hỗ trợ mỗi ngày."
+            </p>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gray-300 rounded-full overflow-hidden">
+                <img src="https://i.pravatar.cc/150?img=11" alt="Avatar" className="w-full h-full object-cover" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-secondary">Nguyễn Văn A</h4>
+                <p className="text-sm text-gray-500">Bệnh nhân phục hồi chức năng</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
