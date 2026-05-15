@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { ZodError } from 'zod';
-import { createAppointmentSchema, updateAppointmentStatusSchema } from '../schemas/appointment.schema';
+import { createAppointmentSchema, updateAppointmentStatusSchema, createPublicAppointmentSchema } from '../schemas/appointment.schema';
 
 // Lấy danh sách lịch hẹn
 export const getAllAppointments = async (req: Request, res: Response) => {
@@ -60,6 +60,37 @@ export const createAppointment = async (req: Request, res: Response): Promise<an
     }
     if (error.constraint === 'no_overlap_phong') {
       return res.status(400).json({ message: 'Phòng đã được đặt trong khung giờ này.' });
+    }
+    return res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// Tạo lịch hẹn từ Website (Public)
+export const createPublicAppointment = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const validated = createPublicAppointmentSchema.parse({ body: req.body });
+    const { ho_ten_khach, so_dien_thoai, gioi_tinh_khach, ngay_gio_bat_dau, trieu_chung, ly_do_kham, anh_dinh_kem_url } = validated.body;
+    
+    // Generate ma_lich_dat (e.g., LD-12345)
+    const ma_lich_dat = 'LD-' + Math.floor(10000 + Math.random() * 90000);
+    
+    // Mặc định thời lượng khám là 30 phút
+    const ngay_gio_ket_thuc = new Date(new Date(ngay_gio_bat_dau).getTime() + 30 * 60000).toISOString();
+
+    const query = `
+      INSERT INTO lich_dat (ma_lich_dat, ho_ten_khach, so_dien_thoai, gioi_tinh_khach, ngay_gio_bat_dau, ngay_gio_ket_thuc, trieu_chung, ly_do_kham, anh_dinh_kem_url, nguoi_tao, loai_lich)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'guest', 'kham_moi')
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [
+      ma_lich_dat, ho_ten_khach, so_dien_thoai, gioi_tinh_khach || null, ngay_gio_bat_dau, ngay_gio_ket_thuc, trieu_chung || null, ly_do_kham || null, anh_dinh_kem_url || null
+    ]);
+    
+    return res.status(201).json(rows[0]);
+  } catch (error: any) {
+    console.error('Lỗi khi tạo lịch hẹn public:', error);
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: error.errors[0].message });
     }
     return res.status(500).json({ message: 'Lỗi server' });
   }

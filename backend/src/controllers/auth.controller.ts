@@ -94,7 +94,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
   }
 
   try {
-    const { rows } = await pool.query('SELECT * FROM nguoi_dung WHERE email = $1 AND deleted_at IS NULL', [email]);
+    const { rows } = await pool.query('SELECT * FROM v_nguoi_dung_active WHERE email = $1', [email]);
     if (rows.length === 0) {
       return res.status(401).json({ message: 'Email hoặc mật khẩu không chính xác' });
     }

@@ -31,7 +31,7 @@ export default function Login() {
       const { user, accessToken, refreshToken } = response.data;
       setAuth(user, accessToken, refreshToken);
       // Navigate based on role
-      if (user.vai_tro_id === 4) {
+      if (user.vai_tro_id === 5) {
         navigate('/admin');
       } else {
         navigate('/dashboard');

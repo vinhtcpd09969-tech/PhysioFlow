@@ -68,6 +68,7 @@ INSERT INTO vai_tro (ma_vai_tro, ten_hien_thi, mo_ta_quyen) VALUES
     ('khach_hang',    'Khách hàng',    'Xem lịch của mình, đặt lịch, xem gói, gửi feedback'),
     ('le_tan',        'Lễ tân',        'Quản lý lịch hẹn, check-in, tạo hóa đơn, thu tiền'),
     ('ky_thuat_vien', 'Kỹ thuật viên', 'Xem lịch của mình, tạo đánh giá, ghi chú buổi, đề xuất gói'),
+    ('bac_si',        'Bác sĩ',        'Khám lượng giá, tạo hồ sơ y tế, chỉ định phác đồ & gói điều trị'),
     ('admin',         'Quản trị viên', 'Toàn quyền: quản lý người dùng, dịch vụ, gói, báo cáo');
 
 CREATE TABLE nguoi_dung (
@@ -251,15 +252,22 @@ CREATE TABLE phong_dich_vu (
 CREATE TABLE lich_dat (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ma_lich_dat         VARCHAR(20)   UNIQUE NOT NULL,
-    khach_hang_id       UUID          NOT NULL,
-    dich_vu_id          UUID          NOT NULL,
+    khach_hang_id       UUID,
+    ho_ten_khach        VARCHAR(150),
+    so_dien_thoai       VARCHAR(20),
+    gioi_tinh_khach     VARCHAR(10)   CHECK (gioi_tinh_khach IN ('nam', 'nu', 'khac')),
+    dich_vu_id          UUID,
     ky_thuat_vien_id    UUID,
     phong_id            BIGINT,
     ngay_gio_bat_dau    TIMESTAMP     NOT NULL,
     ngay_gio_ket_thuc   TIMESTAMP     NOT NULL,
+    -- [V5] Thêm thông tin bệnh lý sơ bộ
+    trieu_chung         TEXT,
+    ly_do_kham          TEXT,
+    anh_dinh_kem_url    TEXT,
     -- [OPT-1] CHECK Constraint
-    loai_lich           VARCHAR(30)   NOT NULL DEFAULT 'dich_vu_don'
-                        CHECK (loai_lich IN ('dich_vu_don', 'danh_gia', 'buoi_trong_goi')),
+    loai_lich           VARCHAR(30)   NOT NULL DEFAULT 'kham_moi'
+                        CHECK (loai_lich IN ('kham_moi', 'tai_kham', 'tri_lieu', 'dich_vu_don', 'buoi_trong_goi')),
     -- [OPT-1] CHECK Constraint
     trang_thai          VARCHAR(30)   NOT NULL DEFAULT 'cho_xac_nhan'
                         CHECK (trang_thai IN ('cho_xac_nhan', 'da_xac_nhan', 'da_checkin', 'hoan_thanh', 'da_huy', 'khong_den')),
@@ -271,9 +279,8 @@ CREATE TABLE lich_dat (
     ly_do_huy           TEXT,
     dat_lai_tu_lich_id  UUID,
     -- [OPT-1] CHECK Constraint
-    -- ⚠️ Đây là audit label, KHÔNG phải FK — giữ nguyên VARCHAR + CHECK
     nguoi_tao           VARCHAR(20)   NOT NULL DEFAULT 'khach_hang'
-                        CHECK (nguoi_tao IN ('khach_hang', 'le_tan', 'admin')),
+                        CHECK (nguoi_tao IN ('khach_hang', 'le_tan', 'admin', 'guest')),
     thoi_gian_tao       TIMESTAMP     NOT NULL DEFAULT NOW()
 );
 
@@ -415,7 +422,7 @@ CREATE TABLE dang_ky_goi (
     buoi_con_lai        INT           GENERATED ALWAYS AS (tong_buoi - buoi_da_dung) STORED,
     -- [OPT-1] CHECK Constraint
     trang_thai          VARCHAR(20)   NOT NULL DEFAULT 'cho_kich_hoat'
-                        CHECK (trang_thai IN ('cho_kich_hoat', 'dang_su_dung', 'hoan_thanh', 'het_han', 'da_huy')),
+                        CHECK (trang_thai IN ('cho_kich_hoat', 'dang_trai_nghiem', 'dang_su_dung', 'hoan_thanh', 'het_han', 'da_huy')),
     ghi_chu             TEXT,
     kich_hoat_boi       UUID,
     kich_hoat_luc       TIMESTAMP,
@@ -968,11 +975,19 @@ SELECT kh.* FROM khach_hang kh
 JOIN nguoi_dung nd ON nd.id = kh.nguoi_dung_id
 WHERE kh.deleted_at IS NULL AND nd.deleted_at IS NULL;
 
+CREATE TABLE refresh_tokens (
+    id              SERIAL PRIMARY KEY,
+    nguoi_dung_id   UUID NOT NULL REFERENCES nguoi_dung(id) ON DELETE CASCADE,
+    token           TEXT NOT NULL,
+    expires_at      TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 CREATE TABLE otp_codes (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email           VARCHAR(255) NOT NULL,
     otp             VARCHAR(6) NOT NULL,
-    expires_at      TIMESTAMP NOT NULL,
-    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+    expires_at      TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 

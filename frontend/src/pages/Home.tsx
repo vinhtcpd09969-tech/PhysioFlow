@@ -37,7 +37,7 @@ export default function Home() {
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/register" className="inline-flex justify-center items-center gap-2 bg-primary hover:bg-[#25A89C] text-white font-bold py-4 px-8 rounded-[16px] shadow-lg shadow-primary/30 transition-all hover:-translate-y-1">
+                <Link to="/booking" className="inline-flex justify-center items-center gap-2 bg-primary hover:bg-[#25A89C] text-white font-bold py-4 px-8 rounded-[16px] shadow-lg shadow-primary/30 transition-all hover:-translate-y-1">
                   <Calendar size={20} />
                   Đặt lịch khám ngay
                 </Link>
@@ -147,8 +147,8 @@ export default function Home() {
                 <p className="text-gray-500 mb-6 leading-relaxed text-sm">
                   {item.desc}
                 </p>
-                <Link to="/register" className="inline-flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all">
-                  Đặt lịch <ArrowRight size={18} />
+                <Link to="/booking" className="inline-flex items-center gap-2 text-primary font-bold hover:gap-3 transition-all">
+                  Đặt lịch tư vấn <ArrowRight size={18} />
                 </Link>
               </div>
             ))}
@@ -185,8 +185,8 @@ export default function Home() {
                   <CheckCircle2 size={20} className="text-primary shrink-0" /> Bài tập về nhà cơ bản
                 </li>
               </ul>
-              <Link to="/register" className="block w-full text-center bg-gray-100 hover:bg-gray-200 text-secondary font-bold py-4 rounded-[16px] transition-colors">
-                Chọn gói này
+              <Link to="/booking" className="block w-full text-center bg-gray-100 hover:bg-gray-200 text-secondary font-bold py-4 rounded-[16px] transition-colors">
+                Đặt lịch tư vấn
               </Link>
             </div>
 
@@ -215,8 +215,8 @@ export default function Home() {
                   <CheckCircle2 size={20} className="text-primary shrink-0" /> Tiết kiệm 15% so với mua lẻ
                 </li>
               </ul>
-              <Link to="/register" className="block w-full text-center bg-primary hover:bg-[#25A89C] text-white font-bold py-4 rounded-[16px] shadow-lg shadow-primary/20 transition-colors">
-                Chọn gói này
+              <Link to="/booking" className="block w-full text-center bg-primary hover:bg-[#25A89C] text-white font-bold py-4 rounded-[16px] shadow-lg shadow-primary/20 transition-colors">
+                Đặt lịch tư vấn
               </Link>
             </div>
 
@@ -239,8 +239,8 @@ export default function Home() {
                   <CheckCircle2 size={20} className="text-primary shrink-0" /> Tiết kiệm 25% so với mua lẻ
                 </li>
               </ul>
-              <Link to="/register" className="block w-full text-center bg-gray-100 hover:bg-gray-200 text-secondary font-bold py-4 rounded-[16px] transition-colors">
-                Chọn gói này
+              <Link to="/booking" className="block w-full text-center bg-gray-100 hover:bg-gray-200 text-secondary font-bold py-4 rounded-[16px] transition-colors">
+                Đặt lịch tư vấn
               </Link>
             </div>
           </div>

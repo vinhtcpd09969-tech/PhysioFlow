@@ -10,6 +10,7 @@ import VerifyEmail from './pages/VerifyEmail';
 
 import LandingLayout from './layouts/LandingLayout';
 import Home from './pages/Home';
+import Booking from './pages/Booking';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
       <Routes>
         <Route element={<LandingLayout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/booking" element={<Booking />} />
         </Route>
         
         <Route path="/login" element={<Login />} />

@@ -12,6 +12,18 @@ export const createAppointmentSchema = z.object({
   })
 });
 
+export const createPublicAppointmentSchema = z.object({
+  body: z.object({
+    ho_ten_khach: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự'),
+    so_dien_thoai: z.string().min(10, 'Số điện thoại không hợp lệ'),
+    gioi_tinh_khach: z.enum(['nam', 'nu', 'khac']).optional(),
+    ngay_gio_bat_dau: z.string().datetime({ message: 'Ngày giờ bắt đầu không hợp lệ' }),
+    trieu_chung: z.string().optional(),
+    ly_do_kham: z.string().optional(),
+    anh_dinh_kem_url: z.string().optional(),
+  })
+});
+
 export const updateAppointmentStatusSchema = z.object({
   params: z.object({
     id: z.string().uuid('ID Lịch hẹn không hợp lệ'),
