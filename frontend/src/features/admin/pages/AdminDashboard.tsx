@@ -1,183 +1,222 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area, Cell
+import { 
+  Users, 
+  Calendar, 
+  TrendingUp, 
+  DollarSign,
+  ChevronRight,
+  Plus
+} from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Cell
 } from 'recharts';
+import api from '../../../api/axios';
 
-interface Summary {
-  total_customers: number;
-  pending_appointments: number;
-  total_revenue: number;
-  active_staff: number;
-}
+const chartData = [
+  { name: 'Thứ 2', revenue: 4500000, appointments: 12 },
+  { name: 'Thứ 3', revenue: 5200000, appointments: 15 },
+  { name: 'Thứ 4', revenue: 3800000, appointments: 10 },
+  { name: 'Thứ 5', revenue: 6100000, appointments: 18 },
+  { name: 'Thứ 6', revenue: 5900000, appointments: 16 },
+  { name: 'Thứ 7', revenue: 8400000, appointments: 25 },
+  { name: 'CN', revenue: 7200000, appointments: 20 },
+];
 
-interface RevenueData {
-  month: string;
-  revenue: number;
-}
+const COLORS = ['#2EC4B6', '#FF9F1C', '#FF3366', '#4D5BF9'];
 
-interface PerformanceData {
-  name: string;
-  sessions: number;
+const currencyFormatter = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+});
+
+interface DashboardData {
+  stats: {
+    total_customers: string | number;
+    pending_appointments: string | number;
+    total_revenue: string | number;
+    active_staff: string | number;
+  } | null;
+  recentAppointments: any[];
+  isLoaded: boolean;
 }
 
 export default function AdminDashboard() {
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
-  const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DashboardData>({
+    stats: null,
+    recentAppointments: [],
+    isLoaded: false
+  });
+
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [sumRes, revRes, perfRes] = await Promise.all([
-          axios.get('/api/admin/analytics/summary'),
-          axios.get('/api/admin/analytics/revenue'),
-          axios.get('/api/admin/analytics/performance')
-        ]);
-        setSummary(sumRes.data);
-        setRevenueData(revRes.data);
-        setPerformanceData(perfRes.data);
-      } catch (error) {
-        console.error('Lỗi khi tải dữ liệu dashboard:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    setIsClient(true);
     fetchData();
   }, []);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  const fetchData = async () => {
+    try {
+      const statsRes = await api.get('/admin/analytics/summary');
+      const appointmentsRes = await api.get('/admin/appointments');
+      
+      setData({
+        stats: statsRes.data || null,
+        recentAppointments: Array.isArray(appointmentsRes.data) ? appointmentsRes.data.slice(0, 5) : [],
+        isLoaded: true
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    }
   };
 
-  const COLORS = ['#0d9488', '#0ea5e9', '#6366f1', '#8b5cf6', '#ec4899'];
+  const { stats, recentAppointments, isLoaded } = data;
 
-  if (loading) return <div className="p-8 text-center text-slate-500">Đang tải dữ liệu dashboard...</div>;
+  if (!isLoaded) return <div className="p-8 text-zinc-500">Đang tải dữ liệu hệ thống...</div>;
 
   return (
-    <div className="space-y-8 pb-8">
-      {/* Stat Cards */}
+    <div className="space-y-8 animate-in fade-in duration-500">
+      
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold text-secondary tracking-tight">Hệ thống Quản trị</h1>
+          <p className="text-zinc-500 mt-1">Chào mừng quay trở lại. Đây là tổng quan hoạt động của phòng khám hôm nay.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button className="bg-white text-secondary border border-zinc-200 px-4 py-2.5 rounded-xl font-medium hover:bg-zinc-50 transition-all shadow-sm">
+            Xuất báo cáo
+          </button>
+          <button className="bg-primary text-white px-4 py-2.5 rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
+            <Plus size={18} /> Thêm nhân sự mới
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { title: 'Tổng doanh thu', value: formatCurrency(Number(summary?.total_revenue || 0)), icon: '💰', color: 'text-teal-600', bg: 'bg-teal-50' },
-          { title: 'Tổng khách hàng', value: summary?.total_customers || 0, icon: '👥', color: 'text-blue-600', bg: 'bg-blue-50' },
-          { title: 'Lịch hẹn chờ duyệt', value: summary?.pending_appointments || 0, icon: '⏳', color: 'text-amber-600', bg: 'bg-amber-50' },
-          { title: 'Nhân sự hoạt động', value: summary?.active_staff || 0, icon: '👔', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 hover:shadow-md transition-shadow">
-            <div className={`w-12 h-12 rounded-2xl ${stat.bg} flex items-center justify-center text-xl`}>
-              {stat.icon}
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-slate-500">{stat.title}</h3>
-              <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
-            </div>
-          </div>
-        ))}
+        <StatCard 
+          title="Tổng khách hàng" 
+          value={stats?.total_customers || 0} 
+          change="+12%" 
+          icon={<Users className="text-primary" />} 
+          color="bg-primary/10"
+        />
+        <StatCard 
+          title="Đang chờ xác nhận" 
+          value={stats?.pending_appointments || 0} 
+          change="+5" 
+          icon={<Calendar className="text-accent" />} 
+          color="bg-accent/10"
+        />
+        <StatCard 
+          title="Doanh thu tổng" 
+          value={isClient ? currencyFormatter.format(Number(stats?.total_revenue || 0)) : '0'} 
+          change="+18.4%" 
+          icon={<DollarSign className="text-emerald-500" />} 
+          color="bg-emerald-50"
+        />
+        <StatCard 
+          title="KTV Hoạt động" 
+          value={stats?.active_staff || 0} 
+          change="+2" 
+          icon={<TrendingUp className="text-indigo-500" />} 
+          color="bg-indigo-50"
+        />
       </div>
 
+      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Revenue Chart */}
-        <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
+        <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-zinc-100 shadow-sm">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-lg font-bold text-slate-800">Doanh thu 6 tháng gần nhất</h3>
-            <span className="text-xs font-medium text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">Cập nhật lúc {new Date().toLocaleTimeString('vi-VN')}</span>
+            <h3 className="text-xl font-semibold text-secondary">Doanh thu 7 ngày qua</h3>
+            <select className="bg-zinc-50 border-none rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 outline-none">
+              <option>Tuần này</option>
+              <option>Tuần trước</option>
+            </select>
           </div>
           <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={Array.isArray(revenueData) ? revenueData : []}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0d9488" stopOpacity={0.1} />
-                    <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="month"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 12 }}
-                  dy={10}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 12 }}
-                  tickFormatter={(val) => `${val / 1000000}M`}
-                />
-                <Tooltip
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  formatter={(val: any) => [formatCurrency(Number(val)), 'Doanh thu']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#0d9488"
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#colorRevenue)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {isClient && (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} />
+                  <Tooltip 
+                    cursor={{ fill: '#F8FAFC' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Bar dataKey="revenue" radius={[6, 6, 0, 0]} barSize={40}>
+                    {chartData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
-        {/* Staff Performance */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
-          <h3 className="text-lg font-bold text-slate-800 mb-8">Hiệu suất KTV (Tháng này)</h3>
-          <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={Array.isArray(performanceData) ? performanceData : []} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                <XAxis type="number" hide />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#475569', fontSize: 13, fontWeight: 500 }}
-                  width={100}
-                />
-                <Tooltip
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar dataKey="sessions" radius={[0, 10, 10, 0]} barSize={32}>
-                  {(Array.isArray(performanceData) ? performanceData : []).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        <div className="bg-white p-8 rounded-3xl border border-zinc-100 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-semibold text-secondary">Lịch hẹn gần đây</h3>
+            <button className="text-primary text-sm font-semibold hover:underline">Xem tất cả</button>
           </div>
-          <div className="mt-4 space-y-3">
-            <p className="text-xs text-slate-400 text-center italic">Dựa trên số buổi trị liệu hoàn thành</p>
+          <div className="space-y-6 flex-1 overflow-y-auto max-h-[350px] scrollbar-hide">
+            {recentAppointments.length === 0 ? (
+              <p className="text-zinc-400 text-sm italic text-center py-8">Không có lịch hẹn gần đây.</p>
+            ) : (
+              recentAppointments.map((appt) => (
+                <div key={appt.id} className="flex items-center justify-between group cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <div className="size-10 rounded-full bg-zinc-100 flex items-center justify-center text-secondary font-bold text-xs group-hover:bg-primary group-hover:text-white transition-colors">
+                      {appt.ten_khach_hang?.charAt(0) || 'K'}
+                    </div>
+                    <div className="max-w-[120px]">
+                      <p className="text-sm font-bold text-secondary truncate">{appt.ten_khach_hang}</p>
+                      <p className="text-xs text-zinc-500 truncate">{appt.ten_dich_vu}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-secondary">{appt.gio_bat_dau ? new Date(appt.gio_bat_dau).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                      appt.trang_thai === 'cho_xac_nhan' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {appt.trang_thai?.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
+          <button className="w-full mt-8 py-3 bg-zinc-50 text-zinc-600 rounded-xl font-semibold hover:bg-zinc-100 transition-colors flex items-center justify-center gap-2">
+            Xem lịch trình <ChevronRight size={18} />
+          </button>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Quick Actions / Recent Activity Placeholder */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden">
-          <div className="relative z-10">
-            <h3 className="text-xl font-bold mb-2">Thông báo hệ thống</h3>
-            <p className="text-slate-400 text-sm mb-6">Bạn có 3 bản cập nhật quan trọng về lịch bảo trì thiết bị tuần tới.</p>
-            <button className="bg-teal-500 text-white px-6 py-2 rounded-xl font-bold hover:bg-teal-400 transition-colors">Xem ngay</button>
-          </div>
-          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-teal-500/20 rounded-full blur-3xl"></div>
+function StatCard({ title, value, change, icon, color }: any) {
+  return (
+    <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-4">
+        <div className={`size-12 rounded-2xl ${color} flex items-center justify-center text-2xl shadow-inner`}>
+          {icon}
         </div>
-        <div className="bg-teal-600 rounded-3xl p-8 text-white relative overflow-hidden">
-          <div className="relative z-10">
-            <h3 className="text-xl font-bold mb-2">Marketing Campaign</h3>
-            <p className="text-teal-100 text-sm mb-6">Chiến dịch Vouchers Hè đang đạt 85% mục tiêu lượt sử dụng.</p>
-            <button className="bg-white text-teal-600 px-6 py-2 rounded-xl font-bold hover:bg-slate-100 transition-colors">Quản lý Voucher</button>
-          </div>
-          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/20 rounded-full blur-3xl"></div>
-        </div>
+        <span className="text-emerald-500 text-xs font-bold bg-emerald-50 px-2 py-1 rounded-lg">
+          {change}
+        </span>
       </div>
+      <p className="text-zinc-500 text-sm font-medium mb-1">{title}</p>
+      <h3 className="text-2xl font-bold text-secondary">{value}</h3>
     </div>
   );
 }

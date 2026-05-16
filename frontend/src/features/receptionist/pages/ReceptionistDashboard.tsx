@@ -1,162 +1,211 @@
 import { useState, useEffect } from 'react';
-import axiosInstance from '../../../api/axios';
-import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
-import { useNavigate } from 'react-router-dom';
+import { 
+  Users, 
+  Calendar, 
+  Clock, 
+  CheckCircle2, 
+  Search,
+  Filter,
+  Plus
+} from 'lucide-react';
+import api from '../../../api/axios';
 
-interface Appointment {
-  id: string;
-  ma_lich_dat: string;
-  ngay_gio_bat_dau: string;
-  ngay_gio_ket_thuc: string;
-  trang_thai: string;
-  ten_khach_hang: string;
-  sdt_khach_hang: string;
-  ten_dich_vu: string;
-  ten_ky_thuat_vien: string | null;
-}
+// Moved KanbanColumn out of the main component to prevent re-renders
+const KanbanColumn = ({ title, count, color, children }: any) => (
+  <div className="flex-1 min-w-[300px] bg-zinc-50/50 rounded-2xl p-4 border border-zinc-100">
+    <div className="flex items-center justify-between mb-4 px-2">
+      <div className="flex items-center gap-2">
+        <div className={`size-2 rounded-full ${color}`}></div>
+        <h3 className="font-semibold text-secondary">{title}</h3>
+      </div>
+      <span className="text-xs font-bold text-zinc-400 bg-white px-2 py-0.5 rounded-full border border-zinc-100">
+        {count}
+      </span>
+    </div>
+    <div className="space-y-4">
+      {children}
+    </div>
+  </div>
+);
 
 export default function ReceptionistDashboard() {
-  const [stats, setStats] = useState({ checkin: 0, waiting: 0, total: 0 });
-  const [kanbanData, setKanbanData] = useState<Record<string, Appointment[]>>({
-    cho_xac_nhan: [],
-    da_xac_nhan: [],
-    da_checkin: [],
-    hoan_thanh: []
+  const [dashboardData, setDashboardData] = useState({
+    appointments: [],
+    stats: {
+      pending: 0,
+      active: 0,
+      completed: 0
+    },
+    isLoaded: false
   });
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [statsRes, kanbanRes] = await Promise.all([
-        axiosInstance.get('/receptionist/stats'),
-        axiosInstance.get('/receptionist/today-appointments')
-      ]);
-      setStats(statsRes.data);
-      setKanbanData(kanbanRes.data);
-    } catch (error) {
-      console.error('Lỗi khi tải dữ liệu lễ tân:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchData();
-    // Optional: Auto refresh every 60 seconds
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
+    fetchDashboardData();
   }, []);
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
+  const fetchDashboardData = async () => {
     try {
-      await axiosInstance.patch(`/receptionist/appointments/${id}/status`, { trang_thai: newStatus });
-      fetchData(); // Refresh data
+      const res = await api.get('/receptionist/dashboard');
+      setDashboardData({
+        appointments: Array.isArray(res.data.appointments) ? res.data.appointments : [],
+        stats: res.data.stats || { pending: 0, active: 0, completed: 0 },
+        isLoaded: true
+      });
     } catch (error) {
-      alert('Cập nhật trạng thái thất bại');
-      console.error(error);
+      console.error('Lỗi tải dữ liệu lễ tân:', error);
     }
   };
 
-  const KanbanColumn = ({ title, statusKey, items, colorClass }: { title: string, statusKey: string, items: Appointment[], colorClass: string }) => (
-    <div className={`flex flex-col bg-slate-100/50 rounded-xl p-4 min-w-[300px] flex-1 border border-slate-200`}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-slate-700">{title} <span className="bg-white px-2 py-0.5 rounded-md text-sm text-slate-500 border border-slate-200 ml-2">{items?.length || 0}</span></h3>
+  const { appointments, stats, isLoaded } = dashboardData;
+
+  if (!isLoaded) return <div className="p-8 text-zinc-500">Đang tải dữ liệu...</div>;
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      
+      {/* Header & Quick Stats */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-semibold text-secondary tracking-tight">Điều phối Lễ tân</h1>
+          <p className="text-zinc-500 mt-1">Hôm nay có <span className="text-primary font-semibold">{appointments.length}</span> lịch hẹn cần điều phối.</p>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex -space-x-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="size-8 rounded-full border-2 border-white bg-zinc-200 flex items-center justify-center text-[10px] font-bold text-zinc-500">
+                👤
+              </div>
+            ))}
+            <div className="size-8 rounded-full border-2 border-white bg-primary text-white flex items-center justify-center text-[10px] font-bold">
+              +5
+            </div>
+          </div>
+          <button className="bg-primary text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
+            <Plus size={18} /> Đón khách mới
+          </button>
+        </div>
       </div>
-      <div className="flex-1 space-y-3 overflow-y-auto">
-        {items?.map(apt => (
-          <div key={apt.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-xs font-bold text-slate-500">{apt.ma_lich_dat}</span>
-              <span className={`text-xs px-2 py-1 rounded-md font-medium ${colorClass}`}>
-                {format(new Date(apt.ngay_gio_bat_dau), 'HH:mm')}
-              </span>
-            </div>
-            <h4 className="font-bold text-slate-800 text-sm mb-1">{apt.ten_khach_hang}</h4>
-            <p className="text-xs text-slate-500 mb-3">{apt.sdt_khach_hang}</p>
-            <div className="text-xs text-slate-600 space-y-1 mb-3">
-              <p className="flex items-center gap-1">🛠 {apt.ten_dich_vu}</p>
-              <p className="flex items-center gap-1">👨‍⚕️ {apt.ten_ky_thuat_vien || 'Chưa xếp KTV'}</p>
-            </div>
-            
-            {/* Quick Actions based on current status */}
-            <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
-              {statusKey === 'cho_xac_nhan' && (
-                <button onClick={() => handleStatusChange(apt.id, 'da_xac_nhan')} className="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-medium py-1.5 rounded-lg transition-colors">Xác nhận</button>
-              )}
-              {statusKey === 'da_xac_nhan' && (
-                <button onClick={() => handleStatusChange(apt.id, 'da_checkin')} className="flex-1 bg-teal-50 text-teal-600 hover:bg-teal-100 text-xs font-medium py-1.5 rounded-lg transition-colors">Check-in ngay</button>
-              )}
-              {statusKey === 'da_checkin' && (
-                <button onClick={() => handleStatusChange(apt.id, 'hoan_thanh')} className="flex-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 text-xs font-medium py-1.5 rounded-lg transition-colors">Đã xong</button>
-              )}
-              {statusKey === 'hoan_thanh' && (
-                <button 
-                  onClick={() => navigate(`/receptionist/billing?appointment=${apt.id}`)}
-                  className="flex-1 bg-amber-50 text-amber-600 hover:bg-amber-100 text-xs font-medium py-1.5 rounded-lg transition-colors"
-                >
-                  Thanh toán
-                </button>
-              )}
-            </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-5">
+          <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+            <Users size={24} />
           </div>
-        ))}
-        {(!items || items.length === 0) && (
-          <div className="text-center p-6 text-sm text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
-            Trống
+          <div>
+            <p className="text-zinc-500 text-sm font-medium">Chờ khảo sát</p>
+            <h3 className="text-2xl font-bold text-secondary">{stats.pending}</h3>
           </div>
-        )}
+        </div>
+        <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-5">
+          <div className="size-12 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600">
+            <Clock size={24} />
+          </div>
+          <div>
+            <p className="text-zinc-500 text-sm font-medium">Đang điều trị</p>
+            <h3 className="text-2xl font-bold text-secondary">{stats.active}</h3>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-5">
+          <div className="size-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+            <CheckCircle2 size={24} />
+          </div>
+          <div>
+            <p className="text-zinc-500 text-sm font-medium">Hoàn thành</p>
+            <h3 className="text-2xl font-bold text-secondary">{stats.completed}</h3>
+          </div>
+        </div>
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-zinc-100 shadow-sm">
+        <div className="flex-1 flex items-center gap-3 px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100 focus-within:border-primary/30 transition-colors">
+          <Search size={18} className="text-zinc-400" />
+          <input 
+            type="text" 
+            placeholder="Tìm kiếm tên khách hàng, số điện thoại..." 
+            className="bg-transparent border-none outline-none text-sm w-full text-secondary placeholder-zinc-400"
+          />
+        </div>
+        <button className="p-3 text-zinc-500 hover:bg-zinc-50 rounded-xl transition-colors">
+          <Filter size={20} />
+        </button>
+      </div>
+
+      {/* Kanban Board */}
+      <div className="flex flex-col lg:flex-row gap-6 overflow-x-auto pb-6">
+        <KanbanColumn title="Chờ khảo sát" count={stats.pending} color="bg-primary">
+          {appointments.reduce((acc: any[], appt: any) => {
+            if (appt.trang_thai === 'Cho khao sat') {
+              acc.push(<AppointmentCard key={appt.id} appt={appt} />);
+            }
+            return acc;
+          }, [])}
+        </KanbanColumn>
+        
+        <KanbanColumn title="Đang điều trị" count={stats.active} color="bg-amber-500">
+          {appointments.reduce((acc: any[], appt: any) => {
+            if (appt.trang_thai === 'Dang dieu tri') {
+              acc.push(<AppointmentCard key={appt.id} appt={appt} />);
+            }
+            return acc;
+          }, [])}
+        </KanbanColumn>
+        
+        <KanbanColumn title="Đã hoàn thành" count={stats.completed} color="bg-emerald-500">
+          {appointments.reduce((acc: any[], appt: any) => {
+            if (appt.trang_thai === 'Hoan thanh') {
+              acc.push(<AppointmentCard key={appt.id} appt={appt} />);
+            }
+            return acc;
+          }, [])}
+        </KanbanColumn>
       </div>
     </div>
   );
+}
 
+function AppointmentCard({ appt }: any) {
   return (
-    <div className="space-y-6 h-full flex flex-col">
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Lịch làm việc hôm nay</h2>
-          <p className="text-slate-500 mt-1">{format(new Date(), 'EEEE, dd MMMM yyyy', { locale: vi })}</p>
+    <div className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm hover:shadow-md transition-all group">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="size-9 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-bold text-xs group-hover:bg-primary group-hover:text-white transition-colors">
+            {appt.ten_khach_hang.charAt(0)}
+          </div>
+          <div>
+            <h4 className="font-bold text-secondary text-sm">{appt.ten_khach_hang}</h4>
+            <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">{appt.gio}</p>
+          </div>
         </div>
+        <button className="text-zinc-300 hover:text-zinc-600">
+          <Calendar size={16} />
+        </button>
+      </div>
+      
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center gap-2 text-xs text-zinc-600">
+          <span className="size-1.5 rounded-full bg-zinc-300"></span>
+          <span className="font-medium">{appt.ten_dich_vu}</span>
+        </div>
+        {appt.bac_si && (
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <span className="size-1.5 rounded-full bg-primary/40"></span>
+            <span>BS: {appt.bac_si}</span>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500 mb-1">Tổng lịch hôm nay</p>
-            <h3 className="text-3xl font-bold text-slate-800">{stats.total}</h3>
-          </div>
-          <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center text-xl">📅</div>
+      <div className="flex items-center justify-between pt-3 border-t border-zinc-50">
+        <div className="flex -space-x-1.5">
+          <div className="size-6 rounded-full border border-white bg-zinc-100"></div>
+          <div className="size-6 rounded-full border border-white bg-zinc-200"></div>
         </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500 mb-1">Đã Check-in</p>
-            <h3 className="text-3xl font-bold text-teal-600">{stats.checkin}</h3>
-          </div>
-          <div className="w-12 h-12 bg-teal-50 text-teal-500 rounded-full flex items-center justify-center text-xl">✅</div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500 mb-1">Đang chờ phục vụ</p>
-            <h3 className="text-3xl font-bold text-amber-500">{stats.waiting}</h3>
-          </div>
-          <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-xl">⏳</div>
-        </div>
+        <button className="text-[10px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-lg hover:bg-primary hover:text-white transition-all uppercase tracking-tight">
+          Chi tiết
+        </button>
       </div>
-
-      {loading ? (
-        <div className="flex-1 flex justify-center items-center">
-          <div className="animate-spin w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full"></div>
-        </div>
-      ) : (
-        <div className="flex-1 flex gap-6 overflow-x-auto pb-4 items-stretch">
-          <KanbanColumn title="Chờ xác nhận" statusKey="cho_xac_nhan" items={kanbanData.cho_xac_nhan} colorClass="bg-yellow-100 text-yellow-700" />
-          <KanbanColumn title="Đã xác nhận" statusKey="da_xac_nhan" items={kanbanData.da_xac_nhan} colorClass="bg-blue-100 text-blue-700" />
-          <KanbanColumn title="Đã Check-in (Đang làm)" statusKey="da_checkin" items={kanbanData.da_checkin} colorClass="bg-teal-100 text-teal-700" />
-          <KanbanColumn title="Hoàn thành (Chờ TT)" statusKey="hoan_thanh" items={kanbanData.hoan_thanh} colorClass="bg-emerald-100 text-emerald-700" />
-        </div>
-      )}
     </div>
   );
 }

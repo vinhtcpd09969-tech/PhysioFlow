@@ -7,7 +7,7 @@ class AuthRepository {
   }
 
   async findActiveUserByEmail(email: string) {
-    const { rows } = await pool.query('SELECT * FROM v_nguoi_dung_active WHERE email = $1', [email]);
+    const { rows } = await pool.query('SELECT * FROM nguoi_dung WHERE email = $1 AND deleted_at IS NULL', [email]);
     return rows[0];
   }
 

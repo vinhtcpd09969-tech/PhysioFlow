@@ -7,11 +7,16 @@ import authRoutes from './routes/auth.routes';
 import clientRoutes from './routes/client.routes';
 import adminRoutes from './routes/admin.routes';
 import receptionistRoutes from './routes/receptionist.routes';
+import swaggerUi from 'swagger-ui-express';
+import { specs } from './config/swagger';
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// --- SWAGGER UI ---
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // --- API ROUTES ---
 app.use('/api/auth', authRoutes);

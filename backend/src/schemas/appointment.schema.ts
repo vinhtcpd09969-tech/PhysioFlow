@@ -2,13 +2,19 @@ import { z } from 'zod';
 
 export const createAppointmentSchema = z.object({
   body: z.object({
-    khach_hang_id: z.string().uuid('ID Khách hàng không hợp lệ'),
+    khach_hang_id: z.string().uuid('ID Khách hàng không hợp lệ').optional().nullable(),
+    ho_ten_khach: z.string().optional(),
+    so_dien_thoai: z.string().optional(),
+    gioi_tinh_khach: z.string().optional(),
     dich_vu_id: z.string().uuid('ID Dịch vụ không hợp lệ'),
     ky_thuat_vien_id: z.string().uuid('ID KTV không hợp lệ').optional().nullable(),
     phong_id: z.string().optional().nullable(),
     ngay_gio_bat_dau: z.string().datetime({ message: 'Ngày giờ bắt đầu không hợp lệ' }),
     ngay_gio_ket_thuc: z.string().datetime({ message: 'Ngày giờ kết thúc không hợp lệ' }),
     ghi_chu_dat_lich: z.string().optional(),
+    ly_do_kham: z.string().optional(),
+  }).refine(data => data.khach_hang_id || (data.ho_ten_khach && data.so_dien_thoai), {
+    message: 'Phải cung cấp ID khách hàng hoặc thông tin khách vãng lai (họ tên, sđt)'
   })
 });
 

@@ -1,50 +1,84 @@
-import { useState } from 'react';
+import { useReducer } from 'react';
 import axiosInstance from '../../../api/axios';
 import { useNavigate } from 'react-router-dom';
 
+interface BillingState {
+  lichDatId: string;
+  soTienNhan: string;
+  phuongThuc: string;
+  hoaDon: any | null;
+  loading: boolean;
+}
+
+type BillingAction = 
+  | { type: 'SET_FIELD', field: keyof BillingState, value: any }
+  | { type: 'SET_HOA_DON', hoaDon: any }
+  | { type: 'RESET_HOA_DON' }
+  | { type: 'SET_LOADING', loading: boolean };
+
+function billingReducer(state: BillingState, action: BillingAction): BillingState {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.field]: action.value };
+    case 'SET_HOA_DON':
+      return { ...state, hoaDon: action.hoaDon, loading: false };
+    case 'RESET_HOA_DON':
+      return { ...state, hoaDon: null, soTienNhan: '' };
+    case 'SET_LOADING':
+      return { ...state, loading: action.loading };
+    default:
+      return state;
+  }
+}
+
+const currencyFormatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+
 export default function QuickBilling() {
-  const [lichDatId, setLichDatId] = useState('');
-  const [soTienNhan, setSoTienNhan] = useState('');
-  const [phuongThuc, setPhuongThuc] = useState('tien_mat');
-  const [hoaDon, setHoaDon] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [state, dispatch] = useReducer(billingReducer, {
+    lichDatId: '',
+    soTienNhan: '',
+    phuongThuc: 'tien_mat',
+    hoaDon: null,
+    loading: false
+  });
+
   const navigate = useNavigate();
 
   const handleTạoHoaDon = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    dispatch({ type: 'SET_LOADING', loading: true });
     try {
-      const res = await axiosInstance.post('/receptionist/billing', { lich_dat_id: lichDatId });
-      setHoaDon(res.data.hoa_don);
+      const res = await axiosInstance.post('/receptionist/billing', { lich_dat_id: state.lichDatId });
+      dispatch({ type: 'SET_HOA_DON', hoaDon: res.data.hoa_don });
     } catch (error: any) {
       alert(error.response?.data?.message || 'Lỗi tạo hóa đơn');
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_LOADING', loading: false });
     }
   };
 
   const handleThanhToan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hoaDon) return;
-    setLoading(true);
+    if (!state.hoaDon) return;
+    dispatch({ type: 'SET_LOADING', loading: true });
     try {
       await axiosInstance.post('/receptionist/payment', {
-        hoa_don_id: hoaDon.id,
-        so_tien_nhan: soTienNhan,
-        phuong_thuc: phuongThuc
+        hoa_don_id: state.hoaDon.id,
+        so_tien_nhan: state.soTienNhan,
+        phuong_thuc: state.phuongThuc
       });
       alert('Thanh toán thành công!');
       navigate('/receptionist');
     } catch (error: any) {
       alert(error.response?.data?.message || 'Lỗi thanh toán');
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'SET_LOADING', loading: false });
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    return currencyFormatter.format(amount);
   };
+
+  const { lichDatId, soTienNhan, phuongThuc, hoaDon, loading } = state;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -58,12 +92,13 @@ export default function QuickBilling() {
       {!hoaDon ? (
         <form onSubmit={handleTạoHoaDon} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Mã Lịch Đặt *</label>
+            <label htmlFor="lichDatId" className="block text-sm font-medium text-slate-700 mb-2">Mã Lịch Đặt *</label>
             <input 
+              id="lichDatId"
               required
               type="text" 
               value={lichDatId}
-              onChange={(e) => setLichDatId(e.target.value)}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'lichDatId', value: e.target.value })}
               placeholder="VD: LD123456"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none"
             />
@@ -86,10 +121,11 @@ export default function QuickBilling() {
           
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Phương thức thanh toán</label>
+              <label htmlFor="phuongThuc" className="block text-sm font-medium text-slate-700 mb-2">Phương thức thanh toán</label>
               <select 
+                id="phuongThuc"
                 value={phuongThuc}
-                onChange={(e) => setPhuongThuc(e.target.value)}
+                onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'phuongThuc', value: e.target.value })}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none"
               >
                 <option value="tien_mat">Tiền mặt</option>
@@ -98,12 +134,13 @@ export default function QuickBilling() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Số tiền nhận (VNĐ) *</label>
+              <label htmlFor="soTienNhan" className="block text-sm font-medium text-slate-700 mb-2">Số tiền nhận (VNĐ) *</label>
               <input 
+                id="soTienNhan"
                 required
                 type="number" 
                 value={soTienNhan}
-                onChange={(e) => setSoTienNhan(e.target.value)}
+                onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'soTienNhan', value: e.target.value })}
                 min={hoaDon.tong_tien_thanh_toan}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none"
               />
@@ -112,7 +149,7 @@ export default function QuickBilling() {
           <div className="flex gap-4">
             <button 
               type="button" 
-              onClick={() => setHoaDon(null)}
+              onClick={() => dispatch({ type: 'RESET_HOA_DON' })}
               className="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium"
             >
               Hủy

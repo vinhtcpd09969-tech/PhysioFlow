@@ -53,7 +53,7 @@ export default function Login() {
       <div className="w-full lg:w-1/2 flex flex-col px-8 sm:px-16 lg:px-24 xl:px-32 relative z-10 h-screen overflow-y-auto">
         {/* Header / Logo */}
         <div className="py-8 font-heading font-bold text-primary text-xl tracking-wide flex-none">
-          PHYSIOFLOW
+          OFFICE CARE
         </div>
 
         {/* Form Container */}
@@ -68,9 +68,10 @@ export default function Login() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-wider text-gray-500 mb-2">EMAIL</label>
+              <label htmlFor="email" className="block text-[12px] font-semibold uppercase tracking-wider text-gray-500 mb-2">EMAIL</label>
               <input
                 {...register('email')}
+                id="email"
                 type="text"
                 className="w-full bg-[#F1F5F9] border border-transparent focus:bg-white focus:border-primary rounded-[16px] px-4 py-3 outline-none transition-all duration-300 text-[16px]"
                 placeholder="Nhập email"
@@ -80,12 +81,13 @@ export default function Login() {
 
             <div>
               <div className="flex justify-between mb-2">
-                <label className="block text-[12px] font-semibold uppercase tracking-wider text-gray-500">MẬT KHẨU</label>
+                <label htmlFor="password" className="block text-[12px] font-semibold uppercase tracking-wider text-gray-500">MẬT KHẨU</label>
                 <Link to="#" className="text-[12px] font-semibold text-primary hover:text-opacity-80">Quên mật khẩu?</Link>
               </div>
               <div className="relative">
                 <input
                   {...register('password')}
+                  id="password"
                   type={showPassword ? "text" : "password"}
                   className="w-full bg-[#F1F5F9] border border-transparent focus:bg-white focus:border-primary rounded-[16px] px-4 py-3 outline-none transition-all duration-300 text-[16px]"
                   placeholder="••••••••"
@@ -168,7 +170,7 @@ export default function Login() {
           <div className="w-full max-w-[480px] bg-white/70 backdrop-blur-xl border border-white/50 rounded-[24px] p-8 shadow-[0_16px_40px_0_rgba(15,23,42,0.15)] group hover:bg-white/80 transition-all duration-500">
             <div className="text-primary text-5xl font-serif leading-none mb-[-10px] opacity-80">"</div>
             <p className="text-secondary text-[16px] leading-[1.6] font-medium mb-6 relative z-10">
-              "PhysioFlow đã thay đổi hoàn toàn cách tôi tiếp cận quá trình phục hồi. Giao diện trực quan và các bài tập được cá nhân hóa giúp tôi cảm thấy được hỗ trợ mỗi ngày."
+              "Office Care đã thay đổi hoàn toàn cách tôi tiếp cận quá trình phục hồi. Giao diện trực quan và các bài tập được cá nhân hóa giúp tôi cảm thấy được hỗ trợ mỗi ngày."
             </p>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-300">

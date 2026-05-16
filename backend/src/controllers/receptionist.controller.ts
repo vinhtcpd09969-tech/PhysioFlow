@@ -24,6 +24,9 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
     if (error.message === 'Không tìm thấy lịch hẹn') {
       return res.status(404).json({ message: error.message });
     }
+    if (error.message === 'ROOM_UNAVAILABLE') {
+      return res.status(400).json({ message: 'Không có phòng trống cho dịch vụ này tại thời điểm hiện tại.' });
+    }
     res.status(500).json({ message: 'Lỗi server' });
   }
 };
@@ -44,8 +47,11 @@ export const handleWalkInBooking = async (req: Request, res: Response) => {
   try {
     const result = await receptionistService.handleWalkInBooking(req.body);
     res.json({ message: 'Tạo lịch thành công', ...result });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Lỗi Walk-in booking:', error);
+    if (error.message === 'ROOM_UNAVAILABLE') {
+      return res.status(400).json({ message: 'Không có phòng trống cho dịch vụ này tại thời điểm hiện tại.' });
+    }
     res.status(500).json({ message: 'Lỗi server khi tạo lịch' });
   }
 };

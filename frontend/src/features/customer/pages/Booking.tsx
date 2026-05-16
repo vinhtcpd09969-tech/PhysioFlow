@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useReducer, useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock, MapPin, Phone, User, Info, CheckCircle2, Upload, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,48 +8,91 @@ const timeSlots = [
   '17:30', '18:00', '18:30', '19:00'
 ];
 
-// Helper to format date
-const formatDate = (date: Date) => {
-  return new Intl.DateTimeFormat('vi-VN', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(date);
-};
+interface BookingState {
+  selectedDate: string;
+  selectedTime: string;
+  isSubmitting: boolean;
+  isSuccess: boolean;
+  formData: {
+    ho_ten_khach: string;
+    so_dien_thoai: string;
+    gioi_tinh_khach: string;
+    trieu_chung: string;
+    ly_do_kham: string;
+    anh_dinh_kem_url: string;
+  };
+}
+
+type BookingAction = 
+  | { type: 'SET_DATE', date: string }
+  | { type: 'SET_TIME', time: string }
+  | { type: 'SET_FORM_FIELD', field: string, value: string }
+  | { type: 'SET_SUBMITTING', isSubmitting: boolean }
+  | { type: 'SET_SUCCESS', isSuccess: boolean };
+
+function bookingReducer(state: BookingState, action: BookingAction): BookingState {
+  switch (action.type) {
+    case 'SET_DATE':
+      return { ...state, selectedDate: action.date, selectedTime: '' };
+    case 'SET_TIME':
+      return { ...state, selectedTime: action.time };
+    case 'SET_FORM_FIELD':
+      return { ...state, formData: { ...state.formData, [action.field]: action.value } };
+    case 'SET_SUBMITTING':
+      return { ...state, isSubmitting: action.isSubmitting };
+    case 'SET_SUCCESS':
+      return { ...state, isSuccess: action.isSuccess };
+    default:
+      return state;
+  }
+}
+
+// Hoist formatting helpers
+const fullDateFormatter = new Intl.DateTimeFormat('vi-VN', {
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
 
 export default function Booking() {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [selectedTime, setSelectedTime] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-
-  const [formData, setFormData] = useState({
-    ho_ten_khach: '',
-    so_dien_thoai: '',
-    gioi_tinh_khach: 'nam',
-    trieu_chung: '',
-    ly_do_kham: '',
-    anh_dinh_kem_url: '' // Mocking file upload with a URL string for now
+  const [isClient, setIsClient] = useState(false);
+  
+  const [state, dispatch] = useReducer(bookingReducer, {
+    selectedDate: new Date().toISOString().split('T')[0],
+    selectedTime: '',
+    isSubmitting: false,
+    isSuccess: false,
+    formData: {
+      ho_ten_khach: '',
+      so_dien_thoai: '',
+      gioi_tinh_khach: 'nam',
+      trieu_chung: '',
+      ly_do_kham: '',
+      anh_dinh_kem_url: ''
+    }
   });
 
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    dispatch({ type: 'SET_FORM_FIELD', field: e.target.name, value: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTime) {
+    if (!state.selectedTime) {
       alert('Vui lòng chọn giờ khám!');
       return;
     }
 
-    setIsSubmitting(true);
+    dispatch({ type: 'SET_SUBMITTING', isSubmitting: true });
     
-    // Combine date and time
-    const [year, month, day] = selectedDate.split('-');
-    const [hours, minutes] = selectedTime.split(':');
+    const [year, month, day] = state.selectedDate.split('-');
+    const [hours, minutes] = state.selectedTime.split(':');
     const ngay_gio_bat_dau = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes)).toISOString();
 
     try {
@@ -59,14 +102,13 @@ export default function Booking() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
+          ...state.formData,
           ngay_gio_bat_dau,
         }),
       });
 
       if (response.ok) {
-        setIsSuccess(true);
-        // Scroll to top
+        dispatch({ type: 'SET_SUCCESS', isSuccess: true });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         const error = await response.json();
@@ -75,9 +117,16 @@ export default function Booking() {
     } catch (error) {
       alert('Lỗi kết nối máy chủ!');
     } finally {
-      setIsSubmitting(false);
+      dispatch({ type: 'SET_SUBMITTING', isSubmitting: false });
     }
   };
+
+  const formatFullDate = (dateString: string) => {
+    if (!isClient) return '';
+    return fullDateFormatter.format(new Date(dateString));
+  };
+
+  const { selectedDate, selectedTime, isSubmitting, isSuccess, formData } = state;
 
   if (isSuccess) {
     return (
@@ -88,7 +137,7 @@ export default function Booking() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900">Đặt lịch thành công!</h2>
           <p className="text-gray-600">
-            Cảm ơn bạn đã tin tưởng PhysioFlow. Lễ tân của chúng tôi sẽ gọi điện xác nhận trong vòng 15 phút tới.
+            Cảm ơn bạn đã tin tưởng Office Care. Lễ tân của chúng tôi sẽ gọi điện xác nhận trong vòng 15 phút tới.
           </p>
           <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-left text-sm">
             <p className="font-semibold mb-2">Lời khuyên trước khi đến khám:</p>
@@ -126,7 +175,7 @@ export default function Booking() {
                 <div className="absolute inset-0 bg-black/20"></div>
                 <div className="absolute bottom-4 left-4 right-4 text-white">
                   <h2 className="text-xl font-bold leading-tight">Khám Lâm sàng & Lượng giá Y khoa</h2>
-                  <p className="text-blue-100 text-sm mt-1">PhysioFlow Clinic</p>
+                  <p className="text-blue-100 text-sm mt-1">Office Care Clinic</p>
                 </div>
               </div>
               
@@ -153,28 +202,6 @@ export default function Booking() {
                 </div>
               </div>
             </div>
-            
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-               <h3 className="font-bold text-gray-900 mb-4">Quy trình thăm khám</h3>
-               <ol className="relative border-l border-gray-200 ml-3 space-y-5">
-                  <li className="pl-6 relative">
-                    <span className="absolute flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full -left-3 ring-4 ring-white text-blue-600 text-xs font-bold">1</span>
-                    <h4 className="font-medium text-gray-900 text-sm">Điền thông tin đặt lịch</h4>
-                  </li>
-                  <li className="pl-6 relative">
-                    <span className="absolute flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full -left-3 ring-4 ring-white text-blue-600 text-xs font-bold">2</span>
-                    <h4 className="font-medium text-gray-900 text-sm">Đến phòng khám theo giờ hẹn</h4>
-                  </li>
-                  <li className="pl-6 relative">
-                    <span className="absolute flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full -left-3 ring-4 ring-white text-blue-600 text-xs font-bold">3</span>
-                    <h4 className="font-medium text-gray-900 text-sm">Bác sĩ khám lượng giá (30-45p)</h4>
-                  </li>
-                  <li className="pl-6 relative">
-                    <span className="absolute flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full -left-3 ring-4 ring-white text-blue-600 text-xs font-bold">4</span>
-                    <h4 className="font-medium text-gray-900 text-sm">Chỉ định phác đồ & Bắt đầu tập</h4>
-                  </li>
-               </ol>
-            </div>
           </div>
 
           {/* CỘT PHẢI: FORM ĐẶT LỊCH */}
@@ -190,28 +217,26 @@ export default function Booking() {
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày khám</label>
+                    <label htmlFor="selectedDate" className="block text-sm font-medium text-gray-700 mb-1">Ngày khám</label>
                     <input 
+                      id="selectedDate"
                       type="date" 
                       min={new Date().toISOString().split('T')[0]}
                       className="w-full sm:w-1/2 rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 border"
                       value={selectedDate}
-                      onChange={(e) => {
-                        setSelectedDate(e.target.value);
-                        setSelectedTime(''); // Reset time when date changes
-                      }}
+                      onChange={(e) => dispatch({ type: 'SET_DATE', date: e.target.value })}
                       required
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Giờ khám ({formatDate(new Date(selectedDate))})</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Giờ khám ({formatFullDate(selectedDate)})</label>
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
                       {timeSlots.map((time) => (
                         <button
                           type="button"
                           key={time}
-                          onClick={() => setSelectedTime(time)}
+                          onClick={() => dispatch({ type: 'SET_TIME', time })}
                           className={`py-2 px-1 text-sm font-medium rounded-lg border transition-all
                             ${selectedTime === time 
                               ? 'bg-blue-600 border-blue-600 text-white shadow-md' 
@@ -237,8 +262,9 @@ export default function Booking() {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên *</label>
+                    <label htmlFor="ho_ten_khach" className="block text-sm font-medium text-gray-700 mb-1">Họ và tên *</label>
                     <input
+                      id="ho_ten_khach"
                       type="text"
                       name="ho_ten_khach"
                       required
@@ -249,8 +275,9 @@ export default function Booking() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại *</label>
+                    <label htmlFor="so_dien_thoai" className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại *</label>
                     <input
+                      id="so_dien_thoai"
                       type="tel"
                       name="so_dien_thoai"
                       required
@@ -287,8 +314,9 @@ export default function Booking() {
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả triệu chứng (Vùng đau, mức độ) *</label>
+                    <label htmlFor="trieu_chung" className="block text-sm font-medium text-gray-700 mb-1">Mô tả triệu chứng (Vùng đau, mức độ) *</label>
                     <textarea
+                      id="trieu_chung"
                       name="trieu_chung"
                       required
                       rows={3}
@@ -298,55 +326,24 @@ export default function Booking() {
                       onChange={handleChange}
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Hình ảnh/Video triệu chứng (Tùy chọn)
-                      <span className="block text-xs font-normal text-gray-500 mt-0.5">Nếu có phim chụp X-Quang, MRI hoặc vị trí sưng đau, hãy tải lên để bác sĩ xem trước.</span>
-                    </label>
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl bg-gray-50 hover:bg-gray-100 transition cursor-pointer">
-                      <div className="space-y-1 text-center">
-                        <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                        <div className="flex text-sm text-gray-600 justify-center">
-                          <span className="relative rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                            Tải ảnh lên
-                          </span>
-                          <p className="pl-1">hoặc kéo thả vào đây</p>
-                        </div>
-                        <p className="text-xs text-gray-500">PNG, JPG tối đa 5MB</p>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
 
-              {/* Nút Submit */}
               <div className="pt-6">
                 <button
                   type="submit"
                   disabled={isSubmitting}
                   className="w-full bg-blue-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-blue-700 transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
                 >
-                  {isSubmitting ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Đang xử lý...
-                    </span>
-                  ) : (
-                    'Xác nhận Đặt hẹn khám'
-                  )}
+                  {isSubmitting ? 'Đang xử lý...' : 'Xác nhận Đặt hẹn khám'}
                 </button>
                 <p className="text-center text-sm text-gray-500 mt-4">
-                  Bằng việc đặt hẹn, bạn đồng ý với các <a href="#" className="text-blue-600 hover:underline">Điều khoản dịch vụ</a> của chúng tôi.
+                  Bằng việc đặt hẹn, bạn đồng ý với các Điều khoản dịch vụ của chúng tôi.
                 </p>
               </div>
 
             </form>
           </div>
-
         </div>
       </div>
     </div>

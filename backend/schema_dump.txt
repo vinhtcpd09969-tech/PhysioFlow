@@ -1,0 +1,274 @@
+-- Table: lich_lam_viec_ktv
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+ky_thuat_vien_id | uuid | MaxLength: null | Nullable: NO | Default: null
+thu_trong_tuan | character varying | MaxLength: 20 | Nullable: NO | Default: null
+gio_bat_dau | time without time zone | MaxLength: null | Nullable: NO | Default: null
+gio_ket_thuc | time without time zone | MaxLength: null | Nullable: NO | Default: null
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'hoat_dong'::character varying
+
+-- Table: phong_dich_vu
+id | bigint | MaxLength: null | Nullable: NO | Default: nextval('phong_dich_vu_id_seq'::regclass)
+phong_id | bigint | MaxLength: null | Nullable: NO | Default: null
+danh_muc_id | bigint | MaxLength: null | Nullable: NO | Default: null
+
+-- Table: danh_gia
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+lich_dat_id | uuid | MaxLength: null | Nullable: NO | Default: null
+khach_hang_id | uuid | MaxLength: null | Nullable: NO | Default: null
+ky_thuat_vien_id | uuid | MaxLength: null | Nullable: NO | Default: null
+ngay_danh_gia | date | MaxLength: null | Nullable: NO | Default: null
+tong_diem_dau | integer | MaxLength: null | Nullable: YES | Default: null
+vung_dau_chinh | character varying | MaxLength: 500 | Nullable: YES | Default: null
+tu_the_tong_quat | character varying | MaxLength: 20 | Nullable: YES | Default: null
+muc_do_linh_hoat | character varying | MaxLength: 20 | Nullable: YES | Default: null
+tom_tat_kham | text | MaxLength: null | Nullable: YES | Default: null
+chan_doan_so_bo | text | MaxLength: null | Nullable: YES | Default: null
+ai_tom_tat | text | MaxLength: null | Nullable: YES | Default: null
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'nhap'::character varying
+thoi_gian_hoan_thanh | timestamp without time zone | MaxLength: null | Nullable: YES | Default: null
+
+-- Table: danh_muc_dich_vu
+id | bigint | MaxLength: null | Nullable: NO | Default: nextval('danh_muc_dich_vu_id_seq'::regclass)
+ten_danh_muc | character varying | MaxLength: 100 | Nullable: NO | Default: null
+mo_ta | text | MaxLength: null | Nullable: YES | Default: null
+thu_tu_hien_thi | integer | MaxLength: null | Nullable: NO | Default: 0
+an_hien | boolean | MaxLength: null | Nullable: NO | Default: true
+
+-- Table: phong
+id | bigint | MaxLength: null | Nullable: NO | Default: nextval('phong_id_seq'::regclass)
+ten_phong | character varying | MaxLength: 100 | Nullable: NO | Default: null
+ma_phong | character varying | MaxLength: 20 | Nullable: NO | Default: null
+loai_phong | character varying | MaxLength: 100 | Nullable: YES | Default: null
+loai_dich_vu_ho_tro | jsonb | MaxLength: null | Nullable: YES | Default: null
+thiet_bi | jsonb | MaxLength: null | Nullable: YES | Default: null
+mo_ta | text | MaxLength: null | Nullable: YES | Default: null
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'san_sang'::character varying
+tang | character varying | MaxLength: 20 | Nullable: YES | Default: null
+
+-- Table: goi_dieu_tri
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+ten_goi | character varying | MaxLength: 200 | Nullable: NO | Default: null
+ma_goi | character varying | MaxLength: 30 | Nullable: NO | Default: null
+mo_ta | text | MaxLength: null | Nullable: YES | Default: null
+tong_so_buoi | integer | MaxLength: null | Nullable: NO | Default: null
+gia_goi | bigint | MaxLength: null | Nullable: NO | Default: null
+gia_goc | bigint | MaxLength: null | Nullable: YES | Default: null
+thoi_gian_su_dung_ngay | integer | MaxLength: null | Nullable: NO | Default: 90
+hien_thi_website | boolean | MaxLength: null | Nullable: NO | Default: true
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'hoat_dong'::character varying
+thoi_gian_tao | timestamp without time zone | MaxLength: null | Nullable: NO | Default: now()
+
+-- Table: hoa_don
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+ma_hoa_don | character varying | MaxLength: 20 | Nullable: NO | Default: null
+khach_hang_id | uuid | MaxLength: null | Nullable: NO | Default: null
+loai_hoa_don | character varying | MaxLength: 20 | Nullable: NO | Default: null
+lich_dat_id | uuid | MaxLength: null | Nullable: YES | Default: null
+dang_ky_goi_id | uuid | MaxLength: null | Nullable: YES | Default: null
+tong_tien_truoc_giam | bigint | MaxLength: null | Nullable: NO | Default: 0
+so_tien_giam | bigint | MaxLength: null | Nullable: NO | Default: 0
+tong_tien_thanh_toan | bigint | MaxLength: null | Nullable: NO | Default: null
+da_thanh_toan | bigint | MaxLength: null | Nullable: NO | Default: 0
+trang_thai | character varying | MaxLength: 30 | Nullable: NO | Default: 'chua_thanh_toan'::character varying
+ghi_chu | text | MaxLength: null | Nullable: YES | Default: null
+ngay_tao | timestamp without time zone | MaxLength: null | Nullable: NO | Default: now()
+ngay_thanh_toan | timestamp without time zone | MaxLength: null | Nullable: YES | Default: null
+thu_boi | uuid | MaxLength: null | Nullable: YES | Default: null
+
+-- Table: lich_dat
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+ma_lich_dat | character varying | MaxLength: 20 | Nullable: NO | Default: null
+khach_hang_id | uuid | MaxLength: null | Nullable: YES | Default: null
+ho_ten_khach | character varying | MaxLength: 150 | Nullable: YES | Default: null
+so_dien_thoai | character varying | MaxLength: 20 | Nullable: YES | Default: null
+gioi_tinh_khach | character varying | MaxLength: 10 | Nullable: YES | Default: null
+dich_vu_id | uuid | MaxLength: null | Nullable: YES | Default: null
+ky_thuat_vien_id | uuid | MaxLength: null | Nullable: YES | Default: null
+phong_id | bigint | MaxLength: null | Nullable: YES | Default: null
+ngay_gio_bat_dau | timestamp without time zone | MaxLength: null | Nullable: NO | Default: null
+ngay_gio_ket_thuc | timestamp without time zone | MaxLength: null | Nullable: NO | Default: null
+trieu_chung | text | MaxLength: null | Nullable: YES | Default: null
+ly_do_kham | text | MaxLength: null | Nullable: YES | Default: null
+anh_dinh_kem_url | text | MaxLength: null | Nullable: YES | Default: null
+loai_lich | character varying | MaxLength: 30 | Nullable: NO | Default: 'kham_moi'::character varying
+trang_thai | character varying | MaxLength: 30 | Nullable: NO | Default: 'cho_xac_nhan'::character varying
+dang_ky_goi_id | uuid | MaxLength: null | Nullable: YES | Default: null
+ghi_chu_dat_lich | text | MaxLength: null | Nullable: YES | Default: null
+ghi_chu_noi_bo | text | MaxLength: null | Nullable: YES | Default: null
+thoi_gian_checkin | timestamp without time zone | MaxLength: null | Nullable: YES | Default: null
+thoi_gian_huy | timestamp without time zone | MaxLength: null | Nullable: YES | Default: null
+ly_do_huy | text | MaxLength: null | Nullable: YES | Default: null
+dat_lai_tu_lich_id | uuid | MaxLength: null | Nullable: YES | Default: null
+nguoi_tao | character varying | MaxLength: 20 | Nullable: NO | Default: 'khach_hang'::character varying
+thoi_gian_tao | timestamp without time zone | MaxLength: null | Nullable: NO | Default: now()
+
+-- Table: nguoi_dung
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+ho_ten | character varying | MaxLength: 150 | Nullable: NO | Default: null
+email | character varying | MaxLength: 255 | Nullable: NO | Default: null
+so_dien_thoai | character varying | MaxLength: 20 | Nullable: YES | Default: null
+mat_khau_hash | character varying | MaxLength: 255 | Nullable: NO | Default: null
+vai_tro_id | smallint | MaxLength: null | Nullable: NO | Default: null
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'hoat_dong'::character varying
+da_xac_thuc_email | boolean | MaxLength: null | Nullable: NO | Default: false
+avatar_url | text | MaxLength: null | Nullable: YES | Default: null
+thoi_gian_tao | timestamp without time zone | MaxLength: null | Nullable: NO | Default: now()
+lan_dang_nhap_cuoi | timestamp without time zone | MaxLength: null | Nullable: YES | Default: null
+deleted_at | timestamp without time zone | MaxLength: null | Nullable: YES | Default: null
+
+-- Table: vai_tro
+id | smallint | MaxLength: null | Nullable: NO | Default: nextval('vai_tro_id_seq'::regclass)
+ma_vai_tro | character varying | MaxLength: 20 | Nullable: NO | Default: null
+ten_hien_thi | character varying | MaxLength: 50 | Nullable: NO | Default: null
+mo_ta_quyen | text | MaxLength: null | Nullable: YES | Default: null
+
+-- Table: khach_hang
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+nguoi_dung_id | uuid | MaxLength: null | Nullable: NO | Default: null
+ngay_sinh | date | MaxLength: null | Nullable: YES | Default: null
+gioi_tinh | character varying | MaxLength: 10 | Nullable: YES | Default: null
+nghe_nghiep | character varying | MaxLength: 100 | Nullable: YES | Default: null
+nghe_nghiep_cu_the | character varying | MaxLength: 100 | Nullable: YES | Default: null
+dia_chi | text | MaxLength: null | Nullable: YES | Default: null
+nguon_gioi_thieu | character varying | MaxLength: 100 | Nullable: YES | Default: null
+hang_khach_hang | character varying | MaxLength: 20 | Nullable: NO | Default: 'thuong'::character varying
+preferred_ktv_id | uuid | MaxLength: null | Nullable: YES | Default: null
+thoi_gian_tao | timestamp without time zone | MaxLength: null | Nullable: NO | Default: now()
+deleted_at | timestamp without time zone | MaxLength: null | Nullable: YES | Default: null
+so_cccd | character varying | MaxLength: 20 | Nullable: YES | Default: null
+cccd_anh_mat_truoc_url | text | MaxLength: null | Nullable: YES | Default: null
+cccd_anh_mat_sau_url | text | MaxLength: null | Nullable: YES | Default: null
+cccd_da_xac_minh | boolean | MaxLength: null | Nullable: NO | Default: false
+
+-- Table: thiet_bi_y_te
+id | bigint | MaxLength: null | Nullable: NO | Default: nextval('thiet_bi_y_te_id_seq'::regclass)
+ma_thiet_bi | character varying | MaxLength: 20 | Nullable: NO | Default: null
+ten_thiet_bi | character varying | MaxLength: 200 | Nullable: NO | Default: null
+thuong_hieu | character varying | MaxLength: 100 | Nullable: YES | Default: null
+mo_ta_ngan | character varying | MaxLength: 300 | Nullable: YES | Default: null
+hinh_anh_url | text | MaxLength: null | Nullable: YES | Default: null
+so_luong | integer | MaxLength: null | Nullable: NO | Default: 1
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'san_sang'::character varying
+phong_id_hien_tai | bigint | MaxLength: null | Nullable: YES | Default: null
+ghi_chu | text | MaxLength: null | Nullable: YES | Default: null
+thoi_gian_tao | timestamp without time zone | MaxLength: null | Nullable: NO | Default: now()
+
+-- Table: otp_codes
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+email | character varying | MaxLength: 255 | Nullable: NO | Default: null
+otp | character varying | MaxLength: 6 | Nullable: NO | Default: null
+expires_at | timestamp with time zone | MaxLength: null | Nullable: NO | Default: null
+created_at | timestamp with time zone | MaxLength: null | Nullable: NO | Default: now()
+
+-- Table: refresh_tokens
+id | integer | MaxLength: null | Nullable: NO | Default: nextval('refresh_tokens_id_seq'::regclass)
+nguoi_dung_id | uuid | MaxLength: null | Nullable: NO | Default: null
+token | text | MaxLength: null | Nullable: NO | Default: null
+expires_at | timestamp without time zone | MaxLength: null | Nullable: NO | Default: null
+created_at | timestamp without time zone | MaxLength: null | Nullable: YES | Default: now()
+
+-- Table: system_audit_log
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+user_id | uuid | MaxLength: null | Nullable: YES | Default: null
+action | character varying | MaxLength: 100 | Nullable: NO | Default: null
+entity_type | character varying | MaxLength: 100 | Nullable: NO | Default: null
+entity_id | character varying | MaxLength: 255 | Nullable: YES | Default: null
+payload | jsonb | MaxLength: null | Nullable: YES | Default: null
+ip_address | character varying | MaxLength: 50 | Nullable: YES | Default: null
+created_at | timestamp with time zone | MaxLength: null | Nullable: YES | Default: now()
+
+-- Table: hoa_don_chi_tiet
+id | bigint | MaxLength: null | Nullable: NO | Default: nextval('hoa_don_chi_tiet_id_seq'::regclass)
+hoa_don_id | uuid | MaxLength: null | Nullable: NO | Default: null
+mo_ta | character varying | MaxLength: 300 | Nullable: NO | Default: null
+don_gia | bigint | MaxLength: null | Nullable: NO | Default: null
+so_luong | integer | MaxLength: null | Nullable: NO | Default: 1
+thanh_tien | bigint | MaxLength: null | Nullable: NO | Default: null
+dich_vu_id | uuid | MaxLength: null | Nullable: YES | Default: null
+
+-- Table: ky_thuat_vien
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+nguoi_dung_id | uuid | MaxLength: null | Nullable: NO | Default: null
+ma_nhan_vien | character varying | MaxLength: 20 | Nullable: NO | Default: null
+chuyen_mon_chinh | character varying | MaxLength: 200 | Nullable: NO | Default: null
+so_nam_kinh_nghiem | integer | MaxLength: null | Nullable: YES | Default: null
+chung_chi | text | MaxLength: null | Nullable: YES | Default: null
+mo_ta_ban_than | text | MaxLength: null | Nullable: YES | Default: null
+anh_dai_dien_url | text | MaxLength: null | Nullable: YES | Default: null
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'hoat_dong'::character varying
+ngay_vao_lam | date | MaxLength: null | Nullable: YES | Default: null
+
+-- Table: dich_vu
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+danh_muc_id | bigint | MaxLength: null | Nullable: NO | Default: null
+ten_dich_vu | character varying | MaxLength: 200 | Nullable: NO | Default: null
+mo_ta_ngan | character varying | MaxLength: 500 | Nullable: YES | Default: null
+mo_ta_chi_tiet | text | MaxLength: null | Nullable: YES | Default: null
+thoi_luong_phut | integer | MaxLength: null | Nullable: NO | Default: null
+don_gia | bigint | MaxLength: null | Nullable: NO | Default: null
+hinh_anh_url | text | MaxLength: null | Nullable: YES | Default: null
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'hoat_dong'::character varying
+thu_tu_hien_thi | integer | MaxLength: null | Nullable: NO | Default: 0
+thiet_bi_yeu_cau | character varying | MaxLength: 100 | Nullable: YES | Default: null
+
+-- Table: thanh_toan
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+ma_giao_dich | character varying | MaxLength: 50 | Nullable: NO | Default: null
+hoa_don_id | uuid | MaxLength: null | Nullable: NO | Default: null
+so_tien | bigint | MaxLength: null | Nullable: NO | Default: null
+phuong_thuc | character varying | MaxLength: 20 | Nullable: NO | Default: null
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'cho_xu_ly'::character varying
+ma_tham_chieu | character varying | MaxLength: 100 | Nullable: YES | Default: null
+nguoi_thu_tien_id | uuid | MaxLength: null | Nullable: YES | Default: null
+thoi_gian_giao_dich | timestamp without time zone | MaxLength: null | Nullable: NO | Default: now()
+ghi_chu | text | MaxLength: null | Nullable: YES | Default: null
+
+-- Table: voucher
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+ma_voucher | character varying | MaxLength: 50 | Nullable: NO | Default: null
+ten_chien_dich | character varying | MaxLength: 200 | Nullable: YES | Default: null
+loai_giam | character varying | MaxLength: 20 | Nullable: NO | Default: null
+gia_tri_giam | bigint | MaxLength: null | Nullable: NO | Default: null
+giam_toi_da | bigint | MaxLength: null | Nullable: YES | Default: null
+don_hang_toi_thieu | bigint | MaxLength: null | Nullable: NO | Default: 0
+ap_dung_cho | character varying | MaxLength: 30 | Nullable: NO | Default: 'tat_ca'::character varying
+so_luong_toi_da | integer | MaxLength: null | Nullable: YES | Default: null
+so_luong_da_dung | integer | MaxLength: null | Nullable: NO | Default: 0
+ngay_bat_dau | date | MaxLength: null | Nullable: NO | Default: null
+ngay_het_han | date | MaxLength: null | Nullable: YES | Default: null
+tao_boi | uuid | MaxLength: null | Nullable: NO | Default: null
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'hoat_dong'::character varying
+thoi_gian_tao | timestamp without time zone | MaxLength: null | Nullable: NO | Default: now()
+
+-- Table: buoi_tri_lieu
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+lich_dat_id | uuid | MaxLength: null | Nullable: NO | Default: null
+khach_hang_id | uuid | MaxLength: null | Nullable: NO | Default: null
+ky_thuat_vien_id | uuid | MaxLength: null | Nullable: NO | Default: null
+phong_id | bigint | MaxLength: null | Nullable: YES | Default: null
+dich_vu_id | uuid | MaxLength: null | Nullable: NO | Default: null
+thoi_gian_bat_dau | timestamp without time zone | MaxLength: null | Nullable: NO | Default: null
+thoi_gian_ket_thuc | timestamp without time zone | MaxLength: null | Nullable: YES | Default: null
+danh_gia_truoc_buoi | integer | MaxLength: null | Nullable: YES | Default: null
+danh_gia_sau_buoi | integer | MaxLength: null | Nullable: YES | Default: null
+danh_gia_hieu_qua | integer | MaxLength: null | Nullable: YES | Default: null
+so_thu_tu_buoi | integer | MaxLength: null | Nullable: YES | Default: null
+danh_gia_id | uuid | MaxLength: null | Nullable: YES | Default: null
+trang_thai | character varying | MaxLength: 20 | Nullable: NO | Default: 'dang_thuc_hien'::character varying
+canh_bao_dac_biet | text | MaxLength: null | Nullable: YES | Default: null
+ai_tom_tat_ngan | character varying | MaxLength: 300 | Nullable: YES | Default: null
+thoi_gian_ghi_chu | timestamp without time zone | MaxLength: null | Nullable: YES | Default: null
+
+-- Table: danh_gia_dich_vu
+id | uuid | MaxLength: null | Nullable: NO | Default: gen_random_uuid()
+buoi_tri_lieu_id | uuid | MaxLength: null | Nullable: NO | Default: null
+khach_hang_id | uuid | MaxLength: null | Nullable: NO | Default: null
+ky_thuat_vien_id | uuid | MaxLength: null | Nullable: NO | Default: null
+so_sao_tong | integer | MaxLength: null | Nullable: NO | Default: null
+so_sao_ktv | integer | MaxLength: null | Nullable: YES | Default: null
+nhan_xet | text | MaxLength: null | Nullable: YES | Default: null
+hieu_qua_dieu_tri | character varying | MaxLength: 30 | Nullable: YES | Default: null
+se_quay_lai | boolean | MaxLength: null | Nullable: YES | Default: null
+hien_thi_cong_khai | boolean | MaxLength: null | Nullable: NO | Default: false
+thoi_gian_danh_gia | timestamp without time zone | MaxLength: null | Nullable: NO | Default: now()
+

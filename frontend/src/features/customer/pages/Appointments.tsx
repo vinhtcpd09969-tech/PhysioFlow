@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Calendar as CalendarIcon, Clock, User, Filter, Search, Plus, CheckCircle2, XCircle, AlertCircle, PlayCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Calendar as CalendarIcon, Clock, User, Search, Plus, CheckCircle2, XCircle, AlertCircle, PlayCircle } from 'lucide-react';
 import axiosInstance from '../../../api/axios';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import NewAppointmentForm from '../../admin/components/NewAppointmentForm';
 
 interface Appointment {
   id: string;
@@ -30,6 +31,7 @@ export default function Appointments() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const fetchAppointments = async () => {
     try {
@@ -91,7 +93,10 @@ export default function Appointments() {
             <option value="da_huy">Đã hủy</option>
             <option value="khong_den">Không đến</option>
           </select>
-          <button className="flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm flex-1 md:flex-none">
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm flex-1 md:flex-none"
+          >
             <Plus size={16} /> Đặt lịch mới
           </button>
         </div>
@@ -195,6 +200,12 @@ export default function Appointments() {
           </table>
         </div>
       </div>
+
+      <NewAppointmentForm 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+        onSuccess={fetchAppointments} 
+      />
     </div>
   );
 }

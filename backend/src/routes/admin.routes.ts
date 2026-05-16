@@ -60,6 +60,64 @@ router.get('/analytics/revenue', adminController.getRevenueStats);
 router.get('/analytics/performance', adminController.getStaffPerformance);
 
 // Quản lý Lịch hẹn (Admin Master View)
+/**
+ * @swagger
+ * /admin/appointments:
+ *   get:
+ *     summary: Lấy danh sách tất cả lịch hẹn
+ *     tags: [Admin - Lịch hẹn]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Danh sách lịch hẹn
+ *   post:
+ *     summary: Tạo lịch hẹn mới (Admin/Lễ tân)
+ *     tags: [Admin - Lịch hẹn]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               khach_hang_id: { type: string, format: uuid }
+ *               ho_ten_khach: { type: string }
+ *               so_dien_thoai: { type: string }
+ *               dich_vu_id: { type: string, format: uuid }
+ *               ngay_gio_bat_dau: { type: string, format: date-time }
+ *               ngay_gio_ket_thuc: { type: string, format: date-time }
+ *     responses:
+ *       201:
+ *         description: Đã tạo lịch hẹn
+ * 
+ * /admin/appointments/{id}/status:
+ *   patch:
+ *     summary: Cập nhật trạng thái lịch hẹn
+ *     tags: [Admin - Lịch hẹn]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               trang_thai: { type: string, enum: [cho_xac_nhan, da_xac_nhan, da_checkin, hoan_thanh, da_huy, khong_den] }
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ */
 router.get('/appointments', appointmentController.getAllAppointments);
 router.post('/appointments', appointmentController.createAppointment);
 router.patch('/appointments/:id/status', appointmentController.updateAppointmentStatus);

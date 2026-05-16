@@ -6,7 +6,7 @@ import { fakerVI as faker } from '@faker-js/faker';
 dotenv.config();
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/physioflow_db',
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/office_care',
 });
 
 const clearDatabase = async () => {
@@ -41,14 +41,14 @@ const seedUsers = async (roles: any) => {
   // Admin
   const { rows: adminRows } = await pool.query(`
     INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id)
-    VALUES ('Admin Master', 'admin@physioflow.com', '0901234567', $1, $2) RETURNING id
+    VALUES ('Admin Master', 'admin@officecare.com', '0901234567', $1, $2) RETURNING id
   `, [passwordHash, roles['admin']]);
   const adminId = adminRows[0].id;
 
   // Lễ tân
   await pool.query(`
     INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id)
-    VALUES ('Lễ tân 1', 'letan@physioflow.com', '0901234568', $1, $2)
+    VALUES ('Lễ tân 1', 'letan@officecare.com', '0901234568', $1, $2)
   `, [passwordHash, roles['le_tan']]);
 
   // KTVs
@@ -57,7 +57,7 @@ const seedUsers = async (roles: any) => {
     const { rows } = await pool.query(`
       INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id)
       VALUES ($1, $2, $3, $4, $5) RETURNING id
-    `, [`KTV ${faker.person.fullName()}`, `ktv${i}@physioflow.com`, faker.phone.number(), passwordHash, roles['ky_thuat_vien']]);
+    `, [`KTV ${faker.person.fullName()}`, `ktv${i}@officecare.com`, faker.phone.number(), passwordHash, roles['ky_thuat_vien']]);
     ktvUsers.push(rows[0].id);
 
     await pool.query(`

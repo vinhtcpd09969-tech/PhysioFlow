@@ -15,6 +15,8 @@ const packageSchema = z.object({
 
 type PackageFormValues = z.infer<typeof packageSchema>;
 
+const currencyFormatter = new Intl.NumberFormat('vi-VN');
+
 export default function ManagePackages() {
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,7 @@ export default function ManagePackages() {
                     <td className="p-4 text-slate-600 truncate max-w-xs">{pkg.mo_ta}</td>
                     <td className="p-4 text-center text-slate-800">{pkg.tong_so_buoi}</td>
                     <td className="p-4 text-right text-slate-800 font-medium">
-                      {new Intl.NumberFormat('vi-VN').format(pkg.gia_tien)}
+                      {currencyFormatter.format(pkg.gia_tien)}
                     </td>
                     <td className="p-4 text-center">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -133,8 +135,9 @@ export default function ManagePackages() {
             <form onSubmit={handleSubmit(onSubmit)} className="p-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tên gói *</label>
+                  <label htmlFor="ten_goi" className="block text-sm font-medium text-slate-700 mb-1">Tên gói *</label>
                   <input 
+                    id="ten_goi"
                     {...register('ten_goi')} 
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
                     placeholder="VD: Gói cổ vai gáy 10 buổi"
@@ -143,8 +146,9 @@ export default function ManagePackages() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Mô tả</label>
+                  <label htmlFor="mo_ta" className="block text-sm font-medium text-slate-700 mb-1">Mô tả</label>
                   <textarea 
+                    id="mo_ta"
                     {...register('mo_ta')} 
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
                     rows={3}
@@ -153,8 +157,9 @@ export default function ManagePackages() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Số buổi *</label>
+                    <label htmlFor="tong_so_buoi" className="block text-sm font-medium text-slate-700 mb-1">Số buổi *</label>
                     <input 
+                      id="tong_so_buoi"
                       type="number"
                       {...register('tong_so_buoi', { valueAsNumber: true })} 
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
@@ -162,8 +167,9 @@ export default function ManagePackages() {
                     {errors.tong_so_buoi && <p className="text-red-500 text-xs mt-1">{errors.tong_so_buoi.message}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Giá tiền (VNĐ) *</label>
+                    <label htmlFor="gia_tien" className="block text-sm font-medium text-slate-700 mb-1">Giá tiền (VNĐ) *</label>
                     <input 
+                      id="gia_tien"
                       type="number"
                       {...register('gia_tien', { valueAsNumber: true })} 
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
@@ -173,8 +179,9 @@ export default function ManagePackages() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Trạng thái</label>
+                  <label htmlFor="trang_thai" className="block text-sm font-medium text-slate-700 mb-1">Trạng thái</label>
                   <select 
+                    id="trang_thai"
                     {...register('trang_thai')} 
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
                   >

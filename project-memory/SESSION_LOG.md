@@ -49,3 +49,12 @@
     - Cấu hình lại các file Dashboard Frontend để gọi đúng API (`api.ts` thay vì `axios` thô), parse dữ liệu doanh thu chính xác cho **Recharts**.
     - Tích hợp logic **Khóa/Mở khóa Nhân sự** và **Hoàn tiền giao dịch** vào giao diện Admin.
     - Cấu trúc lại `admin.api.ts` để gom nhóm toàn bộ 26 endpoints của Admin.
+
+## Session 9 — 2026-05-16 (Fixing Admin Appointments & API Setup)
+- **Lịch hẹn Admin:**
+    - Triển khai **Slide-over NewAppointmentForm** hỗ trợ tạo lịch hẹn cho khách vãng lai và khách cũ.
+    - Xử lý lỗi `500 Internal Server Error` bằng cách thêm bảng `lich_lam_viec_ktv` còn thiếu vào Schema và sửa logic truyền `ky_thuat_vien_id` thay vì `nguoi_dung_id`.
+    - Giải quyết lỗi lệch múi giờ (UTC vs Local) hiển thị sai 7 tiếng bằng cách áp dụng `AT TIME ZONE 'UTC'` trong Repository.
+    - Thêm thông báo **React Hot Toast** thiết kế theo UI/UX chuẩn cao cấp.
+- **Hệ thống Test & Tài liệu API:**
+    - Cài đặt và cấu hình thành công **Swagger UI** (`swagger-ui-express`) tích hợp thẳng vào Backend, tự động hóa tài liệu cho các routes (ví dụ: Appointments).

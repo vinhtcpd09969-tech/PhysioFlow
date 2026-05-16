@@ -180,14 +180,14 @@ export default function LandingLayout() {
                   <span className="text-primary">📞</span> 1900 1234
                 </li>
                 <li className="flex items-center gap-3">
-                  <span className="text-primary">✉️</span> hello@physioflow.com
+                  <span className="text-primary">✉️</span> hello@officecare.com
                 </li>
               </ul>
             </div>
           </div>
           
           <div className="border-t border-gray-800 pt-8 text-center flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-gray-500 text-sm">© 2026 PhysioFlow. Đã đăng ký bản quyền.</p>
+            <p className="text-gray-500 text-sm">© 2026 Office Care. Đã đăng ký bản quyền.</p>
             <div className="flex gap-4">
               <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-primary hover:text-white transition-all">FB</a>
               <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-primary hover:text-white transition-all">IG</a>

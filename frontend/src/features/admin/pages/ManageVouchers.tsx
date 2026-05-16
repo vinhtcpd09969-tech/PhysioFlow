@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../../../api/axios';
 
 interface Voucher {
   id: string;
@@ -17,6 +17,8 @@ interface Voucher {
   trang_thai: string;
 }
 
+const currencyFormatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+
 export default function ManageVouchers() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,8 +30,8 @@ export default function ManageVouchers() {
 
   const fetchVouchers = async () => {
     try {
-      const res = await axios.get('/api/admin/vouchers');
-      setVouchers(res.data);
+      const res = await api.get('/admin/vouchers');
+      setVouchers(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error('Lỗi khi tải danh sách voucher:', error);
     }
@@ -50,9 +52,9 @@ export default function ManageVouchers() {
 
     try {
       if (editingVoucher?.id) {
-        await axios.put(`/api/admin/vouchers/${editingVoucher.id}`, payload);
+        await api.put(`/admin/vouchers/${editingVoucher.id}`, payload);
       } else {
-        await axios.post('/api/admin/vouchers', payload);
+        await api.post('/admin/vouchers', payload);
       }
       setIsModalOpen(false);
       setEditingVoucher(null);
@@ -65,7 +67,7 @@ export default function ManageVouchers() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa voucher này?')) return;
     try {
-      await axios.delete(`/api/admin/vouchers/${id}`);
+      await api.delete(`/admin/vouchers/${id}`);
       fetchVouchers();
     } catch (error) {
       alert('Lỗi khi xóa voucher');
@@ -73,7 +75,7 @@ export default function ManageVouchers() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    return currencyFormatter.format(amount);
   };
 
   return (
@@ -159,8 +161,9 @@ export default function ManageVouchers() {
             </div>
             <form onSubmit={handleSubmit} className="p-8 grid grid-cols-2 gap-6">
               <div className="col-span-2 md:col-span-1">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Mã Voucher</label>
+                <label htmlFor="ma_voucher" className="block text-sm font-medium text-slate-700 mb-1">Mã Voucher</label>
                 <input 
+                  id="ma_voucher"
                   name="ma_voucher"
                   defaultValue={editingVoucher?.ma_voucher}
                   required
@@ -169,8 +172,9 @@ export default function ManageVouchers() {
                 />
               </div>
               <div className="col-span-2 md:col-span-1">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tên chiến dịch</label>
+                <label htmlFor="ten_chien_dich" className="block text-sm font-medium text-slate-700 mb-1">Tên chiến dịch</label>
                 <input 
+                  id="ten_chien_dich"
                   name="ten_chien_dich"
                   defaultValue={editingVoucher?.ten_chien_dich}
                   placeholder="VD: Khuyến mãi Hè"
@@ -178,8 +182,9 @@ export default function ManageVouchers() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Loại giảm</label>
+                <label htmlFor="loai_giam" className="block text-sm font-medium text-slate-700 mb-1">Loại giảm</label>
                 <select 
+                  id="loai_giam"
                   name="loai_giam"
                   defaultValue={editingVoucher?.loai_giam || 'phan_tram'}
                   className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none"
@@ -189,8 +194,9 @@ export default function ManageVouchers() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Giá trị giảm</label>
+                <label htmlFor="gia_tri_giam" className="block text-sm font-medium text-slate-700 mb-1">Giá trị giảm</label>
                 <input 
+                  id="gia_tri_giam"
                   name="gia_tri_giam"
                   type="number"
                   defaultValue={editingVoucher?.gia_tri_giam}
@@ -199,8 +205,9 @@ export default function ManageVouchers() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Giảm tối đa (VNĐ)</label>
+                <label htmlFor="giam_toi_da" className="block text-sm font-medium text-slate-700 mb-1">Giảm tối đa (VNĐ)</label>
                 <input 
+                  id="giam_toi_da"
                   name="giam_toi_da"
                   type="number"
                   defaultValue={editingVoucher?.giam_toi_da}
@@ -209,8 +216,9 @@ export default function ManageVouchers() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Đơn tối thiểu (VNĐ)</label>
+                <label htmlFor="don_hang_toi_thieu" className="block text-sm font-medium text-slate-700 mb-1">Đơn tối thiểu (VNĐ)</label>
                 <input 
+                  id="don_hang_toi_thieu"
                   name="don_hang_toi_thieu"
                   type="number"
                   defaultValue={editingVoucher?.don_hang_toi_thieu || 0}
@@ -218,8 +226,9 @@ export default function ManageVouchers() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Số lượng tối đa</label>
+                <label htmlFor="so_luong_toi_da" className="block text-sm font-medium text-slate-700 mb-1">Số lượng tối đa</label>
                 <input 
+                  id="so_luong_toi_da"
                   name="so_luong_toi_da"
                   type="number"
                   defaultValue={editingVoucher?.so_luong_toi_da}
@@ -228,8 +237,9 @@ export default function ManageVouchers() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Trạng thái</label>
+                <label htmlFor="trang_thai" className="block text-sm font-medium text-slate-700 mb-1">Trạng thái</label>
                 <select 
+                  id="trang_thai"
                   name="trang_thai"
                   defaultValue={editingVoucher?.trang_thai || 'hoat_dong'}
                   className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none"
@@ -241,8 +251,9 @@ export default function ManageVouchers() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Ngày bắt đầu</label>
+                <label htmlFor="ngay_bat_dau" className="block text-sm font-medium text-slate-700 mb-1">Ngày bắt đầu</label>
                 <input 
+                  id="ngay_bat_dau"
                   name="ngay_bat_dau"
                   type="date"
                   defaultValue={editingVoucher?.ngay_bat_dau?.split('T')[0]}
@@ -251,8 +262,9 @@ export default function ManageVouchers() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Ngày hết hạn</label>
+                <label htmlFor="ngay_het_han" className="block text-sm font-medium text-slate-700 mb-1">Ngày hết hạn</label>
                 <input 
+                  id="ngay_het_han"
                   name="ngay_het_han"
                   type="date"
                   defaultValue={editingVoucher?.ngay_het_han?.split('T')[0]}

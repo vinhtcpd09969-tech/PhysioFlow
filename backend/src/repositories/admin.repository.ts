@@ -52,9 +52,10 @@ class AdminRepository {
   // --- QUẢN LÝ NHÂN SỰ ---
   async getStaff() {
     const { rows } = await pool.query(`
-      SELECT nd.id, nd.ho_ten, nd.email, nd.so_dien_thoai, nd.trang_thai, vt.ten_hien_thi as vai_tro
+      SELECT nd.id, nd.ho_ten, nd.email, nd.so_dien_thoai, nd.trang_thai, vt.ten_hien_thi as vai_tro, ktv.id as ky_thuat_vien_id
       FROM nguoi_dung nd
       JOIN vai_tro vt ON nd.vai_tro_id = vt.id
+      LEFT JOIN ky_thuat_vien ktv ON nd.id = ktv.nguoi_dung_id
       WHERE nd.vai_tro_id IN (2, 3, 4, 5) AND nd.deleted_at IS NULL
       ORDER BY nd.vai_tro_id, nd.ho_ten
     `);
@@ -101,12 +102,17 @@ class AdminRepository {
   // --- QUẢN LÝ KHÁCH HÀNG ---
   async getCustomers() {
     const { rows } = await pool.query(`
-      SELECT kh.id as khach_hang_id, kh.ma_khach_hang, kh.ngay_sinh, kh.gioi_tinh, kh.dia_chi, kh.tien_su_benh,
-             nd.id as nguoi_dung_id, nd.ho_ten, nd.email, nd.so_dien_thoai, nd.trang_thai, nd.created_at
+      SELECT kh.id as khach_hang_id, kh.ngay_sinh, kh.gioi_tinh, kh.dia_chi,
+             nd.id as nguoi_dung_id, 
+             COALESCE(nd.ho_ten, 'Khách vãng lai') as ho_ten, 
+             nd.email, 
+             nd.so_dien_thoai, 
+             nd.trang_thai, 
+             COALESCE(nd.thoi_gian_tao, kh.thoi_gian_tao) as created_at
       FROM khach_hang kh
-      JOIN nguoi_dung nd ON kh.nguoi_dung_id = nd.id
-      WHERE nd.deleted_at IS NULL
-      ORDER BY nd.created_at DESC
+      LEFT JOIN nguoi_dung nd ON kh.nguoi_dung_id = nd.id
+      WHERE nd.id IS NULL OR nd.deleted_at IS NULL
+      ORDER BY kh.thoi_gian_tao DESC
     `);
     return rows;
   }

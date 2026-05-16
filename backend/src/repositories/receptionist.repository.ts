@@ -7,13 +7,15 @@ class ReceptionistRepository {
         ld.id, ld.ma_lich_dat, ld.ngay_gio_bat_dau, ld.ngay_gio_ket_thuc, ld.trang_thai,
         kh.ho_ten as ten_khach_hang, kh.so_dien_thoai as sdt_khach_hang,
         dv.ten_dich_vu,
-        nd_ktv.ho_ten as ten_ky_thuat_vien
+        nd_ktv.ho_ten as ten_ky_thuat_vien,
+        p.ten_phong
       FROM lich_dat ld
       JOIN khach_hang kh_table ON ld.khach_hang_id = kh_table.id
       JOIN nguoi_dung kh ON kh_table.nguoi_dung_id = kh.id
       JOIN dich_vu dv ON ld.dich_vu_id = dv.id
       LEFT JOIN ky_thuat_vien ktv ON ld.ky_thuat_vien_id = ktv.id
       LEFT JOIN nguoi_dung nd_ktv ON ktv.nguoi_dung_id = nd_ktv.id
+      LEFT JOIN phong p ON ld.phong_id = p.id
       WHERE DATE(ld.ngay_gio_bat_dau) = CURRENT_DATE
       ORDER BY ld.ngay_gio_bat_dau ASC
     `);
@@ -21,13 +23,55 @@ class ReceptionistRepository {
   }
 
   async updateAppointmentStatus(id: string, trang_thai: string) {
-    const { rows } = await pool.query(`
-      UPDATE lich_dat 
-      SET trang_thai = $1 
-      WHERE id = $2 
-      RETURNING *
-    `, [trang_thai, id]);
-    return rows[0];
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      let updateQuery = 'UPDATE lich_dat SET trang_thai = $1 WHERE id = $2 RETURNING *';
+      let updateValues: any[] = [trang_thai, id];
+
+      if (trang_thai === 'da_checkin') {
+        const { rows: appts } = await client.query('SELECT dich_vu_id, ngay_gio_bat_dau, ngay_gio_ket_thuc, phong_id FROM lich_dat WHERE id = $1', [id]);
+        if (appts.length === 0) throw new Error('Không tìm thấy lịch hẹn');
+        const appt = appts[0];
+
+        let phongId = appt.phong_id;
+        if (!phongId) {
+          const { rows: rooms } = await client.query(`
+            SELECT p.id 
+            FROM phong p
+            JOIN phong_dich_vu pdv ON p.id = pdv.phong_id
+            JOIN dich_vu dv ON dv.danh_muc_id = pdv.danh_muc_id
+            WHERE dv.id = $1
+            AND p.trang_thai = 'san_sang'
+            AND NOT EXISTS (
+               SELECT 1 FROM lich_dat ld
+               WHERE ld.phong_id = p.id
+               AND ld.trang_thai NOT IN ('da_huy', 'khong_den', 'hoan_thanh')
+               AND (ld.ngay_gio_bat_dau, ld.ngay_gio_ket_thuc) OVERLAPS ($2::timestamp, $3::timestamp)
+            )
+            LIMIT 1
+          `, [appt.dich_vu_id, appt.ngay_gio_bat_dau, appt.ngay_gio_ket_thuc]);
+          
+          if (rooms.length === 0) {
+            throw new Error('ROOM_UNAVAILABLE');
+          }
+          phongId = rooms[0].id;
+        }
+
+        updateQuery = 'UPDATE lich_dat SET trang_thai = $1, thoi_gian_checkin = NOW(), phong_id = $3 WHERE id = $2 RETURNING *';
+        updateValues = [trang_thai, id, phongId];
+      }
+
+      const { rows } = await client.query(updateQuery, updateValues);
+      await client.query('COMMIT');
+      return rows[0];
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   async getReceptionistStats() {
@@ -74,11 +118,45 @@ class ReceptionistRepository {
   }
 
   async createAppointment(maLichDat: string, khachHangId: string, dich_vu_id: string, ky_thuat_vien_id: string, startTime: Date, endTime: Date) {
-    const { rows } = await pool.query(`
-      INSERT INTO lich_dat (ma_lich_dat, khach_hang_id, dich_vu_id, ky_thuat_vien_id, ngay_gio_bat_dau, ngay_gio_ket_thuc, trang_thai, nguoi_tao)
-      VALUES ($1, $2, $3, $4, $5, $6, 'da_checkin', 'le_tan') RETURNING id
-    `, [maLichDat, khachHangId, dich_vu_id, ky_thuat_vien_id, startTime, endTime]);
-    return rows[0].id;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      const { rows: rooms } = await client.query(`
+        SELECT p.id 
+        FROM phong p
+        JOIN phong_dich_vu pdv ON p.id = pdv.phong_id
+        JOIN dich_vu dv ON dv.danh_muc_id = pdv.danh_muc_id
+        WHERE dv.id = $1
+        AND p.trang_thai = 'san_sang'
+        AND NOT EXISTS (
+           SELECT 1 FROM lich_dat ld
+           WHERE ld.phong_id = p.id
+           AND ld.trang_thai NOT IN ('da_huy', 'khong_den', 'hoan_thanh')
+           AND (ld.ngay_gio_bat_dau, ld.ngay_gio_ket_thuc) OVERLAPS ($2::timestamp, $3::timestamp)
+        )
+        LIMIT 1
+      `, [dich_vu_id, startTime, endTime]);
+
+      if (rooms.length === 0) {
+        throw new Error('ROOM_UNAVAILABLE');
+      }
+      
+      const phongId = rooms[0].id;
+
+      const { rows } = await client.query(`
+        INSERT INTO lich_dat (ma_lich_dat, khach_hang_id, dich_vu_id, ky_thuat_vien_id, phong_id, ngay_gio_bat_dau, ngay_gio_ket_thuc, trang_thai, thoi_gian_checkin, nguoi_tao)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'da_checkin', NOW(), 'le_tan') RETURNING id
+      `, [maLichDat, khachHangId, dich_vu_id, ky_thuat_vien_id || null, phongId, startTime, endTime]);
+      
+      await client.query('COMMIT');
+      return rows[0].id;
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   async getAppointmentForBilling(lich_dat_id: string) {
