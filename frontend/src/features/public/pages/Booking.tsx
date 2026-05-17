@@ -1,6 +1,7 @@
 import React, { useReducer, useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock, MapPin, Phone, User, Info, CheckCircle2, Upload, Activity } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, User, Info, CheckCircle2, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../../stores/authStore';
 
 const timeSlots = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
@@ -58,6 +59,8 @@ const fullDateFormatter = new Intl.DateTimeFormat('vi-VN', {
 export default function Booking() {
   const navigate = useNavigate();
   const [isClient, setIsClient] = useState(false);
+  const { user, isAuthenticated } = useAuthStore();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   
   const [state, dispatch] = useReducer(bookingReducer, {
     selectedDate: new Date().toISOString().split('T')[0],
@@ -65,7 +68,7 @@ export default function Booking() {
     isSubmitting: false,
     isSuccess: false,
     formData: {
-      ho_ten_khach: '',
+      ho_ten_khach: user?.ho_ten || '',
       so_dien_thoai: '',
       gioi_tinh_khach: 'nam',
       trieu_chung: '',
@@ -76,7 +79,27 @@ export default function Booking() {
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    
+    // Khôi phục dữ liệu đặt lịch tạm thời (nếu có) sau khi đăng nhập thành công quay lại
+    const saved = localStorage.getItem('temp_booking');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.selectedDate) dispatch({ type: 'SET_DATE', date: parsed.selectedDate });
+        if (parsed.selectedTime) dispatch({ type: 'SET_TIME', time: parsed.selectedTime });
+        if (parsed.formData) {
+          Object.keys(parsed.formData).forEach(key => {
+            // Không khôi phục ho_ten_khach nếu đã có thông tin user mới đăng nhập
+            if (key === 'ho_ten_khach' && user?.ho_ten) return;
+            dispatch({ type: 'SET_FORM_FIELD', field: key, value: parsed.formData[key] });
+          });
+        }
+      } catch (e) {
+        console.error('Lỗi khôi phục lịch đặt tạm thời:', e);
+      }
+      localStorage.removeItem('temp_booking');
+    }
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     dispatch({ type: 'SET_FORM_FIELD', field: e.target.name, value: e.target.value });
@@ -86,6 +109,12 @@ export default function Booking() {
     e.preventDefault();
     if (!state.selectedTime) {
       alert('Vui lòng chọn giờ khám!');
+      return;
+    }
+
+    // NẾU CHƯA ĐĂNG NHẬP -> Bật Modal Popup xin ý kiến chuyển hướng
+    if (!isAuthenticated()) {
+      setShowAuthModal(true);
       return;
     }
 
@@ -104,6 +133,7 @@ export default function Booking() {
         body: JSON.stringify({
           ...state.formData,
           ngay_gio_bat_dau,
+          nguoi_dung_id: user?.id,
         }),
       });
 
@@ -119,6 +149,16 @@ export default function Booking() {
     } finally {
       dispatch({ type: 'SET_SUBMITTING', isSubmitting: false });
     }
+  };
+
+  const handleRedirectToLogin = () => {
+    // Lưu tạm vào localStorage để đăng nhập xong khôi phục lại
+    localStorage.setItem('temp_booking', JSON.stringify({
+      selectedDate,
+      selectedTime,
+      formData
+    }));
+    navigate('/login', { state: { from: '/booking' } });
   };
 
   const formatFullDate = (dateString: string) => {
@@ -268,8 +308,9 @@ export default function Booking() {
                       type="text"
                       name="ho_ten_khach"
                       required
+                      readOnly={!!user?.ho_ten}
                       placeholder="Nguyễn Văn A"
-                      className="w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 border"
+                      className={`w-full rounded-xl shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 border ${user?.ho_ten ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed' : 'border-gray-300'}`}
                       value={formData.ho_ten_khach}
                       onChange={handleChange}
                     />
@@ -346,6 +387,38 @@ export default function Booking() {
           </div>
         </div>
       </div>
+
+      {/* POPUP MODAL YÊU CẦU TÀI KHOẢN (PREMIUM DESIGN) */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <User size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800">Yêu cầu Đăng nhập</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Để bảo mật bệnh án và đồng bộ hóa lịch khám của bạn lên hệ thống, quý khách cần có tài khoản thành viên.
+              </p>
+            </div>
+            
+            <div className="mt-6 flex flex-col gap-2">
+              <button 
+                onClick={handleRedirectToLogin}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/20 transition-all text-sm"
+              >
+                Đăng nhập / Đăng ký ngay
+              </button>
+              <button 
+                onClick={() => setShowAuthModal(false)}
+                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-500 font-semibold py-3.5 rounded-xl border border-slate-100 transition-all text-sm"
+              >
+                Hủy bỏ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

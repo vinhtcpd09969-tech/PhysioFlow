@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Eye, EyeOff, CheckCircle2, Info } from 'lucide-react';
 import api from '../../../api/axios';
 
 const registerSchema = z.object({
@@ -27,6 +27,7 @@ export default function Register() {
   const [serverError, setServerError] = useState<string | null>(null);
   
   const navigate = useNavigate();
+  const location = useLocation();
 
   const {
     register,
@@ -123,6 +124,18 @@ export default function Register() {
               Bắt đầu hành trình phục hồi sức khỏe của bạn cùng Office Care.
             </p>
           </div>
+
+          {location.state?.from === '/booking' && (
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-2xl text-sm flex items-start gap-3 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+              <Info className="shrink-0 mt-0.5 text-emerald-600" size={18} />
+              <div>
+                <p className="font-bold text-emerald-900">Đặt lịch khám nhanh chóng</p>
+                <p className="text-xs text-emerald-700/95 mt-1 leading-relaxed">
+                  Vui lòng tạo tài khoản để chúng tôi lưu giữ bệnh án và đồng bộ hóa lịch trị liệu cá nhân của bạn nhé!
+                </p>
+              </div>
+            </div>
+          )}
 
           {serverError && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-2xl text-sm font-medium">
@@ -235,7 +248,7 @@ export default function Register() {
           <div className="mt-8 text-center">
             <p className="text-zinc-500">
               Đã có tài khoản?{' '}
-              <Link to="/login" className="text-primary font-bold hover:underline">Đăng nhập ngay</Link>
+              <Link to="/login" state={location.state} className="text-primary font-bold hover:underline">Đăng nhập ngay</Link>
             </p>
           </div>
         </div>

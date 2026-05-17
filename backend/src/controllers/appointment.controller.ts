@@ -56,9 +56,8 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
   try {
     const validated = updateAppointmentStatusSchema.parse({ params: req.params, body: req.body });
     const { id } = validated.params;
-    const { trang_thai } = validated.body;
-
-    const appointment = await appointmentService.updateAppointmentStatus(id, trang_thai);
+    
+    const appointment = await appointmentService.updateAppointmentStatus(id, validated.body);
     return res.json(appointment);
   } catch (error: any) {
     console.error('Lỗi khi cập nhật trạng thái lịch hẹn:', error);

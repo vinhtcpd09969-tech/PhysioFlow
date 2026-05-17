@@ -162,14 +162,12 @@ CREATE TABLE chuyen_mon_ktv (
     UNIQUE (ky_thuat_vien_id, dich_vu_id)
 );
 
-CREATE TABLE lich_lam_viec_ktv (
+CREATE TABLE lich_lam_viec (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ky_thuat_vien_id    UUID    NOT NULL,
-    -- [OPT-1] CHECK Constraint
-    thu_trong_tuan      VARCHAR(20)   NOT NULL
-                        CHECK (thu_trong_tuan IN ('thu_2', 'thu_3', 'thu_4', 'thu_5', 'thu_6', 'thu_7', 'chu_nhat')),
-    gio_bat_dau         TIME          NOT NULL,
-    gio_ket_thuc        TIME          NOT NULL,
+    nguoi_dung_id       UUID    NOT NULL,
+    ngay                DATE    NOT NULL,
+    gio_bat_dau         TIME    NOT NULL,
+    gio_ket_thuc        TIME    NOT NULL,
     -- [OPT-1] CHECK Constraint
     trang_thai          VARCHAR(20)   NOT NULL DEFAULT 'hoat_dong'
                         CHECK (trang_thai IN ('hoat_dong', 'tam_nghi'))
@@ -640,7 +638,7 @@ ALTER TABLE chuyen_mon_ktv   ADD CONSTRAINT fk_cm_ktv
 ALTER TABLE chuyen_mon_ktv   ADD CONSTRAINT fk_cm_dichvu
     FOREIGN KEY (dich_vu_id)         REFERENCES dich_vu (id);
 ALTER TABLE lich_lam_viec_ktv ADD CONSTRAINT fk_llvktv_ktv
-    FOREIGN KEY (ky_thuat_vien_id)   REFERENCES ky_thuat_vien (id);
+    FOREIGN KEY (nguoi_dung_id)   REFERENCES nguoi_dung (id);
 ALTER TABLE ngay_nghi_ktv    ADD CONSTRAINT fk_nn_ktv
     FOREIGN KEY (ky_thuat_vien_id)   REFERENCES ky_thuat_vien (id);
 ALTER TABLE ngay_nghi_ktv    ADD CONSTRAINT fk_nn_duyetboi

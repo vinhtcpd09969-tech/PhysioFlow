@@ -1,5 +1,9 @@
 # Kế hoạch Xây dựng Website Dịch vụ Vật lý Trị liệu (PhysioFlow)
 
+> [!IMPORTANT]
+> **TÀI LIỆU NÀY BÂY GIỜ CHỈ MANG TÍNH CHẤT THAM KHẢO.**
+> Dự án áp dụng triết lý tinh gọn: Làm đến đâu phát triển đến đó. Các quy trình trong tệp này sẽ được linh hoạt phát triển tiếp theo nhu cầu thực tế của dự án.
+
 ## Tổng quan dự án
 Xây dựng nền tảng quản lý và cung cấp dịch vụ vật lý trị liệu PhysioFlow gồm hai phần: API Backend và Frontend (Admin Dashboard + Giao diện khách hàng). Dựa trên tài liệu `PHYSIOFLOW_CONTEXT.md` và `schema_vatlytrilieu_v4 (1).sql`.
 

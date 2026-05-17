@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { getStaff, createStaff } from '../../../api/admin.api';
+import { getStaff, createStaff, updateStaffStatus } from '../../../api/admin.api';
 
 const staffSchema = z.object({
   ho_ten: z.string().min(1, 'Họ tên là bắt buộc'),
@@ -42,6 +42,21 @@ export default function ManageStaff() {
   useEffect(() => {
     fetchStaff();
   }, []);
+
+  const handleToggleStatus = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'hoat_dong' ? 'vo_hieu' : 'hoat_dong';
+    const actionText = nextStatus === 'vo_hieu' ? 'khóa' : 'mở khóa';
+    if (!window.confirm(`Bạn có chắc chắn muốn ${actionText} tài khoản này không?`)) {
+      return;
+    }
+    try {
+      await updateStaffStatus(id, nextStatus);
+      fetchStaff();
+    } catch (error: any) {
+      console.error('Error updating staff status:', error);
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
+    }
+  };
 
   const onSubmit = async (data: StaffFormValues) => {
     try {
@@ -122,7 +137,14 @@ export default function ManageStaff() {
                     </td>
                     <td className="p-4 text-center">
                       <button className="text-primary hover:underline text-sm font-medium mr-3">Sửa</button>
-                      <button className="text-red-600 hover:underline text-sm font-medium">Khóa</button>
+                      <button 
+                        onClick={() => handleToggleStatus(staff.id, staff.trang_thai)}
+                        className={`text-sm font-medium hover:underline ${
+                          staff.trang_thai === 'hoat_dong' ? 'text-red-600' : 'text-emerald-600'
+                        }`}
+                      >
+                        {staff.trang_thai === 'hoat_dong' ? 'Khóa' : 'Mở khóa'}
+                      </button>
                     </td>
                   </tr>
                 ))

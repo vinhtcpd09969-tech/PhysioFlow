@@ -58,3 +58,16 @@
     - Thêm thông báo **React Hot Toast** thiết kế theo UI/UX chuẩn cao cấp.
 - **Hệ thống Test & Tài liệu API:**
     - Cài đặt và cấu hình thành công **Swagger UI** (`swagger-ui-express`) tích hợp thẳng vào Backend, tự động hóa tài liệu cho các routes (ví dụ: Appointments).
+
+## Session 10 — 2026-05-17 (Secure Booking Flow & Smart UX Modal)
+- **Xác thực Luồng Đặt lịch tinh gọn (Secure Booking Flow):**
+    - Mở lại `/booking` công cộng để khách vãng lai và người chưa đăng ký trải nghiệm xem lịch trình trước khi quyết định tạo tài khoản.
+    - Tích hợp **Modal Popup Kính Mờ (Glassmorphism Modal)** cực đẹp khi người dùng chưa đăng nhập bấm nút Xác nhận đặt hẹn, cung cấp hai tùy chọn: Hủy bỏ hoặc Đăng nhập/Đăng ký.
+    - Triển khai cơ chế **Smart Auto-save/Restore** lưu tạm các tùy chọn ngày/giờ/triệu chứng đã điền vào `localStorage` trước khi chuyển tiếp sang `/login`, và tự khôi phục trọn vẹn khi đăng nhập/đăng ký thành công quay lại.
+    - Tự động điền (Auto-fill) thông tin họ tên của tài khoản đăng nhập vào form đặt lịch và ghim dạng **Read-only (chỉ đọc)** nhằm duy trì tính nhất quán bệnh án.
+- **Backend API Integration:**
+    - Nâng cấp Zod Schema và SQL Repository để nhận dạng và lưu trữ tham số `nguoi_dung_id` từ trình duyệt.
+    - Thiết lập logic tra cứu ngược tại tầng cơ sở dữ liệu (`appointment.repository.ts`) để tự động tìm ID hồ sơ khách hàng (`khach_hang_id`) tương ứng trong bảng `khach_hang` từ `nguoi_dung_id`, ghim chặt ca hẹn vào đúng hồ sơ y tế mà không làm thay đổi các API public ban đầu.
+- **Cập nhật Tài liệu Định hướng (Documentation Update):**
+    - Ghi chú rõ ràng lên đầu các tệp: `PHYSIOFLOW_CONTEXT.md`, `MODULE_ARCHITECTURE.md`, `PLAN-physio-website.md`, và `PLAN-pm-roadmap.md` rằng chúng hiện tại **chỉ mang tính chất tham khảo**. Dự án phát triển theo triết lý tinh gọn Agile: "Làm đến đâu phát triển đến đó".
+

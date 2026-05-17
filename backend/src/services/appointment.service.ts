@@ -17,9 +17,11 @@ class AppointmentService {
     return appointmentRepository.createPublicAppointment(ma_lich_dat, { ...data, ngay_gio_ket_thuc });
   }
 
-  async updateAppointmentStatus(id: string, trang_thai: string) {
-    const appointment = await appointmentRepository.updateAppointmentStatus(id, trang_thai);
-    if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
+  async updateAppointmentStatus(id: string, data: { trang_thai: string; ky_thuat_vien_id?: string | null; phong_id?: string | number | null }) {
+    const appointment = await appointmentRepository.updateAppointmentStatus(id, data);
+    if (!appointment) {
+      throw new Error('Không tìm thấy lịch hẹn');
+    }
     return appointment;
   }
 }

@@ -4,7 +4,7 @@ import { ProtectedRoute } from '../layouts/ProtectedRoute';
 // Public Feature
 import LandingLayout from '../layouts/LandingLayout';
 import Home from '../features/public/pages/Home';
-import Booking from '../features/customer/pages/Booking';
+import Booking from '../features/public/pages/Booking';
 
 // Auth Feature
 import Login from '../features/auth/pages/Login';
@@ -14,7 +14,6 @@ import VerifyEmail from '../features/auth/pages/VerifyEmail';
 // Customer Feature
 import DashboardLayout from '../layouts/DashboardLayout';
 import Dashboard from '../features/customer/pages/Dashboard';
-import Appointments from '../features/customer/pages/Appointments';
 
 // Admin Feature
 import AdminLayout from '../layouts/AdminLayout';
@@ -22,9 +21,10 @@ import AdminDashboard from '../features/admin/pages/AdminDashboard';
 import ManageCustomers from '../features/admin/pages/ManageCustomers';
 import ManageStaff from '../features/admin/pages/ManageStaff';
 import ManageSchedules from '../features/admin/pages/ManageSchedules';
+import ManageAppointments from '../features/admin/pages/ManageAppointments';
 import ManageMedicalRecords from '../features/admin/pages/ManageMedicalRecords';
 import ManageServices from '../features/admin/pages/ManageServices';
-import ManageEquipment from '../features/admin/pages/ManageEquipment';
+import ManageRoomsEquipment from '../features/admin/pages/ManageRoomsEquipment';
 import ManagePackages from '../features/admin/pages/ManagePackages';
 import ManageFinance from '../features/admin/pages/ManageFinance';
 import ManageVouchers from '../features/admin/pages/ManageVouchers';
@@ -53,11 +53,6 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          
-          {/* Chỉ Lễ tân (2) và Admin (5) được phép truy cập Quản lý Lịch hẹn */}
-          <Route element={<ProtectedRoute allowedRoles={[2, 5]} />}>
-            <Route path="/appointments" element={<Appointments />} />
-          </Route>
         </Route>
       </Route>
 
@@ -65,13 +60,13 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute allowedRoles={[5]} />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/appointments" element={<Appointments />} />
+          <Route path="/admin/appointments" element={<ManageAppointments />} />
           <Route path="/admin/customers" element={<ManageCustomers />} />
           <Route path="/admin/medical-records" element={<ManageMedicalRecords />} />
           <Route path="/admin/staff" element={<ManageStaff />} />
           <Route path="/admin/schedules" element={<ManageSchedules />} />
           <Route path="/admin/services" element={<ManageServices />} />
-          <Route path="/admin/equipment" element={<ManageEquipment />} />
+          <Route path="/admin/rooms-equipment" element={<ManageRoomsEquipment />} />
           <Route path="/admin/packages" element={<ManagePackages />} />
           <Route path="/admin/finance" element={<ManageFinance />} />
           <Route path="/admin/marketing" element={<ManageVouchers />} />
@@ -84,6 +79,7 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute allowedRoles={[2]} />}>
         <Route element={<ReceptionistLayout />}>
           <Route path="/receptionist" element={<ReceptionistDashboard />} />
+          <Route path="/receptionist/appointments" element={<ManageAppointments />} />
           <Route path="/receptionist/walk-in" element={<WalkInBooking />} />
           <Route path="/receptionist/billing" element={<QuickBilling />} />
         </Route>

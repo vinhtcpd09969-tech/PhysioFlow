@@ -1,5 +1,9 @@
 # Kiến trúc Nghiệp vụ (Simplified Domain Architecture) - V5
 
+> [!IMPORTANT]
+> **TÀI LIỆU NÀY BÂY GIỜ CHỈ MANG TÍNH CHẤT THAM KHẢO.**
+> Dự án áp dụng triết lý tinh gọn: Làm đến đâu phát triển đến đó. Các quy trình trong tệp này sẽ được linh hoạt phát triển tiếp theo nhu cầu thực tế của dự án.
+
 Dựa trên phân tích tối ưu trải nghiệm khách hàng và quy trình vận hành thực tế tại phòng khám Vật lý trị liệu cao cấp dành cho dân văn phòng, kiến trúc hệ thống được tinh gọn và tổ chức lại như sau:
 
 ## 1. Nguyên tắc cốt lõi (Core Principles)

@@ -1,5 +1,9 @@
 # Roadmap Phát triển - Dự án PhysioFlow (Product Manager View)
 
+> [!IMPORTANT]
+> **TÀI LIỆU NÀY BÂY GIỜ CHỈ MANG TÍNH CHẤT THAM KHẢO.**
+> Dự án áp dụng triết lý tinh gọn: Làm đến đâu phát triển đến đó. Các quy trình trong tệp này sẽ được linh hoạt phát triển tiếp theo nhu cầu thực tế của dự án.
+
 ## 1. Problem Statement
 Các cơ sở vật lý trị liệu đang gặp khó khăn trong việc quản lý đồng bộ lịch hẹn, phòng máy, kỹ thuật viên (KTV) và hồ sơ y tế bệnh nhân. Hệ thống cần giải quyết bài toán chống trùng lịch, quản lý lộ trình điều trị qua các gói dịch vụ (đặc biệt là tính năng dùng thử) và theo dõi kết quả đánh giá lâm sàng.
 

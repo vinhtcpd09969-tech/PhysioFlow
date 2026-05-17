@@ -14,7 +14,8 @@ const clearDatabase = async () => {
   await pool.query(`
     TRUNCATE TABLE 
       nguoi_dung, vai_tro, khach_hang, ky_thuat_vien, danh_muc_dich_vu, dich_vu,
-      hoa_don, thanh_toan, voucher, lich_dat, buoi_tri_lieu, danh_gia_dich_vu
+      hoa_don, thanh_toan, voucher, phong, lich_dat, buoi_tri_lieu, danh_gia_dich_vu,
+      goi_dich_vu, lich_dieu_tri, thiet_bi_y_te, system_audit_log, lich_lam_viec
     CASCADE;
     ALTER SEQUENCE vai_tro_id_seq RESTART WITH 1;
   `);
@@ -37,26 +38,39 @@ const seedRoles = async () => {
 const seedUsers = async (roles: any) => {
   console.log('Seeding users...');
   const passwordHash = await bcrypt.hash('123456', 10);
-  
+
   // Admin
   const { rows: adminRows } = await pool.query(`
-    INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id)
-    VALUES ('Admin Master', 'admin@officecare.com', '0901234567', $1, $2) RETURNING id
+    INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id, da_xac_thuc_email)
+    VALUES ('Admin Master', 'admin@officecare.com', '0901234567', $1, $2, TRUE) RETURNING id
   `, [passwordHash, roles['admin']]);
   const adminId = adminRows[0].id;
 
   // Lễ tân
-  await pool.query(`
-    INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id)
-    VALUES ('Lễ tân 1', 'letan@officecare.com', '0901234568', $1, $2)
+  const { rows: leTanRows } = await pool.query(`
+    INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id, da_xac_thuc_email)
+    VALUES ('Lễ tân 1', 'letan@officecare.com', '0901234568', $1, $2, TRUE) RETURNING id
   `, [passwordHash, roles['le_tan']]);
+  const leTanId = leTanRows[0].id;
+
+  // Bác sĩ
+  const { rows: bacSiRows } = await pool.query(`
+    INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id, da_xac_thuc_email)
+    VALUES ('BS Trần Văn Khám', 'bacsi@officecare.com', '0901234569', $1, $2, TRUE) RETURNING id
+  `, [passwordHash, roles['bac_si']]);
+  const bacSiId = bacSiRows[0].id;
+
+  await pool.query(`
+    INSERT INTO ky_thuat_vien (nguoi_dung_id, ma_nhan_vien, chuyen_mon_chinh, so_nam_kinh_nghiem)
+    VALUES ($1, 'BS001', 'Bác sĩ chuyên khoa', 10)
+  `, [bacSiId]);
 
   // KTVs
   const ktvUsers = [];
   for (let i = 1; i <= 5; i++) {
     const { rows } = await pool.query(`
-      INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id)
-      VALUES ($1, $2, $3, $4, $5) RETURNING id
+      INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id, da_xac_thuc_email)
+      VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING id
     `, [`KTV ${faker.person.fullName()}`, `ktv${i}@officecare.com`, faker.phone.number(), passwordHash, roles['ky_thuat_vien']]);
     ktvUsers.push(rows[0].id);
 
@@ -70,10 +84,10 @@ const seedUsers = async (roles: any) => {
   const customerUsers = [];
   for (let i = 1; i <= 20; i++) {
     const { rows } = await pool.query(`
-      INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id)
-      VALUES ($1, $2, $3, $4, $5) RETURNING id
+      INSERT INTO nguoi_dung (ho_ten, email, so_dien_thoai, mat_khau_hash, vai_tro_id, da_xac_thuc_email)
+      VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING id
     `, [faker.person.fullName(), faker.internet.email(), faker.phone.number(), passwordHash, roles['khach_hang']]);
-    
+
     const { rows: khRows } = await pool.query(`
       INSERT INTO khach_hang (nguoi_dung_id, ngay_sinh, gioi_tinh, hang_khach_hang)
       VALUES ($1, $2, $3, $4) RETURNING id
@@ -81,12 +95,12 @@ const seedUsers = async (roles: any) => {
     customerUsers.push(khRows[0].id);
   }
 
-  return { ktvUsers, customerUsers, adminId };
+  return { ktvUsers, customerUsers, adminId, leTanId, bacSiId };
 };
 
 const seedServices = async () => {
   console.log('Seeding services...');
-  
+
   // Danh mục
   const { rows: categories } = await pool.query(`
     INSERT INTO danh_muc_dich_vu (ten_danh_muc, mo_ta) VALUES
@@ -116,9 +130,36 @@ const seedServices = async () => {
   return serviceIds;
 };
 
+const seedPackages = async (services: any[]) => {
+  console.log('Seeding packages...');
+  if (services.length < 3) return;
+
+  const package1Services = JSON.stringify([
+    { dich_vu_id: services[0].id, so_buoi: 6 },
+    { dich_vu_id: services[1].id, so_buoi: 6 }
+  ]);
+  const package2Services = JSON.stringify([
+    { dich_vu_id: services[1].id, so_buoi: 2 },
+    { dich_vu_id: services[2].id, so_buoi: 2 },
+    { dich_vu_id: services[3].id, so_buoi: 2 }
+  ]);
+  const package3Services = JSON.stringify([
+    { dich_vu_id: services[0].id, so_buoi: 12 },
+    { dich_vu_id: services[2].id, so_buoi: 12 }
+  ]);
+
+  await pool.query(`
+    INSERT INTO goi_dich_vu (ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, han_dung_thang, hien_thi_website, trang_thai, chi_tiet_dich_vu)
+    VALUES 
+      ('Phục hồi Cột sống Chuyên sâu', 'PKG-2024-001', 'Liệu trình chuyên sâu phục hồi thoát vị đĩa đệm và thoái hóa cột sống.', 12, 8500000, 3, true, 'hoat_dong', $1),
+      ('Trị liệu Thể thao Cấp tốc', 'PKG-2024-002', 'Gói phục hồi chấn thương căng cơ, bong gân cấp tốc cho vận động viên.', 6, 4200000, 1, true, 'hoat_dong', $2),
+      ('Liệu trình Yoga Phục hồi', 'PKG-2024-003', 'Kết hợp vật lý trị liệu và Yoga cá nhân để phục hồi toàn diện và lâu dài.', 24, 15000000, 6, false, 'hoat_dong', $3)
+  `, [package1Services, package2Services, package3Services]);
+};
+
 const seedInvoicesAndAnalytics = async (customerIds: string[], serviceIds: any[]) => {
   console.log('Seeding invoices and analytics...');
-  
+
   // Tạo dữ liệu doanh thu trong 6 tháng qua
   for (let i = 0; i < 50; i++) {
     const customer = faker.helpers.arrayElement(customerIds);
@@ -141,29 +182,35 @@ const seedInvoicesAndAnalytics = async (customerIds: string[], serviceIds: any[]
 
 const seedFeedback = async (customerIds: string[]) => {
   console.log('Seeding feedbacks...');
-  
+
   // Lấy danh sách KTV thực tế
   const { rows: ktvs } = await pool.query('SELECT id FROM ky_thuat_vien');
-  
+
   // Cần ít nhất 1 buổi trị liệu để đánh giá
   const { rows: services } = await pool.query('SELECT id FROM dich_vu LIMIT 1');
-  if(services.length === 0 || ktvs.length === 0) return;
+  if (services.length === 0 || ktvs.length === 0) return;
 
   for (let i = 0; i < 15; i++) {
     const customer = faker.helpers.arrayElement(customerIds);
     const ktv = faker.helpers.arrayElement(ktvs).id;
-    
-    // Giả lập lịch đặt
-    const { rows: ld } = await pool.query(`
-      INSERT INTO lich_dat (ma_lich_dat, khach_hang_id, dich_vu_id, ky_thuat_vien_id, ngay_gio_bat_dau, ngay_gio_ket_thuc, loai_lich, trang_thai)
-      VALUES ($1, $2, $3, $4, NOW() - interval '${i} days', NOW() - interval '${i} days' + interval '1 hour', 'dich_vu_don', 'hoan_thanh') RETURNING id
-    `, [`LD${faker.string.numeric(6)}`, customer, services[0].id, ktv]);
 
-    // Giả lập buổi trị liệu
+    // Giả lập lịch đặt khám ban đầu (Bác sĩ)
+    const { rows: ld } = await pool.query(`
+      INSERT INTO lich_dat (ma_lich_dat, khach_hang_id, dich_vu_id, ngay_gio_bat_dau, ngay_gio_ket_thuc, loai_lich, trang_thai)
+      VALUES ($1, $2, $3, NOW() - interval '${i} days', NOW() - interval '${i} days' + interval '1 hour', 'kham_moi', 'hoan_thanh') RETURNING id
+    `, [`LD${faker.string.numeric(6)}`, customer, services[0].id]);
+
+    // Giả lập hồ sơ điều trị
+    const { rows: ldt } = await pool.query(`
+      INSERT INTO lich_dieu_tri (khach_hang_id, loai_dieu_tri, dich_vu_id, tong_so_buoi, so_buoi_da_dung, trang_thai)
+      VALUES ($1, 'dich_vu_le', $2, 1, 1, 'hoan_thanh') RETURNING id
+    `, [customer, services[0].id]);
+
+    // Giả lập buổi trị liệu thực tế
     const { rows: btl } = await pool.query(`
-      INSERT INTO buoi_tri_lieu (lich_dat_id, dich_vu_id, ky_thuat_vien_id, khach_hang_id, trang_thai, thoi_gian_bat_dau, thoi_gian_ket_thuc)
+      INSERT INTO buoi_tri_lieu (lich_dieu_tri_id, dich_vu_id, ky_thuat_vien_id, khach_hang_id, trang_thai, thoi_gian_bat_dau, thoi_gian_ket_thuc)
       VALUES ($1, $2, $3, $4, 'hoan_thanh', NOW() - interval '${i} days', NOW() - interval '${i} days' + interval '1 hour') RETURNING id
-    `, [ld[0].id, services[0].id, ktv, customer]);
+    `, [ldt[0].id, services[0].id, ktv, customer]);
 
     await pool.query(`
       INSERT INTO danh_gia_dich_vu (khach_hang_id, buoi_tri_lieu_id, ky_thuat_vien_id, so_sao_tong, so_sao_ktv, nhan_xet, hieu_qua_dieu_tri, thoi_gian_danh_gia)
@@ -181,15 +228,133 @@ const seedVouchers = async (adminId: string) => {
   `, [adminId]);
 };
 
+const seedSchedules = async (users: any) => {
+  console.log('Seeding schedules...');
+
+  // Lấy Thứ 2 của tuần này và tuần sau
+  const current = new Date();
+  const distanceToMonday = current.getDay() === 0 ? -6 : 1 - current.getDay();
+  const thisMonday = new Date(current);
+  thisMonday.setDate(current.getDate() + distanceToMonday);
+
+  const nextMonday = new Date(thisMonday);
+  nextMonday.setDate(thisMonday.getDate() + 7);
+
+  const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+  const getWeekDates = (startMonday: Date) => {
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startMonday);
+      d.setDate(startMonday.getDate() + i);
+      dates.push(formatDate(d));
+    }
+    return dates;
+  };
+
+  const datesThisWeek = getWeekDates(thisMonday);
+  const datesNextWeek = getWeekDates(nextMonday);
+
+  // --- SEED TUẦN NÀY ---
+  // Lễ tân (users.leTanId): Thứ 2 -> Thứ 6 (08:00 - 17:00), Thứ 7 (08:00 - 12:00)
+  for (let i = 0; i < 5; i++) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '08:00', '17:00', 'hoat_dong')`, [users.leTanId, datesThisWeek[i]]);
+  }
+  await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '08:00', '12:00', 'hoat_dong')`, [users.leTanId, datesThisWeek[5]]);
+
+  // Bác sĩ (users.bacSiId): Trực Sáng (08:30 - 12:00) Thứ 2, 3, 4; Trực Chiều (13:30 - 17:30) Thứ 5, 6, 7
+  for (const i of [0, 1, 2]) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '08:30', '12:00', 'hoat_dong')`, [users.bacSiId, datesThisWeek[i]]);
+  }
+  for (const i of [3, 4, 5]) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '13:30', '17:30', 'hoat_dong')`, [users.bacSiId, datesThisWeek[i]]);
+  }
+
+  // KTV 1 (users.ktvUsers[0]): Trực Chiều (13:00 - 17:00) Thứ 2 -> Thứ 6
+  for (let i = 0; i < 5; i++) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '13:00', '17:00', 'hoat_dong')`, [users.ktvUsers[0], datesThisWeek[i]]);
+  }
+
+  // KTV 2 (users.ktvUsers[1]): Trực Sáng (08:00 - 12:00) Thứ 2, 3, 4; Trực Chiều (13:00 - 17:00) Thứ 5, 6
+  for (const i of [0, 1, 2]) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '08:00', '12:00', 'hoat_dong')`, [users.ktvUsers[1], datesThisWeek[i]]);
+  }
+  for (const i of [3, 4]) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '13:00', '17:00', 'hoat_dong')`, [users.ktvUsers[1], datesThisWeek[i]]);
+  }
+
+  // KTV 3 (users.ktvUsers[2]): Trực Chiều (13:00 - 17:00) Thứ 2, 3, 6; Nghỉ phép Thứ 4, 5
+  for (const i of [0, 1, 5]) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '13:00', '17:00', 'hoat_dong')`, [users.ktvUsers[2], datesThisWeek[i]]);
+  }
+  for (const i of [2, 3]) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '08:00', '17:00', 'tam_nghi')`, [users.ktvUsers[2], datesThisWeek[i]]);
+  }
+
+
+  // --- SEED TUẦN SAU ---
+  // Lễ tân (users.leTanId): Thứ 2, 3, 5, 6 (08:00 - 17:00); Thứ 4 Nghỉ phép; Thứ 7 Trực Tối (17:00 - 21:00)
+  for (const i of [0, 1, 3, 4]) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '08:00', '17:00', 'hoat_dong')`, [users.leTanId, datesNextWeek[i]]);
+  }
+  await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '08:00', '17:00', 'tam_nghi')`, [users.leTanId, datesNextWeek[2]]);
+  await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '17:00', '21:00', 'hoat_dong')`, [users.leTanId, datesNextWeek[5]]);
+
+  // Bác sĩ (users.bacSiId): Trực Sáng (08:30 - 12:00) Thứ 2, 4, 6; Trực Tối (17:30 - 21:30) Thứ 3, 5
+  for (const i of [0, 2, 4]) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '08:30', '12:00', 'hoat_dong')`, [users.bacSiId, datesNextWeek[i]]);
+  }
+  for (const i of [1, 3]) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '17:30', '21:30', 'hoat_dong')`, [users.bacSiId, datesNextWeek[i]]);
+  }
+
+  // KTV 1 (users.ktvUsers[0]): Trực Tối (17:00 - 21:00) Thứ 2 -> Thứ 6
+  for (let i = 0; i < 5; i++) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '17:00', '21:00', 'hoat_dong')`, [users.ktvUsers[0], datesNextWeek[i]]);
+  }
+
+  // KTV 2 (users.ktvUsers[1]): Trực Sáng (08:00 - 12:00) Thứ 2, 4, 6
+  for (const i of [0, 2, 4]) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '08:00', '12:00', 'hoat_dong')`, [users.ktvUsers[1], datesNextWeek[i]]);
+  }
+
+  // KTV 3 (users.ktvUsers[2]): Trực Sáng (08:00 - 12:00) Thứ 2 -> Thứ 6
+  for (let i = 0; i < 5; i++) {
+    await pool.query(`INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) VALUES ($1, $2, '08:00', '12:00', 'hoat_dong')`, [users.ktvUsers[2], datesNextWeek[i]]);
+  }
+};
+
+const seedRooms = async () => {
+  console.log('Seeding rooms...');
+  const rooms = [
+    { ten_phong: 'Phòng 101 - Khám VIP 1', ma_phong: 'P101', loai_phong: 'kham_benh', tang: 'Tang 1' },
+    { ten_phong: 'Phòng 102 - Khám tổng quát', ma_phong: 'P102', loai_phong: 'kham_benh', tang: 'Tang 1' },
+    { ten_phong: 'Phòng 201 - Trị liệu Vật lý', ma_phong: 'P201', loai_phong: 'tri_lieu', tang: 'Tang 2' },
+    { ten_phong: 'Phòng 202 - Điện xung trị liệu', ma_phong: 'P202', loai_phong: 'tri_lieu', tang: 'Tang 2' },
+    { ten_phong: 'Phòng 203 - Kéo giãn cột sống', ma_phong: 'P203', loai_phong: 'tri_lieu', tang: 'Tang 2' },
+    { ten_phong: 'Phòng 301 - Phục hồi chức năng', ma_phong: 'P301', loai_phong: 'phuc_hoi', tang: 'Tang 3' }
+  ];
+
+  for (const r of rooms) {
+    await pool.query(`
+      INSERT INTO phong (ten_phong, ma_phong, loai_phong, tang, trang_thai)
+      VALUES ($1, $2, $3, $4, 'san_sang')
+    `, [r.ten_phong, r.ma_phong, r.loai_phong, r.tang]);
+  }
+};
+
 const runSeed = async () => {
   try {
     await clearDatabase();
     const roles = await seedRoles();
-    const { ktvUsers, customerUsers, adminId } = await seedUsers(roles);
+    const { ktvUsers, customerUsers, adminId, leTanId, bacSiId } = await seedUsers(roles);
     const services = await seedServices();
+    await seedPackages(services);
+    await seedRooms();
     await seedInvoicesAndAnalytics(customerUsers, services);
     await seedFeedback(customerUsers);
     await seedVouchers(adminId);
+    await seedSchedules({ ktvUsers, adminId, leTanId, bacSiId });
 
     console.log('✅ Seed dữ liệu thành công!');
   } catch (error) {

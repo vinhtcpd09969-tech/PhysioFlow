@@ -15,6 +15,9 @@ router.post('/categories', adminController.createCategory);
 router.get('/services', adminController.getServices);
 router.post('/services', adminController.createService);
 
+// Phòng lâm sàng (Rooms)
+router.get('/rooms', adminController.getRooms);
+
 // Gói điều trị
 router.get('/packages', adminController.getPackages);
 router.post('/packages', adminController.createPackage);
@@ -22,6 +25,7 @@ router.post('/packages', adminController.createPackage);
 // Nhân sự (Staff)
 router.get('/staff', adminController.getStaff);
 router.post('/staff', adminController.createStaff);
+router.patch('/staff/:id/status', adminController.updateStaffStatus);
 
 // Khách hàng
 router.get('/customers', adminController.getCustomers);
@@ -31,6 +35,43 @@ router.get('/equipment', adminController.getEquipment);
 router.post('/equipment', adminController.createEquipment);
 
 // Ca làm việc / Lịch làm việc
+/**
+ * @swagger
+ * /admin/schedules:
+ *   get:
+ *     summary: Lấy danh sách lịch trực của toàn bộ nhân sự (Bác sĩ, KTV, Lễ tân)
+ *     tags: [Admin - Lịch trực]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Danh sách lịch làm việc kèm vai trò và họ tên nhân sự
+ *   post:
+ *     summary: Tạo lịch trực mới cho nhân sự
+ *     tags: [Admin - Lịch trực]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nguoi_dung_id
+ *               - thu_trong_tuan
+ *               - gio_bat_dau
+ *               - gio_ket_thuc
+ *             properties:
+ *               nguoi_dung_id: { type: string, format: uuid, description: "ID của người dùng (nhân sự)" }
+ *               thu_trong_tuan: { type: string, enum: [thu_2, thu_3, thu_4, thu_5, thu_6, thu_7, chu_nhat] }
+ *               gio_bat_dau: { type: string, example: "08:00" }
+ *               gio_ket_thuc: { type: string, example: "17:00" }
+ *               trang_thai: { type: string, enum: [hoat_dong, tam_nghi], default: hoat_dong }
+ *     responses:
+ *       201:
+ *         description: Đã xếp lịch trực thành công
+ */
 router.get('/schedules', adminController.getSchedules);
 router.post('/schedules', adminController.createSchedule);
 

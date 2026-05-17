@@ -7,6 +7,11 @@ class AdminRepository {
     return rows;
   }
 
+  async getRooms() {
+    const { rows } = await pool.query('SELECT * FROM phong ORDER BY id ASC');
+    return rows;
+  }
+
   async createCategory(data: { ten_danh_muc: string; mo_ta?: string; trang_thai: string }) {
     const { rows } = await pool.query(
       'INSERT INTO danh_muc_dich_vu (ten_danh_muc, mo_ta, trang_thai) VALUES ($1, $2, $3) RETURNING *',
@@ -17,7 +22,7 @@ class AdminRepository {
 
   async getServices() {
     const { rows } = await pool.query(`
-      SELECT dv.*, dm.ten_danh_muc 
+      SELECT dv.*, dv.thoi_luong_phut as thoi_gian_uoc_tinh, dm.ten_danh_muc 
       FROM dich_vu dv
       JOIN danh_muc_dich_vu dm ON dv.danh_muc_id = dm.id
       ORDER BY dv.danh_muc_id, dv.ten_dich_vu
@@ -27,24 +32,33 @@ class AdminRepository {
 
   async createService(data: any) {
     const { rows } = await pool.query(
-      `INSERT INTO dich_vu (danh_muc_id, ten_dich_vu, mo_ta, thoi_gian_uoc_tinh, thiet_bi_yeu_cau, trang_thai) 
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [data.danh_muc_id, data.ten_dich_vu, data.mo_ta, data.thoi_gian_uoc_tinh, data.thiet_bi_yeu_cau, data.trang_thai]
+      `INSERT INTO dich_vu (danh_muc_id, ten_dich_vu, mo_ta_ngan, thoi_luong_phut, don_gia, thiet_bi_yeu_cau, trang_thai) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *, thoi_luong_phut as thoi_gian_uoc_tinh`,
+      [
+        data.danh_muc_id,
+        data.ten_dich_vu,
+        data.mo_ta || null,
+        data.thoi_gian_uoc_tinh,
+        data.don_gia || 0,
+        data.thiet_bi_yeu_cau || null,
+        data.trang_thai
+      ]
     );
     return rows[0];
   }
 
   // --- QUẢN LÝ GÓI ĐIỀU TRỊ ---
   async getPackages() {
-    const { rows } = await pool.query('SELECT * FROM goi_dieu_tri ORDER BY gia_tien ASC');
+    const { rows } = await pool.query('SELECT *, gia_goi as gia_tien FROM goi_dich_vu ORDER BY thoi_gian_tao DESC');
     return rows;
   }
 
   async createPackage(data: any) {
+    const ma_goi = data.ma_goi || 'GDT-' + Math.floor(1000 + Math.random() * 9000);
     const { rows } = await pool.query(
-      `INSERT INTO goi_dieu_tri (ten_goi, mo_ta, tong_so_buoi, gia_tien, trang_thai) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [data.ten_goi, data.mo_ta, data.tong_so_buoi, data.gia_tien, data.trang_thai]
+      `INSERT INTO goi_dich_vu (ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, han_dung_thang, hien_thi_website, trang_thai, chi_tiet_dich_vu) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *, gia_goi as gia_tien`,
+      [data.ten_goi, ma_goi, data.mo_ta || null, data.tong_so_buoi, data.gia_tien, data.han_dung_thang || 6, data.hien_thi_website !== undefined ? data.hien_thi_website : true, data.trang_thai, JSON.stringify(data.chi_tiet_dich_vu || [])]
     );
     return rows[0];
   }
@@ -74,11 +88,17 @@ class AdminRepository {
       const { rows } = await client.query(
         `INSERT INTO nguoi_dung (ho_ten, email, mat_khau_hash, vai_tro_id, so_dien_thoai, trang_thai, da_xac_thuc_email) 
          VALUES ($1, $2, $3, $4, $5, $6, TRUE) RETURNING id, ho_ten, email`,
-        [data.ho_ten, data.email, hash, data.vai_tro_id, data.so_dien_thoai, data.trang_thai]
+        [data.ho_ten, data.email, hash, data.vai_tro_id, data.so_dien_thoai || null, data.trang_thai]
       );
       
-      if (data.vai_tro_id === 3) {
-        await client.query('INSERT INTO ky_thuat_vien (nguoi_dung_id) VALUES ($1)', [rows[0].id]);
+      if (data.vai_tro_id === 3 || data.vai_tro_id === 4) {
+        const ma_nhan_vien = 'NV-' + Math.floor(1000 + Math.random() * 9000);
+        const chuyen_mon_chinh = data.vai_tro_id === 4 ? 'Bác sĩ chuyên khoa' : 'Vật lý trị liệu';
+        await client.query(
+          `INSERT INTO ky_thuat_vien (nguoi_dung_id, ma_nhan_vien, chuyen_mon_chinh, so_nam_kinh_nghiem, trang_thai) 
+           VALUES ($1, $2, $3, 1, 'hoat_dong')`,
+          [rows[0].id, ma_nhan_vien, chuyen_mon_chinh]
+        );
       }
       
       await client.query('COMMIT');
@@ -120,7 +140,7 @@ class AdminRepository {
   // --- QUẢN LÝ THIẾT BỊ Y TẾ ---
   async getEquipment() {
     const { rows } = await pool.query(`
-      SELECT tb.*, p.ten_phong 
+      SELECT tb.*, tb.ngay_bao_tri_tiep_theo as ngay_bao_tri_gan_nhat, p.ten_phong 
       FROM thiet_bi_y_te tb
       LEFT JOIN phong p ON tb.phong_id_hien_tai = p.id
       ORDER BY tb.thoi_gian_tao DESC
@@ -140,20 +160,22 @@ class AdminRepository {
   // --- QUẢN LÝ LỊCH LÀM VIỆC ---
   async getSchedules() {
     const { rows } = await pool.query(`
-      SELECT llv.*, nd.ho_ten as ten_ky_thuat_vien
-      FROM lich_lam_viec_ktv llv
-      JOIN ky_thuat_vien ktv ON llv.ky_thuat_vien_id = ktv.id
-      JOIN nguoi_dung nd ON ktv.nguoi_dung_id = nd.id
-      ORDER BY nd.ho_ten, llv.thu_trong_tuan
+      SELECT llv.id, llv.nguoi_dung_id, to_char(llv.ngay, 'YYYY-MM-DD') as ngay, 
+             llv.gio_bat_dau, llv.gio_ket_thuc, llv.trang_thai,
+             nd.ho_ten as ten_nhan_vien, vt.ten_hien_thi as vai_tro
+      FROM lich_lam_viec llv
+      JOIN nguoi_dung nd ON llv.nguoi_dung_id = nd.id
+      JOIN vai_tro vt ON nd.vai_tro_id = vt.id
+      ORDER BY vt.id, nd.ho_ten, llv.ngay
     `);
     return rows;
   }
 
   async createSchedule(data: any) {
     const { rows } = await pool.query(
-      `INSERT INTO lich_lam_viec_ktv (ky_thuat_vien_id, thu_trong_tuan, gio_bat_dau, gio_ket_thuc, trang_thai) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [data.ky_thuat_vien_id, data.thu_trong_tuan, data.gio_bat_dau, data.gio_ket_thuc, data.trang_thai]
+      `INSERT INTO lich_lam_viec (nguoi_dung_id, ngay, gio_bat_dau, gio_ket_thuc, trang_thai) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING id, nguoi_dung_id, to_char(ngay, 'YYYY-MM-DD') as ngay, gio_bat_dau, gio_ket_thuc, trang_thai`,
+      [data.nguoi_dung_id, data.ngay, data.gio_bat_dau, data.gio_ket_thuc, data.trang_thai]
     );
     return rows[0];
   }

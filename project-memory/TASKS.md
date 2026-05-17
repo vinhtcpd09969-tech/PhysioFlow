@@ -13,8 +13,9 @@
 - [x] **Architecture Overhaul:** Tái cấu trúc Backend thành 3-Tier (Controller-Service-Repository) và Frontend thành Feature-Based.
 
 ## 📋 Backlog (Modules Tiếp theo)
+- [x] **Module Khách hàng:** Tích hợp Xác thực vào Luồng đặt lịch trực tuyến hoàn chỉnh (Premium UX Modal, Auto-save/Restore, Database smart mapping).
 - [ ] Module Lễ tân chuyên dụng (Check-in nhanh, In hóa đơn).
 - [ ] Module Kỹ thuật viên (SOAP Note, Lịch làm việc cá nhân).
-- [ ] Module Khách hàng (Portal cá nhân, Đặt lịch online hoàn chỉnh).
+- [ ] Module Khách hàng (Portal cá nhân sâu hơn như xem lịch sử trị liệu, biểu đồ phục hồi).
 - [ ] Module Thông báo (Email/Web Push).
 - [ ] Tích hợp AI (Tóm tắt bệnh án, gợi ý phác đồ).

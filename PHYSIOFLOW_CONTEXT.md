@@ -1,5 +1,8 @@
 # PHYSIOFLOW_CONTEXT.md
-> File ngữ cảnh dự án — Đọc file này trước khi viết bất kỳ dòng code nào.
+
+> [!IMPORTANT]
+> **TÀI LIỆU NÀY BÂY GIỜ CHỈ MANG TÍNH CHẤT THAM KHẢO.**
+> Dự án áp dụng triết lý tinh gọn: Làm đến đâu phát triển đến đó. Các quy chuẩn và quy trình trong tệp này sẽ được linh hoạt phát triển tiếp theo nhu cầu thực tế của dự án.
 
 ---
 

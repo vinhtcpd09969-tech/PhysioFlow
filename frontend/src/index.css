@@ -8,6 +8,11 @@
   body {
     @apply bg-background text-secondary antialiased font-sans;
   }
+
+  /* Global Button Click Physics - Premium SaaS Feel */
+  button {
+    @apply active:scale-95 transition-all duration-200;
+  }
 }
 
 @layer utilities {

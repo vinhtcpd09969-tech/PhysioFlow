@@ -15,6 +15,7 @@ export const serviceSchema = z.object({
     ten_dich_vu: z.string().min(1, 'Tên dịch vụ là bắt buộc'),
     mo_ta: z.string().optional(),
     thoi_gian_uoc_tinh: z.number().int().positive('Thời gian ước tính phải lớn hơn 0'),
+    don_gia: z.number().min(0, 'Đơn giá không hợp lệ').optional().default(0),
     thiet_bi_yeu_cau: z.string().optional(),
     trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong')
   })
@@ -24,9 +25,16 @@ export const serviceSchema = z.object({
 export const packageSchema = z.object({
   body: z.object({
     ten_goi: z.string().min(1, 'Tên gói là bắt buộc'),
+    ma_goi: z.string().optional(),
     mo_ta: z.string().optional(),
     tong_so_buoi: z.number().int().positive('Số buổi phải lớn hơn 0'),
     gia_tien: z.number().min(0, 'Giá tiền không hợp lệ'),
+    han_dung_thang: z.number().int().positive('Hạn dùng phải lớn hơn 0').default(6),
+    chi_tiet_dich_vu: z.array(z.object({
+      dich_vu_id: z.string().uuid('ID dịch vụ không hợp lệ'),
+      so_buoi: z.number().int().positive('Số buổi dịch vụ phải lớn hơn 0')
+    })).default([]),
+    hien_thi_website: z.boolean().default(true),
     trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong')
   })
 });
@@ -56,11 +64,11 @@ export const equipmentSchema = z.object({
   })
 });
 
-// --- Quản lý Lịch làm việc KTV ---
+// --- Quản lý Lịch làm việc ---
 export const scheduleSchema = z.object({
   body: z.object({
-    ky_thuat_vien_id: z.string().uuid('ID KTV không hợp lệ'),
-    thu_trong_tuan: z.enum(['thu_2', 'thu_3', 'thu_4', 'thu_5', 'thu_6', 'thu_7', 'chu_nhat']),
+    nguoi_dung_id: z.string().uuid('ID nhân viên không hợp lệ'),
+    ngay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày không hợp lệ (YYYY-MM-DD)'),
     gio_bat_dau: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Giờ bắt đầu không hợp lệ (HH:mm)'),
     gio_ket_thuc: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Giờ kết thúc không hợp lệ (HH:mm)'),
     trang_thai: z.enum(['hoat_dong', 'tam_nghi']).default('hoat_dong')

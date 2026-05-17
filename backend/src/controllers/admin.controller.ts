@@ -17,6 +17,15 @@ export const getCategories = async (req: Request, res: Response) => {
   }
 };
 
+export const getRooms = async (req: Request, res: Response) => {
+  try {
+    const rooms = await adminService.getRooms();
+    res.json(rooms);
+  } catch (error) {
+    res.status(500).json({ message: 'Lỗi khi lấy danh sách phòng', error });
+  }
+};
+
 export const createCategory = async (req: Request, res: Response): Promise<any> => {
   try {
     const { body } = categorySchema.parse({ body: req.body });

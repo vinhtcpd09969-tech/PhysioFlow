@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Info } from 'lucide-react';
 import api from '../../../api/axios';
 import { useAuthStore } from '../../../stores/authStore';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 const loginSchema = z.object({
   email: z.string().email('Vui lòng nhập email hợp lệ'),
@@ -19,6 +19,7 @@ export default function Login() {
   const [serverError, setServerError] = useState('');
   const setAuth = useAuthStore(state => state.setAuth);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema)
@@ -30,13 +31,15 @@ export default function Login() {
       const response = await api.post('/auth/login', data);
       const { user, accessToken, refreshToken } = response.data;
       setAuth(user, accessToken, refreshToken);
+      const from = (location.state as any)?.from || '/dashboard';
+      
       // Navigate based on role
       if (user.vai_tro_id === 5) {
-        navigate('/admin');
+        navigate(from === '/dashboard' ? '/admin' : from);
       } else if (user.vai_tro_id === 2) {
-        navigate('/receptionist');
+        navigate(from === '/dashboard' ? '/receptionist' : from);
       } else {
-        navigate('/dashboard');
+        navigate(from);
       }
     } catch (error: any) {
       if (error.response?.data?.requiresVerification) {
@@ -60,8 +63,20 @@ export default function Login() {
         <div className="flex-1 flex flex-col justify-center w-full max-w-md mx-auto pb-12 min-h-max">
           <div className="mb-8 flex gap-8 border-b border-gray-200 w-full">
             <span className="pb-2 border-b-2 border-primary text-primary font-semibold text-sm">Đăng nhập</span>
-            <Link to="/register" className="pb-2 text-gray-400 font-semibold text-sm cursor-pointer hover:text-gray-600 transition-colors">Đăng ký</Link>
+            <Link to="/register" state={location.state} className="pb-2 text-gray-400 font-semibold text-sm cursor-pointer hover:text-gray-600 transition-colors">Đăng ký</Link>
           </div>
+
+          {location.state?.from === '/booking' && (
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-2xl text-sm flex items-start gap-3 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+              <Info className="shrink-0 mt-0.5 text-emerald-600" size={18} />
+              <div>
+                <p className="font-bold text-emerald-900">Đặt lịch khám nhanh chóng</p>
+                <p className="text-xs text-emerald-700/95 mt-1 leading-relaxed">
+                  Vui lòng đăng nhập để chúng tôi lưu giữ bệnh án và đồng bộ hóa lịch trị liệu cá nhân của bạn nhé!
+                </p>
+              </div>
+            </div>
+          )}
 
           <h1 className="font-heading text-[32px] lg:text-[48px] font-bold text-secondary leading-tight mb-2">Chào mừng trở lại</h1>
           <p className="text-[16px] text-gray-500 mb-8">Theo dõi hành trình phục hồi của bạn</p>

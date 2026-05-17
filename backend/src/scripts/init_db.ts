@@ -133,20 +133,49 @@ CREATE TABLE IF NOT EXISTS lich_dat (
   thoi_gian_tao timestamp without time zone NOT NULL DEFAULT now()
 );
 
--- 10. lich_lam_viec_ktv
-CREATE TABLE IF NOT EXISTS lich_lam_viec_ktv (
+-- 10. lich_lam_viec
+CREATE TABLE IF NOT EXISTS lich_lam_viec (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  ky_thuat_vien_id uuid NOT NULL REFERENCES ky_thuat_vien(id),
-  thu_trong_tuan integer NOT NULL CHECK (thu_trong_tuan BETWEEN 1 AND 7), -- 1: CN, 2: T2...
+  nguoi_dung_id uuid NOT NULL REFERENCES nguoi_dung(id),
+  ngay DATE NOT NULL,
   gio_bat_dau time NOT NULL,
   gio_ket_thuc time NOT NULL,
   trang_thai varchar(20) DEFAULT 'hoat_dong'
 );
 
+-- 10b. goi_dich_vu (Gói dịch vụ)
+CREATE TABLE IF NOT EXISTS goi_dich_vu (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ten_goi varchar(200) NOT NULL,
+  ma_goi varchar(30) UNIQUE NOT NULL,
+  mo_ta text,
+  tong_so_buoi integer NOT NULL,
+  gia_goi bigint NOT NULL,
+  gia_goc bigint,
+  han_dung_thang integer NOT NULL DEFAULT 6,
+  hien_thi_website boolean NOT NULL DEFAULT true,
+  trang_thai varchar(20) NOT NULL DEFAULT 'hoat_dong',
+  chi_tiet_dich_vu jsonb DEFAULT '[]'::jsonb,
+  thoi_gian_tao timestamp without time zone NOT NULL DEFAULT now()
+);
+
+-- 10c. lich_dieu_tri (Hồ sơ Liệu trình của khách hàng)
+CREATE TABLE IF NOT EXISTS lich_dieu_tri (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  khach_hang_id uuid NOT NULL REFERENCES khach_hang(id),
+  loai_dieu_tri varchar(20) NOT NULL, -- 'dich_vu_le' hoặc 'theo_goi'
+  dich_vu_id uuid REFERENCES dich_vu(id),
+  goi_dich_vu_id uuid REFERENCES goi_dich_vu(id),
+  tong_so_buoi integer NOT NULL,
+  so_buoi_da_dung integer NOT NULL DEFAULT 0,
+  trang_thai varchar(20) NOT NULL DEFAULT 'dang_dieu_tri',
+  thoi_gian_tao timestamp without time zone NOT NULL DEFAULT now()
+);
+
 -- 11. buoi_tri_lieu
 CREATE TABLE IF NOT EXISTS buoi_tri_lieu (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  lich_dat_id uuid NOT NULL REFERENCES lich_dat(id),
+  lich_dieu_tri_id uuid NOT NULL REFERENCES lich_dieu_tri(id),
   khach_hang_id uuid NOT NULL REFERENCES khach_hang(id),
   ky_thuat_vien_id uuid NOT NULL REFERENCES ky_thuat_vien(id),
   phong_id bigint REFERENCES phong(id),
@@ -259,6 +288,32 @@ CREATE TABLE IF NOT EXISTS hoa_don_chi_tiet (
   thanh_tien bigint NOT NULL,
   dich_vu_id uuid REFERENCES dich_vu(id)
 );
+
+-- 18. thiet_bi_y_te
+CREATE TABLE IF NOT EXISTS thiet_bi_y_te (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ma_thiet_bi varchar(20) UNIQUE NOT NULL,
+  ten_thiet_bi varchar(100) NOT NULL,
+  loai_thiet_bi varchar(100),
+  ngay_mua date,
+  ngay_bao_tri_tiep_theo date,
+  trang_thai varchar(20) NOT NULL DEFAULT 'san_sang',
+  phong_id_hien_tai bigint,
+  ghi_chu text,
+  thoi_gian_tao timestamp without time zone NOT NULL DEFAULT now()
+);
+
+-- 19. system_audit_log
+CREATE TABLE IF NOT EXISTS system_audit_log (
+  id bigserial PRIMARY KEY,
+  user_id uuid REFERENCES nguoi_dung(id),
+  action varchar(100) NOT NULL,
+  entity_type varchar(50) NOT NULL,
+  entity_id varchar(100),
+  payload text,
+  ip_address varchar(50),
+  created_at timestamp without time zone NOT NULL DEFAULT now()
+);
 `;
 
 async function run() {
@@ -266,7 +321,7 @@ async function run() {
   try {
     await rootClient.connect();
     console.log('[1/3] Connected to postgres root database...');
-    
+
     // Close existing connections
     await rootClient.query(`
       SELECT pg_terminate_backend(pid) 

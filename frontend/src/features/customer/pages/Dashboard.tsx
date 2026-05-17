@@ -1,6 +1,5 @@
-import React from 'react';
 import { useAuthStore } from '../../../stores/authStore';
-import { Calendar, Activity, Clock, Sparkles, ChevronRight, CheckCircle2, FileText } from 'lucide-react';
+import { Calendar, Activity, Clock, Sparkles, ChevronRight, FileText } from 'lucide-react';
 
 export default function Dashboard() {
   const { user } = useAuthStore();

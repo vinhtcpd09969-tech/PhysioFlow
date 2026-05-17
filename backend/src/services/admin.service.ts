@@ -7,6 +7,10 @@ class AdminService {
     return adminRepository.getCategories();
   }
 
+  async getRooms() {
+    return adminRepository.getRooms();
+  }
+
   async createCategory(data: any) {
     return adminRepository.createCategory(data);
   }
@@ -60,7 +64,7 @@ class AdminService {
   }
 
   async createEquipment(data: any) {
-    const ma_thiet_bi = 'TB-' + Math.floor(1000 + Math.random() * 9000);
+    const ma_thiet_bi = data.ma_thiet_bi || 'TB-' + Math.floor(1000 + Math.random() * 9000);
     return adminRepository.createEquipment(ma_thiet_bi, data);
   }
 
