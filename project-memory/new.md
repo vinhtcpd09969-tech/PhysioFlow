@@ -1,2 +1,1 @@
-
-Read all project memory files and continue from the latest session state before writing any code (plan ahead before writing code)
+Read all project memory files and continue from the most recent session state, remembering the execution stop scheduling mechanism; execute only when approved by the supervisor.

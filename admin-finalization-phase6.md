@@ -25,10 +25,10 @@ Transform the Admin Dashboard into a comprehensive "War Room" by completing the 
 - [NEW] `backend/src/schemas/marketing.schema.ts`: Zod schemas for vouchers.
 
 ### Frontend
-- [NEW] `frontend/src/pages/admin/ManageFinance.tsx`: Payment/Invoice UI.
-- [NEW] `frontend/src/pages/admin/ManageVouchers.tsx`: Voucher management UI.
-- [NEW] `frontend/src/pages/admin/ViewFeedback.tsx`: Feedback viewing UI.
-- [MODIFY] `frontend/src/pages/admin/AdminDashboard.tsx`: Add charts and summary stats.
+- [NEW] `frontend/src/features/admin/pages/ManageFinance.tsx`: Payment/Invoice UI.
+- [NEW] `frontend/src/features/admin/pages/ManageVouchers.tsx`: Voucher management UI.
+- [NEW] `frontend/src/features/admin/pages/ViewFeedback.tsx`: Feedback viewing UI.
+- [MODIFY] `frontend/src/features/admin/pages/AdminDashboard.tsx`: Add charts and summary stats.
 
 ## Task Breakdown
 

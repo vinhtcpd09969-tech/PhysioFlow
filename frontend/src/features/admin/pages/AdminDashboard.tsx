@@ -1,33 +1,25 @@
 import { useEffect, useState } from 'react';
-import { 
-  Users, 
-  Calendar, 
-  TrendingUp, 
+import {
+  Users,
+  Calendar,
+  TrendingUp,
   DollarSign,
   ChevronRight,
   Plus
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   Cell
 } from 'recharts';
 import api from '../../../api/axios';
 
-const chartData = [
-  { name: 'Thứ 2', revenue: 4500000, appointments: 12 },
-  { name: 'Thứ 3', revenue: 5200000, appointments: 15 },
-  { name: 'Thứ 4', revenue: 3800000, appointments: 10 },
-  { name: 'Thứ 5', revenue: 6100000, appointments: 18 },
-  { name: 'Thứ 6', revenue: 5900000, appointments: 16 },
-  { name: 'Thứ 7', revenue: 8400000, appointments: 25 },
-  { name: 'CN', revenue: 7200000, appointments: 20 },
-];
+// Removed unused chartData mock
 
 const COLORS = ['#2EC4B6', '#FF9F1C', '#FF3366', '#4D5BF9'];
 
@@ -44,6 +36,8 @@ interface DashboardData {
     active_staff: string | number;
   } | null;
   recentAppointments: any[];
+  revenueData: { month: string; revenue: number }[];
+  performanceData: { name: string; sessions: number }[];
   isLoaded: boolean;
 }
 
@@ -51,6 +45,8 @@ export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData>({
     stats: null,
     recentAppointments: [],
+    revenueData: [],
+    performanceData: [],
     isLoaded: false
   });
 
@@ -63,12 +59,18 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const statsRes = await api.get('/admin/analytics/summary');
-      const appointmentsRes = await api.get('/admin/appointments');
-      
+      const [statsRes, appointmentsRes, revenueRes, performanceRes] = await Promise.all([
+        api.get('/admin/analytics/summary'),
+        api.get('/admin/appointments'),
+        api.get('/admin/analytics/revenue'),
+        api.get('/admin/analytics/performance')
+      ]);
+
       setData({
         stats: statsRes.data || null,
         recentAppointments: Array.isArray(appointmentsRes.data) ? appointmentsRes.data.slice(0, 5) : [],
+        revenueData: Array.isArray(revenueRes.data) ? revenueRes.data : [],
+        performanceData: Array.isArray(performanceRes.data) ? performanceRes.data : [],
         isLoaded: true
       });
     } catch (error) {
@@ -76,13 +78,13 @@ export default function AdminDashboard() {
     }
   };
 
-  const { stats, recentAppointments, isLoaded } = data;
+  const { stats, recentAppointments, revenueData, performanceData, isLoaded } = data;
 
   if (!isLoaded) return <div className="p-8 text-zinc-500">Đang tải dữ liệu hệ thống...</div>;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      
+
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -101,32 +103,32 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Tổng khách hàng" 
-          value={stats?.total_customers || 0} 
-          change="+12%" 
-          icon={<Users className="text-primary" />} 
+        <StatCard
+          title="Tổng khách hàng"
+          value={stats?.total_customers || 0}
+          change="+12%"
+          icon={<Users className="text-primary" />}
           color="bg-primary/10"
         />
-        <StatCard 
-          title="Đang chờ xác nhận" 
-          value={stats?.pending_appointments || 0} 
-          change="+5" 
-          icon={<Calendar className="text-accent" />} 
+        <StatCard
+          title="Đang chờ xác nhận"
+          value={stats?.pending_appointments || 0}
+          change="+5"
+          icon={<Calendar className="text-accent" />}
           color="bg-accent/10"
         />
-        <StatCard 
-          title="Doanh thu tổng" 
-          value={isClient ? currencyFormatter.format(Number(stats?.total_revenue || 0)) : '0'} 
-          change="+18.4%" 
-          icon={<DollarSign className="text-emerald-500" />} 
+        <StatCard
+          title="Doanh thu tổng"
+          value={isClient ? currencyFormatter.format(Number(stats?.total_revenue || 0)) : '0'}
+          change="+18.4%"
+          icon={<DollarSign className="text-emerald-500" />}
           color="bg-emerald-50"
         />
-        <StatCard 
-          title="KTV Hoạt động" 
-          value={stats?.active_staff || 0} 
-          change="+2" 
-          icon={<TrendingUp className="text-indigo-500" />} 
+        <StatCard
+          title="KTV Hoạt động"
+          value={stats?.active_staff || 0}
+          change="+2"
+          icon={<TrendingUp className="text-indigo-500" />}
           color="bg-indigo-50"
         />
       </div>
@@ -135,25 +137,25 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-zinc-100 shadow-sm">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-semibold text-secondary">Doanh thu 7 ngày qua</h3>
+            <h3 className="text-xl font-semibold text-secondary">Doanh thu 6 tháng qua</h3>
             <select className="bg-zinc-50 border-none rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 outline-none">
-              <option>Tuần này</option>
-              <option>Tuần trước</option>
+              <option>6 tháng gần đây</option>
             </select>
           </div>
           <div className="h-[350px] w-full">
             {isClient && (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={revenueData.length > 0 ? revenueData : []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} dy={10} />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} />
-                  <Tooltip 
+                  <Tooltip
                     cursor={{ fill: '#F8FAFC' }}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    formatter={(val) => currencyFormatter.format(Number(val))}
                   />
                   <Bar dataKey="revenue" radius={[6, 6, 0, 0]} barSize={40}>
-                    {chartData.map((_, index) => (
+                    {revenueData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Bar>
@@ -184,10 +186,9 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-secondary">{appt.gio_bat_dau ? new Date(appt.gio_bat_dau).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                      appt.trang_thai === 'cho_xac_nhan' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                    }`}>
+                    <p className="text-sm font-semibold text-secondary">{appt.ngay_gio_bat_dau ? new Date(appt.ngay_gio_bat_dau).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${appt.trang_thai === 'cho_xac_nhan' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                      }`}>
                       {appt.trang_thai?.replace(/_/g, ' ')}
                     </span>
                   </div>
@@ -198,6 +199,23 @@ export default function AdminDashboard() {
           <button className="w-full mt-8 py-3 bg-zinc-50 text-zinc-600 rounded-xl font-semibold hover:bg-zinc-100 transition-colors flex items-center justify-center gap-2">
             Xem lịch trình <ChevronRight size={18} />
           </button>
+        </div>
+      </div>
+
+      {/* Staff Performance Section */}
+      <div className="bg-white p-8 rounded-3xl border border-zinc-100 shadow-sm">
+        <h3 className="text-xl font-semibold text-secondary mb-8">Hiệu suất KTV (Tháng này)</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          {performanceData.map((staff, idx) => (
+            <div key={staff.name} className="p-6 rounded-2xl bg-zinc-50 border border-zinc-100 flex flex-col items-center text-center group hover:bg-primary/5 transition-all">
+              <div className="size-14 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-xl mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                {['🥇', '🥈', '🥉', '👤', '👤'][idx] || '👤'}
+              </div>
+              <p className="font-bold text-secondary text-sm truncate w-full">{staff.name}</p>
+              <p className="text-primary font-bold text-lg">{staff.sessions}</p>
+              <p className="text-zinc-400 text-[10px] uppercase font-bold tracking-widest">Buổi thực hiện</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

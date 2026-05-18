@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { 
-  Search, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle, 
+import {
+  Search,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
   PlayCircle,
   ChevronLeft,
   ChevronRight,
@@ -31,11 +31,6 @@ const statusConfig = {
   khong_den: { label: 'Không đến', color: 'bg-slate-200 text-slate-700 border-slate-300', icon: <XCircle size={14} /> },
 };
 
-const timeSlots = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', 
-  '13:00', '14:00', '15:00', '16:00', '17:00'
-];
-
 export default function ManageAppointments() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
@@ -54,7 +49,7 @@ export default function ManageAppointments() {
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isTreatmentModalOpen, setIsTreatmentModalOpen] = useState(false);
-  
+
   // Assignment State in Detail Modal
   const [assignStaffId, setAssignStaffId] = useState<string>('');
   const [assignRoomId, setAssignRoomId] = useState<string>('');
@@ -105,12 +100,12 @@ export default function ManageAppointments() {
 
     try {
       setIsAssigning(true);
-      await axiosInstance.patch(`/admin/appointments/${selectedAppointment.id}/status`, { 
+      await axiosInstance.patch(`/admin/appointments/${selectedAppointment.id}/status`, {
         trang_thai: assignStatus,
         ky_thuat_vien_id: assignStaffId || null,
         phong_id: assignRoomId || null
       });
-      
+
       toast.success('Cập nhật thông tin ca trực thành công');
       setIsDetailModalOpen(false);
       fetchData();
@@ -119,6 +114,18 @@ export default function ManageAppointments() {
       toast.error('Lỗi cập nhật ca trực');
     } finally {
       setIsAssigning(false);
+    }
+  };
+
+  const handleSaveMedicalRecord = async (medicalData: any) => {
+    if (!selectedAppointment) return;
+    try {
+      await axiosInstance.put(`/admin/appointments/${selectedAppointment.id}/medical-record`, medicalData);
+      toast.success('Lưu hồ sơ bệnh án thành công');
+      fetchData();
+    } catch (error) {
+      console.error('Failed to save medical record:', error);
+      toast.error('Lỗi lưu hồ sơ bệnh án');
     }
   };
 
@@ -131,25 +138,26 @@ export default function ManageAppointments() {
 
     if (treatmentType === 'single' && !chosenServiceId) { toast.error('Vui lòng chọn dịch vụ lẻ'); return; }
     if (treatmentType === 'package' && !chosenPackageId) { toast.error('Vui lòng chọn gói điều trị'); return; }
-    if (!selectedKtvId) { toast.error('Vui lòng chọn Kỹ thuật viên'); return; }
+    if (!selectedKtvId) { toast.error('Vui lòng chọn Chuyên gia y tế'); return; }
 
     try {
       setBookingLoading(true);
       const startDateTimeStr = `${treatmentDate}T${treatmentTime}:00.000Z`;
       const endDateTime = new Date(new Date(startDateTimeStr).getTime() + 60 * 60 * 1000);
-      
+
       const payload = {
         khach_hang_id: selectedAppointment.khach_hang_id,
         ho_ten_khach: selectedAppointment.khach_hang_id ? undefined : selectedAppointment.ten_khach_hang,
         so_dien_thoai: selectedAppointment.khach_hang_id ? undefined : selectedAppointment.so_dien_thoai,
-        dich_vu_id: chosenServiceId || 'd7c71ba4-64b1-4f18-bb54-1b4cd600868f',
+        dich_vu_id: chosenServiceId || null,
         ky_thuat_vien_id: selectedKtvId,
         phong_id: selectedRoomId || null,
         ghi_chu_dat_lich: `Ca trị liệu khởi tạo từ Lịch khám: ${selectedAppointment.ma_lich_dat}`,
         ngay_gio_bat_dau: startDateTimeStr,
         ngay_gio_ket_thuc: endDateTime.toISOString(),
         loai_lich: 'dieu_tri',
-        dang_ky_goi_id: chosenPackageId
+        dang_ky_goi_id: chosenPackageId,
+        lich_dat_id: selectedAppointment.id
       };
 
       await axiosInstance.post('/admin/appointments', payload);
@@ -173,21 +181,28 @@ export default function ManageAppointments() {
     }
   };
 
-  const activeRole = scheduleType === 'kham_moi' ? 'Bác sĩ' : 'Kỹ thuật viên';
+  const activeRole = scheduleType === 'kham_moi' ? 'Bác sĩ' : 'Chuyên gia y tế';
   const columnsStaff = staffList.filter(s => s.vai_tro === activeRole && s.trang_thai === 'hoat_dong');
   const formattedSelectedDate = format(selectedDate, 'yyyy-MM-dd');
-  
+
   const dailyAppointments = appointments.filter(apt => {
-    const aptDateStr = apt.ngay_gio_bat_dau.split('T')[0];
+    const aptDateStr = format(new Date(apt.ngay_gio_bat_dau), 'yyyy-MM-dd');
     const matchDate = aptDateStr === formattedSelectedDate;
     const matchType = apt.loai_lich === scheduleType || (scheduleType === 'kham_moi' && apt.loai_lich === 'dich_vu_don');
     const matchRoom = roomFilter === 'all' || String(apt.phong_id) === roomFilter;
-    const matchSearch = searchTerm === '' || 
+    const matchSearch = searchTerm === '' ||
       apt.ma_lich_dat.toLowerCase().includes(searchTerm.toLowerCase()) ||
       apt.ten_khach_hang.toLowerCase().includes(searchTerm.toLowerCase());
 
     return matchDate && matchType && matchRoom && matchSearch;
   });
+
+  // Tạo khung giờ động (Dynamic Time Slots) từ các lịch hiện có trong ngày
+  const dynamicTimeSlots = Array.from(
+    new Set(
+      dailyAppointments.map(apt => format(new Date(apt.ngay_gio_bat_dau), 'HH:mm'))
+    )
+  ).sort();
 
   const kpis = {
     total: dailyAppointments.length,
@@ -197,9 +212,8 @@ export default function ManageAppointments() {
   };
 
   const getCellAppointments = (hour: string, ktvId: string | null) => {
-    if (hour === '12:00') return []; 
     return dailyAppointments.filter(apt => {
-      const aptHourStr = apt.ngay_gio_bat_dau.split('T')[1]?.substring(0,2) + ':00';
+      const aptHourStr = format(new Date(apt.ngay_gio_bat_dau), 'HH:mm');
       const isSameHour = aptHourStr === hour;
       const isSameStaff = apt.ky_thuat_vien_id === ktvId;
       return isSameHour && isSameStaff;
@@ -214,12 +228,12 @@ export default function ManageAppointments() {
     setIsDetailModalOpen(true);
   };
 
-  const handleOpenTreatmentModal = () => {
+  const handleOpenTreatmentModal = (type: 'single' | 'package' | null = null, recId: string | null = null) => {
     if (!selectedAppointment) return;
     setIsDetailModalOpen(false);
-    setTreatmentType('single');
-    setSelectedServiceId('');
-    setSelectedPackageId('');
+    setTreatmentType(type || 'single');
+    setSelectedServiceId(type === 'single' && recId ? recId : '');
+    setSelectedPackageId(type === 'package' && recId ? recId : '');
     setSelectedKtvId('');
     setSelectedRoomId('');
     setTreatmentDate(format(new Date(), 'yyyy-MM-dd'));
@@ -300,17 +314,15 @@ export default function ManageAppointments() {
         <div className="flex bg-slate-50 p-1 rounded-xl">
           <button
             onClick={() => setScheduleType('kham_moi')}
-            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all ${
-              scheduleType === 'kham_moi' ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all ${scheduleType === 'kham_moi' ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'
+              }`}
           >
             <Stethoscope size={18} /> Lịch Khám
           </button>
           <button
             onClick={() => setScheduleType('dieu_tri')}
-            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all ${
-              scheduleType === 'dieu_tri' ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all ${scheduleType === 'dieu_tri' ? 'bg-white text-emerald-700 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'
+              }`}
           >
             <Activity size={18} /> Lịch Điều trị
           </button>
@@ -337,7 +349,7 @@ export default function ManageAppointments() {
 
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input 
+            <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -349,8 +361,8 @@ export default function ManageAppointments() {
       </div>
 
       {/* COMPONENT: BẢNG LƯỚI LỊCH TRÌNH */}
-      <AppointmentCalendar 
-        timeSlots={timeSlots}
+      <AppointmentCalendar
+        timeSlots={dynamicTimeSlots.length > 0 ? dynamicTimeSlots : ['08:00', '13:00']} // Fallback nếu ngày trống
         scheduleType={scheduleType}
         columnsStaff={columnsStaff}
         getCellAppointments={getCellAppointments}
@@ -360,7 +372,7 @@ export default function ManageAppointments() {
 
       {/* COMPONENT: MODAL CHI TIẾT CA TRỰC */}
       {isDetailModalOpen && (
-        <AppointmentDetailModal 
+        <AppointmentDetailModal
           selectedAppointment={selectedAppointment}
           roomsList={roomsList}
           staffList={staffList}
@@ -375,12 +387,15 @@ export default function ManageAppointments() {
           onClose={() => setIsDetailModalOpen(false)}
           onSave={handleUpdateAppointment}
           onOpenTreatment={handleOpenTreatmentModal}
+          services={services}
+          packages={packages}
+          onSaveMedicalRecord={handleSaveMedicalRecord}
         />
       )}
 
       {/* COMPONENT: MODAL ĐẶT LỊCH ĐIỀU TRỊ CHUYÊN SÂU */}
       {isTreatmentModalOpen && (
-        <TreatmentBookingModal 
+        <TreatmentBookingModal
           selectedAppointment={selectedAppointment}
           services={services}
           packages={packages}

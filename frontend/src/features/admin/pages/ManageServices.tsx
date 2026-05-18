@@ -223,14 +223,14 @@ export default function ManageServices() {
       {/* Modern Modal Design based on Mockup Image 1 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden animate-in slide-in-from-bottom-8 duration-300">
-            <div className="px-8 py-6 flex justify-between items-center border-b border-slate-100">
+          <div className="bg-white rounded-[24px] shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-8 duration-300">
+            <div className="px-8 py-6 flex justify-between items-center border-b border-slate-100 shrink-0">
               <h3 className="text-xl font-extrabold text-teal-900">Chỉnh sửa dịch vụ</h3>
               <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:scale-90 transition-all">✕</button>
             </div>
             
-            <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
-              
+            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-8 space-y-6 overflow-y-auto">
               {/* Image Upload Area */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Hình ảnh dịch vụ</label>
@@ -325,15 +325,17 @@ export default function ManageServices() {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-100">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors active:scale-95">
+              </div>
+              
+              {/* Pinned Footer */}
+              <div className="px-8 py-5 border-t border-slate-100 bg-slate-50 shrink-0 flex gap-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-colors active:scale-95">
                   Hủy bỏ
                 </button>
                 <button type="submit" className="flex-1 px-4 py-3 bg-teal-800 hover:bg-teal-900 text-white font-bold rounded-xl transition-colors active:scale-95 shadow-md">
                   Lưu thay đổi
                 </button>
               </div>
-
             </form>
           </div>
         </div>

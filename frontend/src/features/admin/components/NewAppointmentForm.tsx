@@ -8,13 +8,13 @@ import axiosInstance from '../../../api/axios';
 
 const schema = z.object({
   bookingMode: z.enum(['existing', 'walk_in']),
-  
+
   khach_hang_id: z.string().optional(),
-  
+
   ho_ten_khach: z.string().optional(),
   so_dien_thoai: z.string().optional(),
   gioi_tinh_khach: z.string().optional(),
-  
+
   dich_vu_id: z.string().min(1, 'Vui lòng chọn dịch vụ'),
   ky_thuat_vien_id: z.string().optional(),
   ngay_bat_dau: z.string().min(1, 'Vui lòng chọn ngày'),
@@ -79,8 +79,8 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
         axiosInstance.get('/admin/staff')
       ]);
       setCustomers(custRes.data);
-      setServices(servRes.data);
-      setStaff(staffRes.data.filter((s: any) => s.vai_tro === 'Kỹ thuật viên' || s.vai_tro === 'Bác sĩ'));
+      setServices(servRes.data.filter((s: any) => s.ten_dich_vu.toLowerCase().includes('khám')));
+      setStaff(staffRes.data.filter((s: any) => s.vai_tro === 'Chuyên gia y tế' || s.vai_tro === 'Bác sĩ'));
     } catch (error) {
       console.error('Lỗi tải dữ liệu form', error);
     }
@@ -89,7 +89,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
   const onSubmit = async (data: FormData) => {
     try {
       setLoading(true);
-      
+
       const payload: any = {
         dich_vu_id: data.dich_vu_id,
         ngay_gio_bat_dau: new Date(`${data.ngay_bat_dau}T${data.gio_bat_dau}:00`).toISOString(),
@@ -124,14 +124,14 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
   return (
     <>
       {/* Layered Background Blur (Premium feel) */}
-      <div 
+      <div
         className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 transition-opacity"
         onClick={onClose}
       />
-      
+
       {/* Slide-over Panel (Sharp geometry) */}
       <div className="fixed inset-y-0 right-0 w-full md:w-[480px] bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ease-in-out border-l border-slate-200">
-        
+
         {/* Header */}
         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
           <div>
@@ -141,7 +141,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
             </h2>
             <p className="text-sm text-slate-500 mt-0.5">Sắp xếp cuộc hẹn cho khách hàng</p>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
@@ -152,7 +152,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
         {/* Scrollable Form Body */}
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
           <form id="appointmentForm" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            
+
             {/* Mode Selection */}
             <div className="flex p-1 bg-slate-100 rounded-sm">
               <button
@@ -177,11 +177,11 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
                 <User size={16} className="text-slate-400" />
                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Thông tin Khách hàng</h3>
               </div>
-              
+
               {bookingMode === 'existing' ? (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Chọn Khách hàng *</label>
-                  <select 
+                  <select
                     {...register('khach_hang_id')}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-colors text-sm"
                   >
@@ -198,7 +198,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
                 <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Họ tên *</label>
-                    <input 
+                    <input
                       type="text"
                       {...register('ho_ten_khach')}
                       className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-colors text-sm"
@@ -209,7 +209,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1.5">Số điện thoại *</label>
-                      <input 
+                      <input
                         type="tel"
                         {...register('so_dien_thoai')}
                         className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-colors text-sm"
@@ -219,7 +219,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1.5">Giới tính</label>
-                      <select 
+                      <select
                         {...register('gioi_tinh_khach')}
                         className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-colors text-sm"
                       >
@@ -241,7 +241,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Dịch vụ *</label>
-                <select 
+                <select
                   {...register('dich_vu_id')}
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-colors text-sm"
                 >
@@ -254,8 +254,8 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Kỹ thuật viên (Tuỳ chọn)</label>
-                <select 
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Chuyên gia y tế / Bác sĩ (Tuỳ chọn)</label>
+                <select
                   {...register('ky_thuat_vien_id')}
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-colors text-sm"
                 >
@@ -269,7 +269,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
               <div className="grid grid-cols-12 gap-3">
                 <div className="col-span-12 md:col-span-6">
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Ngày *</label>
-                  <input 
+                  <input
                     type="date"
                     {...register('ngay_bat_dau')}
                     className="w-full px-3 py-2.5 bg-white border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-colors text-sm"
@@ -278,7 +278,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
                 </div>
                 <div className="col-span-6 md:col-span-3">
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Giờ BĐ *</label>
-                  <input 
+                  <input
                     type="time"
                     {...register('gio_bat_dau')}
                     className="w-full px-2 py-2.5 bg-white border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-colors text-sm"
@@ -286,7 +286,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
                 </div>
                 <div className="col-span-6 md:col-span-3">
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Giờ KT *</label>
-                  <input 
+                  <input
                     type="time"
                     {...register('gio_ket_thuc')}
                     className="w-full px-2 py-2.5 bg-white border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition-colors text-sm"
@@ -301,10 +301,10 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
                 <FileText size={16} className="text-slate-400" />
                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Thông tin thêm</h3>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Lý do khám / Ghi chú</label>
-                <textarea 
+                <textarea
                   {...register('ly_do_kham')}
                   rows={3}
                   placeholder="Triệu chứng, yêu cầu đặc biệt..."
@@ -317,14 +317,14 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
 
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
-          <button 
+          <button
             type="button"
             onClick={onClose}
             className="px-5 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
           >
             Hủy bỏ
           </button>
-          <button 
+          <button
             type="submit"
             form="appointmentForm"
             disabled={loading}

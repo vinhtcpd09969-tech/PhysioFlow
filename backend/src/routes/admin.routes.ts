@@ -162,5 +162,6 @@ router.get('/analytics/performance', adminController.getStaffPerformance);
 router.get('/appointments', appointmentController.getAllAppointments);
 router.post('/appointments', appointmentController.createAppointment);
 router.patch('/appointments/:id/status', appointmentController.updateAppointmentStatus);
+router.put('/appointments/:id/medical-record', appointmentController.updateMedicalRecord);
 
 export default router;

@@ -71,3 +71,4 @@
 - **Cập nhật Tài liệu Định hướng (Documentation Update):**
     - Ghi chú rõ ràng lên đầu các tệp: `PHYSIOFLOW_CONTEXT.md`, `MODULE_ARCHITECTURE.md`, `PLAN-physio-website.md`, và `PLAN-pm-roadmap.md` rằng chúng hiện tại **chỉ mang tính chất tham khảo**. Dự án phát triển theo triết lý tinh gọn Agile: "Làm đến đâu phát triển đến đó".
 
+

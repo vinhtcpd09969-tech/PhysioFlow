@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import appointmentService from '../services/appointment.service';
-import { createAppointmentSchema, updateAppointmentStatusSchema, createPublicAppointmentSchema } from '../schemas/appointment.schema';
+import { createAppointmentSchema, updateAppointmentStatusSchema, createPublicAppointmentSchema, updateMedicalRecordSchema } from '../schemas/appointment.schema';
 
 // Lấy danh sách lịch hẹn
 export const getAllAppointments = async (req: Request, res: Response) => {
@@ -56,7 +56,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
   try {
     const validated = updateAppointmentStatusSchema.parse({ params: req.params, body: req.body });
     const { id } = validated.params;
-    
+
     const appointment = await appointmentService.updateAppointmentStatus(id, validated.body);
     return res.json(appointment);
   } catch (error: any) {
@@ -65,6 +65,26 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
       return res.status(400).json({ message: error.errors[0].message });
     }
     if (error.message === 'Không tìm thấy lịch hẹn') {
+      return res.status(404).json({ message: error.message });
+    }
+    return res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// Cập nhật hồ sơ bệnh án (Bác sĩ)
+export const updateMedicalRecord = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const validated = updateMedicalRecordSchema.parse({ params: req.params, body: req.body });
+    const { id } = validated.params;
+
+    const appointment = await appointmentService.updateMedicalRecord(id, validated.body);
+    return res.json(appointment);
+  } catch (error: any) {
+    console.error('Lỗi khi cập nhật hồ sơ bệnh án:', error);
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: error.errors[0].message });
+    }
+    if (error.message === 'Không tìm thấy lịch khám để cập nhật hồ sơ') {
       return res.status(404).json({ message: error.message });
     }
     return res.status(500).json({ message: 'Lỗi server' });

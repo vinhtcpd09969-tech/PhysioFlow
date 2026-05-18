@@ -6,7 +6,7 @@ export const createAppointmentSchema = z.object({
     ho_ten_khach: z.string().optional(),
     so_dien_thoai: z.string().optional(),
     gioi_tinh_khach: z.string().optional(),
-    dich_vu_id: z.string().uuid('ID Dịch vụ không hợp lệ'),
+    dich_vu_id: z.string().uuid('ID Dịch vụ không hợp lệ').optional().nullable(),
     ky_thuat_vien_id: z.string().uuid('ID KTV không hợp lệ').optional().nullable(),
     phong_id: z.string().optional().nullable(),
     ngay_gio_bat_dau: z.string().datetime({ message: 'Ngày giờ bắt đầu không hợp lệ' }),
@@ -15,6 +15,7 @@ export const createAppointmentSchema = z.object({
     ly_do_kham: z.string().optional(),
     loai_lich: z.string().optional(),
     dang_ky_goi_id: z.string().optional().nullable(),
+    lich_dat_id: z.string().uuid().optional().nullable(),
   }).refine(data => data.khach_hang_id || (data.ho_ten_khach && data.so_dien_thoai), {
     message: 'Phải cung cấp ID khách hàng hoặc thông tin khách vãng lai (họ tên, sđt)'
   })
@@ -44,5 +45,17 @@ export const updateAppointmentStatusSchema = z.object({
     }),
     ky_thuat_vien_id: z.string().uuid('ID Nhân sự không hợp lệ').optional().nullable(),
     phong_id: z.union([z.string(), z.number()]).optional().nullable(),
+  })
+});
+
+export const updateMedicalRecordSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('ID Lịch khám không hợp lệ'),
+  }),
+  body: z.object({
+    chan_doan: z.string().optional(),
+    chong_chi_dinh: z.string().optional(),
+    khuyen_nghi_dich_vu_id: z.string().uuid().optional().nullable(),
+    khuyen_nghi_goi_id: z.string().uuid().optional().nullable(),
   })
 });

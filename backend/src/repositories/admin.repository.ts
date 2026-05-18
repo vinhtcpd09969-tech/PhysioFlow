@@ -49,18 +49,44 @@ class AdminRepository {
 
   // --- QUẢN LÝ GÓI ĐIỀU TRỊ ---
   async getPackages() {
-    const { rows } = await pool.query('SELECT *, gia_goi as gia_tien FROM goi_dich_vu ORDER BY thoi_gian_tao DESC');
+    const { rows } = await pool.query(`
+      SELECT g.*, g.gia_goi as gia_tien, dm.ten_danh_muc 
+      FROM goi_dich_vu g
+      LEFT JOIN danh_muc_dich_vu dm ON g.danh_muc_id = dm.id
+      ORDER BY g.thoi_gian_tao DESC
+    `);
     return rows;
   }
 
   async createPackage(data: any) {
     const ma_goi = data.ma_goi || 'GDT-' + Math.floor(1000 + Math.random() * 9000);
-    const { rows } = await pool.query(
-      `INSERT INTO goi_dich_vu (ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, han_dung_thang, hien_thi_website, trang_thai, chi_tiet_dich_vu) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *, gia_goi as gia_tien`,
-      [data.ten_goi, ma_goi, data.mo_ta || null, data.tong_so_buoi, data.gia_tien, data.han_dung_thang || 6, data.hien_thi_website !== undefined ? data.hien_thi_website : true, data.trang_thai, JSON.stringify(data.chi_tiet_dich_vu || [])]
-    );
-    return rows[0];
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(
+        `INSERT INTO goi_dich_vu (ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, han_dung_thang, hien_thi_website, trang_thai, danh_muc_id) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *, gia_goi as gia_tien`,
+        [data.ten_goi, ma_goi, data.mo_ta || null, data.tong_so_buoi, data.gia_tien, data.han_dung_thang || 6, data.hien_thi_website !== undefined ? data.hien_thi_website : true, data.trang_thai, data.danh_muc_id || null]
+      );
+      const packageId = rows[0].id;
+
+      if (data.chi_tiet_dich_vu && Array.isArray(data.chi_tiet_dich_vu)) {
+        for (const item of data.chi_tiet_dich_vu) {
+          await client.query(
+            'INSERT INTO goi_dich_vu_chi_tiet (goi_dich_vu_id, dich_vu_id, so_buoi_trong_goi) VALUES ($1, $2, $3)',
+            [packageId, item.dich_vu_id, item.so_buoi || item.so_buoi_trong_goi]
+          );
+        }
+      }
+
+      await client.query('COMMIT');
+      return rows[0];
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   // --- QUẢN LÝ NHÂN SỰ ---
@@ -69,7 +95,7 @@ class AdminRepository {
       SELECT nd.id, nd.ho_ten, nd.email, nd.so_dien_thoai, nd.trang_thai, vt.ten_hien_thi as vai_tro, ktv.id as ky_thuat_vien_id
       FROM nguoi_dung nd
       JOIN vai_tro vt ON nd.vai_tro_id = vt.id
-      LEFT JOIN ky_thuat_vien ktv ON nd.id = ktv.nguoi_dung_id
+      LEFT JOIN chuyen_gia_y_te ktv ON nd.id = ktv.nguoi_dung_id
       WHERE nd.vai_tro_id IN (2, 3, 4, 5) AND nd.deleted_at IS NULL
       ORDER BY nd.vai_tro_id, nd.ho_ten
     `);
@@ -90,17 +116,17 @@ class AdminRepository {
          VALUES ($1, $2, $3, $4, $5, $6, TRUE) RETURNING id, ho_ten, email`,
         [data.ho_ten, data.email, hash, data.vai_tro_id, data.so_dien_thoai || null, data.trang_thai]
       );
-      
+
       if (data.vai_tro_id === 3 || data.vai_tro_id === 4) {
         const ma_nhan_vien = 'NV-' + Math.floor(1000 + Math.random() * 9000);
         const chuyen_mon_chinh = data.vai_tro_id === 4 ? 'Bác sĩ chuyên khoa' : 'Vật lý trị liệu';
         await client.query(
-          `INSERT INTO ky_thuat_vien (nguoi_dung_id, ma_nhan_vien, chuyen_mon_chinh, so_nam_kinh_nghiem, trang_thai) 
+          `INSERT INTO chuyen_gia_y_te (nguoi_dung_id, ma_nhan_vien, chuyen_mon_chinh, so_nam_kinh_nghiem, trang_thai) 
            VALUES ($1, $2, $3, 1, 'hoat_dong')`,
           [rows[0].id, ma_nhan_vien, chuyen_mon_chinh]
         );
       }
-      
+
       await client.query('COMMIT');
       return rows[0];
     } catch (e) {
@@ -183,15 +209,16 @@ class AdminRepository {
   // --- QUẢN LÝ HỒ SƠ ĐIỀU TRỊ ---
   async getMedicalRecords() {
     const { rows } = await pool.query(`
-      SELECT dg.id, dg.id as ma_danh_gia, dg.ngay_danh_gia, dg.chan_doan_so_bo as chan_doan, dg.trang_thai,
+      SELECT ld.id, ld.ma_lich_dat as ma_danh_gia, ld.ngay_gio_bat_dau as ngay_danh_gia, ld.chan_doan, ld.trang_thai,
              nd_kh.ho_ten as ten_khach_hang, 'KH' as ma_khach_hang,
              nd_ktv.ho_ten as ten_ky_thuat_vien
-      FROM danh_gia dg
-      JOIN khach_hang kh ON dg.khach_hang_id = kh.id
-      JOIN nguoi_dung nd_kh ON kh.nguoi_dung_id = nd_kh.id
-      JOIN ky_thuat_vien ktv ON dg.ky_thuat_vien_id = ktv.id
-      JOIN nguoi_dung nd_ktv ON ktv.nguoi_dung_id = nd_ktv.id
-      ORDER BY dg.ngay_danh_gia DESC
+      FROM lich_dat ld
+      LEFT JOIN khach_hang kh ON ld.khach_hang_id = kh.id
+      LEFT JOIN nguoi_dung nd_kh ON kh.nguoi_dung_id = nd_kh.id
+      LEFT JOIN chuyen_gia_y_te ktv ON ld.ky_thuat_vien_id = ktv.id
+      LEFT JOIN nguoi_dung nd_ktv ON ktv.nguoi_dung_id = nd_ktv.id
+      WHERE ld.chan_doan IS NOT NULL OR ld.trang_thai IN ('hoan_thanh', 'da_checkin')
+      ORDER BY ld.ngay_gio_bat_dau DESC
     `);
     return rows;
   }
@@ -312,7 +339,7 @@ class AdminRepository {
       JOIN dich_vu dv ON btl.dich_vu_id = dv.id
       JOIN khach_hang kh ON dg.khach_hang_id = kh.id
       JOIN nguoi_dung nd_kh ON kh.nguoi_dung_id = nd_kh.id
-      JOIN ky_thuat_vien ktv ON dg.ky_thuat_vien_id = ktv.id
+      JOIN chuyen_gia_y_te ktv ON dg.ky_thuat_vien_id = ktv.id
       JOIN nguoi_dung nd_ktv ON ktv.nguoi_dung_id = nd_ktv.id
       ORDER BY dg.thoi_gian_danh_gia DESC
     `);
@@ -325,7 +352,7 @@ class AdminRepository {
       pool.query('SELECT COUNT(*) FROM khach_hang'),
       pool.query('SELECT COUNT(*) FROM lich_dat WHERE trang_thai = \'cho_xac_nhan\''),
       pool.query('SELECT SUM(da_thanh_toan) FROM hoa_don'),
-      pool.query('SELECT COUNT(*) FROM ky_thuat_vien WHERE trang_thai = \'hoat_dong\'')
+      pool.query('SELECT COUNT(*) FROM chuyen_gia_y_te WHERE trang_thai = \'hoat_dong\'')
     ];
     const results = await Promise.all(queries);
     return {
@@ -339,7 +366,7 @@ class AdminRepository {
   async getRevenueStats() {
     const { rows } = await pool.query(`
       SELECT 
-        TO_CHAR(ngay_thanh_toan, 'YYYY-MM') as month,
+        TO_CHAR(thoi_gian_giao_dich, 'YYYY-MM') as month,
         SUM(so_tien) as revenue
       FROM thanh_toan
       WHERE trang_thai = 'thanh_cong'
@@ -356,7 +383,7 @@ class AdminRepository {
         nd.ho_ten as name,
         COUNT(btl.id) as sessions
       FROM buoi_tri_lieu btl
-      JOIN ky_thuat_vien ktv ON btl.ky_thuat_vien_id = ktv.id
+      JOIN chuyen_gia_y_te ktv ON btl.ky_thuat_vien_id = ktv.id
       JOIN nguoi_dung nd ON ktv.nguoi_dung_id = nd.id
       WHERE btl.trang_thai = 'hoan_thanh'
         AND btl.thoi_gian_bat_dau >= DATE_TRUNC('month', NOW())

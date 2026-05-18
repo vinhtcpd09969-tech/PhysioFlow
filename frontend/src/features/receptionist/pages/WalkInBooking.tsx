@@ -17,7 +17,7 @@ interface BookingState {
   loading: boolean;
 }
 
-type BookingAction = 
+type BookingAction =
   | { type: 'SET_FORM_FIELD', field: string, value: string }
   | { type: 'SET_DATA', services: any[], staff: any[] }
   | { type: 'SET_LOADING', loading: boolean }
@@ -53,24 +53,24 @@ export default function WalkInBooking() {
     staff: [],
     loading: false
   });
-  
+
   const [isClient, setIsClient] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     setIsClient(true);
     dispatch({ type: 'INIT_DATE', date: new Date().toISOString().slice(0, 16) });
-    
+
     const fetchSelectData = async () => {
       try {
         const [servRes, staffRes] = await Promise.all([
           api.get('/admin/services'),
           api.get('/admin/staff')
         ]);
-        
+
         const services = Array.isArray(servRes.data) ? servRes.data : [];
-        const staff = Array.isArray(staffRes.data) ? staffRes.data.filter((s: any) => s.vai_tro === 'Kỹ thuật viên' || s.vai_tro === 'Bác sĩ') : [];
-        
+        const staff = Array.isArray(staffRes.data) ? staffRes.data.filter((s: any) => s.vai_tro === 'Chuyên gia y tế' || s.vai_tro === 'Bác sĩ') : [];
+
         dispatch({ type: 'SET_DATA', services, staff });
       } catch (error) {
         console.error('Error loading form data:', error);
@@ -121,10 +121,10 @@ export default function WalkInBooking() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="sdt" className="block text-sm font-medium text-zinc-700 mb-2">Số điện thoại *</label>
-              <input 
+              <input
                 id="sdt"
                 required
-                type="text" 
+                type="text"
                 name="sdt"
                 value={formData.sdt}
                 onChange={handleChange}
@@ -134,10 +134,10 @@ export default function WalkInBooking() {
             </div>
             <div>
               <label htmlFor="ho_ten" className="block text-sm font-medium text-zinc-700 mb-2">Họ và tên *</label>
-              <input 
+              <input
                 id="ho_ten"
                 required
-                type="text" 
+                type="text"
                 name="ho_ten"
                 value={formData.ho_ten}
                 onChange={handleChange}
@@ -146,7 +146,7 @@ export default function WalkInBooking() {
             </div>
             <div>
               <label htmlFor="gioi_tinh" className="block text-sm font-medium text-zinc-700 mb-2">Giới tính</label>
-              <select 
+              <select
                 id="gioi_tinh"
                 name="gioi_tinh"
                 value={formData.gioi_tinh}
@@ -160,9 +160,9 @@ export default function WalkInBooking() {
             </div>
             <div>
               <label htmlFor="ngay_sinh" className="block text-sm font-medium text-zinc-700 mb-2">Năm sinh</label>
-              <input 
+              <input
                 id="ngay_sinh"
-                type="date" 
+                type="date"
                 name="ngay_sinh"
                 value={formData.ngay_sinh}
                 onChange={handleChange}
@@ -181,7 +181,7 @@ export default function WalkInBooking() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="dich_vu_id" className="block text-sm font-medium text-zinc-700 mb-2">Dịch vụ *</label>
-              <select 
+              <select
                 id="dich_vu_id"
                 required
                 name="dich_vu_id"
@@ -196,8 +196,8 @@ export default function WalkInBooking() {
               </select>
             </div>
             <div>
-              <label htmlFor="ky_thuat_vien_id" className="block text-sm font-medium text-zinc-700 mb-2">Kỹ thuật viên</label>
-              <select 
+              <label htmlFor="ky_thuat_vien_id" className="block text-sm font-medium text-zinc-700 mb-2">Chuyên gia y tế</label>
+              <select
                 id="ky_thuat_vien_id"
                 name="ky_thuat_vien_id"
                 value={formData.ky_thuat_vien_id}
@@ -212,10 +212,10 @@ export default function WalkInBooking() {
             </div>
             <div className="md:col-span-2">
               <label htmlFor="gio_bat_dau" className="block text-sm font-medium text-zinc-700 mb-2">Giờ bắt đầu làm *</label>
-              <input 
+              <input
                 id="gio_bat_dau"
                 required
-                type="datetime-local" 
+                type="datetime-local"
                 name="gio_bat_dau"
                 value={formData.gio_bat_dau}
                 onChange={handleChange}
@@ -226,15 +226,15 @@ export default function WalkInBooking() {
         </div>
 
         <div className="pt-6 border-t border-zinc-100 flex justify-end gap-4">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => navigate('/receptionist')}
             className="px-6 py-2.5 text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-xl font-medium transition-colors"
           >
             Hủy
           </button>
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="px-8 py-2.5 text-white bg-primary hover:opacity-90 rounded-xl font-medium transition-colors shadow-lg shadow-primary/20 disabled:opacity-50"
           >

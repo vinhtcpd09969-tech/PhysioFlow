@@ -97,10 +97,10 @@ export default function TreatmentBookingModal({
           )}
 
           <div className="space-y-1.5">
-            <label className="text-sm font-bold text-slate-700">Kỹ thuật viên *</label>
+            <label className="text-sm font-bold text-slate-700">Chuyên gia y tế *</label>
             <select value={selectedKtvId} onChange={(e) => setSelectedKtvId(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20" required>
               <option value="">-- Lựa chọn --</option>
-              {staffList.filter(s => s.vai_tro === 'Kỹ thuật viên').map(s => <option key={s.ky_thuat_vien_id || s.id} value={s.ky_thuat_vien_id || ''}>{s.ho_ten}</option>)}
+              {staffList.filter(s => s.vai_tro === 'Chuyên gia y tế').map(s => <option key={s.ky_thuat_vien_id || s.id} value={s.ky_thuat_vien_id || ''}>{s.ho_ten}</option>)}
             </select>
           </div>
 

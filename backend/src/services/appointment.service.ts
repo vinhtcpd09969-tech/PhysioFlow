@@ -24,6 +24,10 @@ class AppointmentService {
     }
     return appointment;
   }
+
+  async updateMedicalRecord(id: string, data: { chan_doan?: string, chong_chi_dinh?: string, khuyen_nghi_dich_vu_id?: string | null, khuyen_nghi_goi_id?: string | null }) {
+    return appointmentRepository.updateMedicalRecord(id, data);
+  }
 }
 
 export default new AppointmentService();

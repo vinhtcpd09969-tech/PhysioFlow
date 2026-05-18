@@ -24,6 +24,7 @@ export const serviceSchema = z.object({
 // --- Gói điều trị ---
 export const packageSchema = z.object({
   body: z.object({
+    danh_muc_id: z.number().int().positive('Danh mục không hợp lệ').optional().nullable(),
     ten_goi: z.string().min(1, 'Tên gói là bắt buộc'),
     ma_goi: z.string().optional(),
     mo_ta: z.string().optional(),
