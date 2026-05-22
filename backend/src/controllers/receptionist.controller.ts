@@ -12,6 +12,17 @@ export const getTodayAppointments = async (req: Request, res: Response) => {
   }
 };
 
+// GET /api/receptionist/dashboard
+export const getDashboardData = async (req: Request, res: Response) => {
+  try {
+    const data = await receptionistService.getDashboardData();
+    res.json(data);
+  } catch (error) {
+    console.error('Lỗi khi lấy dữ liệu dashboard lễ tân:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
 // PATCH /api/receptionist/appointments/:id/status
 export const updateAppointmentStatus = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -74,16 +85,63 @@ export const createBillingFromAppointment = async (req: Request, res: Response):
 // POST /api/receptionist/payment
 export const processPayment = async (req: Request, res: Response): Promise<any> => {
   try {
-    await receptionistService.processPayment(req.body);
-    res.json({ message: 'Thanh toán thành công' });
+    const result = await receptionistService.processPayment(req.body);
+    res.json({ message: 'Thanh toán thành công', ...result });
   } catch (error: any) {
     console.error('Lỗi thanh toán:', error);
     if (error.message === 'Không tìm thấy hóa đơn') {
       return res.status(404).json({ message: error.message });
     }
-    if (error.message === 'Số tiền nhận không đủ') {
+    if (error.message.includes('Số tiền nhận không đủ')) {
       return res.status(400).json({ message: error.message });
     }
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// POST /api/receptionist/billing/calculate
+export const calculateBilling = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const result = await receptionistService.calculateBilling(req.body);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Lỗi tính hóa đơn:', error);
+    res.status(400).json({ message: error.message || 'Lỗi server' });
+  }
+};
+
+// POST /api/receptionist/billing/create
+export const createBillingDirect = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const result = await receptionistService.createBillingDirect(req.body);
+    res.json({ message: 'Tạo hóa đơn thành công', hoa_don: result });
+  } catch (error: any) {
+    console.error('Lỗi tạo hóa đơn direct:', error);
+    res.status(400).json({ message: error.message || 'Lỗi server' });
+  }
+};
+
+// POST /api/receptionist/sessions/:id/services
+export const updateSessionServices = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params as { id: string };
+    const { services } = req.body;
+    const result = await receptionistService.updateSessionServices(id, services);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Lỗi cập nhật dịch vụ buổi trị liệu:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// GET /api/receptionist/sessions/:id/services
+export const getSessionServices = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params as { id: string };
+    const result = await receptionistService.getSessionServices(id);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Lỗi lấy dịch vụ buổi trị liệu:', error);
     res.status(500).json({ message: 'Lỗi server' });
   }
 };

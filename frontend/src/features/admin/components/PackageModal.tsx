@@ -4,7 +4,7 @@ import * as z from 'zod';
 import { createPackage, updatePackage } from '../../../api/admin.api';
 
 const packageSchema = z.object({
-  ten_goi: z.string().min(1, 'Tên gói là bắt buộc'),
+  ten_goi: z.string().min(1, 'Tên liệu trình là bắt buộc'),
   ma_goi: z.string().optional(),
   mo_ta: z.string().optional(),
   tong_so_buoi: z.number().min(1, 'Số buổi phải lớn hơn 0'),
@@ -63,7 +63,7 @@ export default function PackageModal({ services, onClose, onSuccess, editingPack
       onSuccess();
     } catch (error) {
       console.error('Error saving package:', error);
-      alert('Có lỗi xảy ra khi lưu cấu hình gói');
+      alert('Có lỗi xảy ra khi lưu cấu hình liệu trình');
     }
   };
 
@@ -73,10 +73,10 @@ export default function PackageModal({ services, onClose, onSuccess, editingPack
         <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
           <div>
             <h3 className="text-xl font-bold text-slate-800">
-              {editingPackage ? 'Cập nhật gói điều trị' : 'Cấu hình gói điều trị'}
+              {editingPackage ? 'Cập nhật liệu trình điều trị' : 'Cấu hình liệu trình điều trị'}
             </h3>
             <p className="text-sm text-slate-500 mt-0.5">
-              {editingPackage ? 'Chỉnh sửa thông tin và cấu trúc dịch vụ' : 'Thiết lập thông tin và cấu trúc dịch vụ của gói'}
+              {editingPackage ? 'Chỉnh sửa thông tin và cấu trúc dịch vụ' : 'Thiết lập thông tin và cấu trúc dịch vụ của liệu trình'}
             </p>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:scale-90 transition-all">
@@ -90,16 +90,16 @@ export default function PackageModal({ services, onClose, onSuccess, editingPack
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="md:col-span-1">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tên gói điều trị *</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tên liệu trình điều trị *</label>
                 <input 
                   {...register('ten_goi')} 
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white outline-none transition-all font-medium"
-                  placeholder="VD: Gói Chuyên sâu"
+                  placeholder="VD: Liệu trình Chuyên sâu"
                 />
                 {errors.ten_goi && <p className="text-rose-500 text-xs mt-1 font-medium">{errors.ten_goi.message}</p>}
               </div>
               <div className="md:col-span-1">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mã gói</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mã liệu trình</label>
                 <input 
                   {...register('ma_goi')} 
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-white outline-none transition-all font-medium uppercase"
@@ -198,14 +198,14 @@ export default function PackageModal({ services, onClose, onSuccess, editingPack
                   />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 mt-2">Chọn các dịch vụ lẻ mà khách hàng có thể sử dụng khi mua gói này.</p>
+              <p className="text-xs text-slate-500 mt-2">Chọn các dịch vụ linh động mà khách hàng có thể sử dụng khi mua liệu trình này.</p>
             </div>
 
             {/* Toggles */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-bold text-slate-800">Hiển thị trên Website</h4>
-                <p className="text-xs text-slate-500 mt-0.5">Cho phép khách hàng xem và đặt gói online</p>
+                <p className="text-xs text-slate-500 mt-0.5">Cho phép khách hàng xem và đặt liệu trình online</p>
               </div>
               <Controller
                 name="hien_thi_website"

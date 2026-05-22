@@ -151,6 +151,31 @@ class AdminService {
     return adminRepository.getFeedback();
   }
 
+  // --- QUẢN LÝ ƯU ĐÃI THANH TOÁN ---
+  async getPaymentPromotions() {
+    return adminRepository.getPaymentPromotions();
+  }
+
+  async getActivePaymentPromotion() {
+    return adminRepository.getActivePaymentPromotion();
+  }
+
+  async createPaymentPromotion(data: any) {
+    return adminRepository.createPaymentPromotion(data);
+  }
+
+  async updatePaymentPromotion(id: string, data: any) {
+    const promotion = await adminRepository.updatePaymentPromotion(id, data);
+    if (!promotion) throw new Error('Không tìm thấy ưu đãi thanh toán');
+    return promotion;
+  }
+
+  async deletePaymentPromotion(id: string) {
+    const promotion = await adminRepository.deletePaymentPromotion(id);
+    if (!promotion) throw new Error('Không tìm thấy ưu đãi thanh toán');
+    return promotion;
+  }
+
   // --- BÁO CÁO & THỐNG KÊ ---
   async getDashboardSummary() {
     return adminRepository.getDashboardSummary();
@@ -163,6 +188,11 @@ class AdminService {
   async getStaffPerformance() {
     return adminRepository.getStaffPerformance();
   }
+
+  async getAvailableStaff(dich_vu_id: string | null, dang_ky_goi_id: string | null, ngay: string, gio_bat_dau: string) {
+    return adminRepository.getAvailableStaff(dich_vu_id, dang_ky_goi_id, ngay, gio_bat_dau);
+  }
 }
 
 export default new AdminService();
+

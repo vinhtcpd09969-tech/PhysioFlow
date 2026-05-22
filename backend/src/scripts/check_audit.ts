@@ -8,21 +8,7 @@ const pool = new Pool({
 
 async function main() {
   console.log('--- ĐANG TRUY VẤN NHẬT KÝ HỆ THỐNG (AUDIT LOGS) ---');
-  try {
-    const { rows } = await pool.query(`
-      SELECT a.*, nd.ho_ten as user_name
-      FROM system_audit_log a
-      LEFT JOIN nguoi_dung nd ON a.user_id = nd.id
-      ORDER BY a.created_at DESC
-      LIMIT 50
-    `);
-    console.log(`Tìm thấy ${rows.length} hoạt động gần nhất:`);
-    console.log(JSON.stringify(rows, null, 2));
-  } catch (err) {
-    console.error('Lỗi khi truy vấn:', err);
-  } finally {
-    await pool.end();
-  }
+  console.log('Lưu ý: Bảng system_audit_log đã được xóa khỏi cơ sở dữ liệu. Toàn bộ log hiện được ghi ra console.');
 }
 
 main();

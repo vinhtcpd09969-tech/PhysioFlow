@@ -65,6 +65,7 @@ BEGIN
     DELETE FROM public.hoa_don_chi_tiet WHERE hoa_don_id IN (SELECT id FROM public.hoa_don WHERE lich_dat_id IS NOT NULL);
     DELETE FROM public.thanh_toan WHERE hoa_don_id IN (SELECT id FROM public.hoa_don WHERE lich_dat_id IS NOT NULL);
     DELETE FROM public.hoa_don WHERE lich_dat_id IS NOT NULL;
+    DELETE FROM public.danh_gia_dich_vu;
     DELETE FROM public.buoi_tri_lieu;
     DELETE FROM public.lich_dieu_tri;
     DELETE FROM public.lich_dat;
@@ -109,18 +110,18 @@ BEGIN
 
     -- Tạo 2 buổi điều trị cho Lộ trình 1 (Hiển thị lên lưới Lịch Điều Trị hôm nay)
     INSERT INTO public.buoi_tri_lieu (id, lich_dieu_tri_id, khach_hang_id, ky_thuat_vien_id, phong_id, dich_vu_id, thoi_gian_bat_dau, thoi_gian_ket_thuc, trang_thai)
-    VALUES (gen_random_uuid(), v_ldt_1_id, v_khach_hang_1_id, COALESCE(v_ktv_1_id, v_bs_1_id), v_phong_1_id, v_dich_vu_1_id, '2026-05-19 08:00:00', '2026-05-19 09:00:00', 'dang_thuc_hien');
+    VALUES (gen_random_uuid(), v_ldt_1_id, v_khach_hang_1_id, COALESCE(v_ktv_1_id, v_bs_1_id), v_phong_1_id, v_dich_vu_2_id, '2026-05-19 08:00:00', '2026-05-19 09:00:00', 'dang_thuc_hien');
 
     INSERT INTO public.buoi_tri_lieu (id, lich_dieu_tri_id, khach_hang_id, ky_thuat_vien_id, phong_id, dich_vu_id, thoi_gian_bat_dau, thoi_gian_ket_thuc, trang_thai)
-    VALUES (gen_random_uuid(), v_ldt_1_id, v_khach_hang_1_id, COALESCE(v_ktv_2_id, v_bs_2_id), v_phong_2_id, v_dich_vu_1_id, '2026-05-19 14:30:00', '2026-05-19 15:30:00', 'cho_thuc_hien');
+    VALUES (gen_random_uuid(), v_ldt_1_id, v_khach_hang_1_id, COALESCE(v_ktv_2_id, v_bs_2_id), v_phong_2_id, v_dich_vu_2_id, '2026-05-19 14:30:00', '2026-05-19 15:30:00', 'cho_thuc_hien');
 
     -- Lộ trình 2
     INSERT INTO public.lich_dieu_tri (id, ma_lich_dieu_tri, khach_hang_id, ho_ten_khach, so_dien_thoai, loai_dieu_tri, dich_vu_id, tong_so_buoi, so_buoi_da_dung, trang_thai, thoi_gian_tao)
-    VALUES (gen_random_uuid(), 'TRT9902', v_khach_hang_2_id, v_khach_hang_2_hoten, v_khach_hang_2_sdt, 'dich_vu_le', v_dich_vu_1_id, 1, 0, 'dang_dieu_tri', NOW())
+    VALUES (gen_random_uuid(), 'TRT9902', v_khach_hang_2_id, v_khach_hang_2_hoten, v_khach_hang_2_sdt, 'dich_vu_le', v_dich_vu_2_id, 1, 0, 'dang_dieu_tri', NOW())
     RETURNING id INTO v_ldt_2_id;
 
     -- Tạo 1 buổi điều trị lẻ cho Lộ trình 2
     INSERT INTO public.buoi_tri_lieu (id, lich_dieu_tri_id, khach_hang_id, ky_thuat_vien_id, phong_id, dich_vu_id, thoi_gian_bat_dau, thoi_gian_ket_thuc, trang_thai)
-    VALUES (gen_random_uuid(), v_ldt_2_id, v_khach_hang_2_id, COALESCE(v_ktv_1_id, v_bs_1_id), v_phong_1_id, v_dich_vu_1_id, '2026-05-19 16:00:00', '2026-05-19 17:00:00', 'cho_thuc_hien');
+    VALUES (gen_random_uuid(), v_ldt_2_id, v_khach_hang_2_id, COALESCE(v_ktv_1_id, v_bs_1_id), v_phong_1_id, v_dich_vu_2_id, '2026-05-19 16:00:00', '2026-05-19 17:00:00', 'cho_thuc_hien');
 
 END $$;

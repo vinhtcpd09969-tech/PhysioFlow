@@ -138,8 +138,8 @@ export default function ManageAppointments() {
     const chosenServiceId = treatmentType === 'single' ? selectedServiceId : null;
     const chosenPackageId = treatmentType === 'package' ? selectedPackageId : null;
 
-    if (treatmentType === 'single' && !chosenServiceId) { toast.error('Vui lòng chọn dịch vụ lẻ'); return; }
-    if (treatmentType === 'package' && !chosenPackageId) { toast.error('Vui lòng chọn gói điều trị'); return; }
+    if (treatmentType === 'single' && !chosenServiceId) { toast.error('Vui lòng chọn dịch vụ linh động'); return; }
+    if (treatmentType === 'package' && !chosenPackageId) { toast.error('Vui lòng chọn liệu trình'); return; }
     if (!selectedKtvId) { toast.error('Vui lòng chọn Chuyên gia y tế'); return; }
 
     try {

@@ -99,12 +99,6 @@ CREATE TABLE IF NOT EXISTS phong (
   tang varchar(20)
 );
 
--- 8. phong_dich_vu
-CREATE TABLE IF NOT EXISTS phong_dich_vu (
-  id bigserial PRIMARY KEY,
-  phong_id bigint NOT NULL REFERENCES phong(id),
-  danh_muc_id bigint NOT NULL REFERENCES danh_muc_dich_vu(id)
-);
 
 -- 9. lich_dat
 CREATE TABLE IF NOT EXISTS lich_dat (
@@ -301,16 +295,6 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   created_at timestamp without time zone DEFAULT now()
 );
 
--- 21. hoa_don_chi_tiet
-CREATE TABLE IF NOT EXISTS hoa_don_chi_tiet (
-  id bigserial PRIMARY KEY,
-  hoa_don_id uuid NOT NULL REFERENCES hoa_don(id),
-  mo_ta varchar(300) NOT NULL,
-  don_gia bigint NOT NULL,
-  so_luong integer NOT NULL DEFAULT 1,
-  thanh_tien bigint NOT NULL,
-  dich_vu_id uuid REFERENCES dich_vu(id)
-);
 
 -- 22. thiet_bi_y_te
 CREATE TABLE IF NOT EXISTS thiet_bi_y_te (
@@ -326,17 +310,7 @@ CREATE TABLE IF NOT EXISTS thiet_bi_y_te (
   thoi_gian_tao timestamp without time zone NOT NULL DEFAULT now()
 );
 
--- 23. system_audit_log
-CREATE TABLE IF NOT EXISTS system_audit_log (
-  id bigserial PRIMARY KEY,
-  user_id uuid REFERENCES nguoi_dung(id),
-  action varchar(100) NOT NULL,
-  entity_type varchar(50) NOT NULL,
-  entity_id varchar(100),
-  payload text,
-  ip_address varchar(50),
-  created_at timestamp without time zone NOT NULL DEFAULT now()
-);
+
 `;
 
 async function run() {

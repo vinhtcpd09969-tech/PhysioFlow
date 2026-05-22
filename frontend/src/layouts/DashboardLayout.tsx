@@ -38,36 +38,46 @@ export default function DashboardLayout() {
     <div className="min-h-screen bg-background flex font-body">
       
       {/* Sidebar (Desktop) */}
-      <aside className="hidden lg:flex flex-col w-64 bg-secondary text-white fixed h-full z-20">
-        <div className="p-6 font-heading font-semibold text-2xl flex items-center gap-2">
-          <span className="text-primary">P</span> physio<span className="font-light">waves</span>
+      <aside className="hidden lg:flex flex-col w-64 bg-white text-zinc-500 fixed h-full z-20 border-r border-zinc-100 shadow-sm">
+        <div className="h-16 flex items-center gap-3 px-6 border-b border-zinc-100 bg-white">
+          <div className="size-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+            <span className="text-primary font-bold text-sm">🏥</span>
+          </div>
+          <div>
+            <h1 className="text-sm font-extrabold text-secondary tracking-tight flex items-center gap-1.5">
+              OFFICE CARE <span className="text-primary font-bold text-[9px] bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">2026</span>
+            </h1>
+            <p className="text-[8px] text-zinc-400 font-extrabold tracking-widest uppercase mt-0.5">Phục hồi chức năng</p>
+          </div>
         </div>
         
-        <nav className="flex-1 px-4 mt-6 space-y-2">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {filteredNavItems.map((item) => (
             <NavLink
               key={item.name}
               to={item.path}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-[12px] font-medium transition-all duration-200 ${
+                `flex items-center gap-3 px-4 py-2.5 rounded-[14px] font-bold text-[11px] tracking-wide uppercase transition-all duration-200 group border-l-4 ${
                   isActive 
-                    ? 'bg-primary text-white shadow-[0_4px_14px_0_rgba(46,196,182,0.3)]' 
-                    : 'text-zinc-400 hover:text-white hover:bg-white/10'
+                    ? 'bg-primary/5 text-primary border-primary shadow-sm' 
+                    : 'border-transparent text-zinc-500 hover:bg-zinc-50 hover:text-secondary'
                 }`
               }
             >
-              {item.icon}
+              <span className="transition-transform group-hover:scale-110 duration-200">
+                {item.icon}
+              </span>
               {item.name}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-4 mt-auto">
+        <div className="p-4 border-t border-zinc-100 bg-white">
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 text-zinc-400 hover:text-red-400 hover:bg-white/10 rounded-[12px] transition-colors"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-[14px] bg-zinc-50 hover:bg-rose-50 hover:text-rose-600 border border-zinc-100 hover:border-rose-200 text-xs font-bold transition-all text-zinc-600"
           >
-            <LogOut size={20} />
+            <LogOut size={16} />
             Đăng xuất
           </button>
         </div>
@@ -84,29 +94,34 @@ export default function DashboardLayout() {
           aria-label="Close mobile menu"
         >
           <aside 
-            className="w-64 bg-secondary h-full p-4 flex flex-col" 
+            className="w-64 bg-white h-full p-4 flex flex-col border-r border-zinc-100 shadow-lg" 
             onClick={e => e.stopPropagation()}
             onKeyDown={e => e.stopPropagation()}
             role="none"
           >
-            <div className="flex justify-between items-center mb-8 px-2">
-              <div className="font-heading font-semibold text-xl text-white">
-                <span className="text-primary">P</span> physio<span className="font-light">waves</span>
+            <div className="flex justify-between items-center mb-6 px-2">
+              <div className="flex items-center gap-2">
+                <div className="size-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <span className="text-primary font-bold text-sm">🏥</span>
+                </div>
+                <h1 className="text-sm font-extrabold text-secondary tracking-tight">
+                  OFFICE CARE
+                </h1>
               </div>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="text-zinc-400 hover:text-white">
+              <button onClick={() => setIsMobileMenuOpen(false)} className="text-zinc-400 hover:text-secondary">
                 <X size={24} />
               </button>
             </div>
             
-            <nav className="flex-1 space-y-2">
+            <nav className="flex-1 space-y-1">
               {filteredNavItems.map((item) => (
                 <NavLink
                   key={item.name}
                   to={item.path}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-3 rounded-[12px] font-medium transition-all ${
-                      isActive ? 'bg-primary text-white' : 'text-zinc-400 hover:text-white hover:bg-white/10'
+                    `flex items-center gap-3 px-4 py-2.5 rounded-[14px] font-bold text-[11px] tracking-wide uppercase transition-all border-l-4 ${
+                      isActive ? 'bg-primary/5 text-primary border-primary' : 'border-transparent text-zinc-500 hover:bg-zinc-50 hover:text-secondary'
                     }`
                   }
                 >
@@ -116,8 +131,11 @@ export default function DashboardLayout() {
               ))}
             </nav>
             
-            <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-3 text-zinc-400 hover:text-red-400 mt-auto">
-              <LogOut size={20} /> Đăng xuất
+            <button 
+              onClick={handleLogout} 
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-[14px] bg-zinc-50 hover:bg-rose-50 hover:text-rose-600 border border-zinc-100 hover:border-rose-200 text-xs font-bold transition-all text-zinc-600 mt-auto"
+            >
+              <LogOut size={16} /> Đăng xuất
             </button>
           </aside>
         </div>
@@ -127,7 +145,7 @@ export default function DashboardLayout() {
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
         
         {/* Topbar */}
-        <header className="h-20 bg-white/70 backdrop-blur-md border-b border-zinc-100 sticky top-0 z-10 px-4 sm:px-8 flex items-center justify-between">
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-zinc-100 sticky top-0 z-10 px-4 sm:px-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
               className="lg:hidden text-secondary p-2 rounded-md hover:bg-zinc-100"

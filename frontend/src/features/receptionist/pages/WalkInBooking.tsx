@@ -69,7 +69,7 @@ export default function WalkInBooking() {
         ]);
 
         const services = Array.isArray(servRes.data) ? servRes.data : [];
-        const staff = Array.isArray(staffRes.data) ? staffRes.data.filter((s: any) => s.vai_tro === 'Chuyên gia y tế' || s.vai_tro === 'Bác sĩ') : [];
+        const staff = Array.isArray(staffRes.data) ? staffRes.data.filter((s: any) => s.vai_tro === 'Chuyên gia y tế' || s.vai_tro === 'Bác sĩ' || s.vai_tro === 'Kỹ thuật viên') : [];
 
         dispatch({ type: 'SET_DATA', services, staff });
       } catch (error) {

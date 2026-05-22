@@ -22,6 +22,11 @@ export default {
       borderRadius: {
         '4xl': '24px',
       },
+      boxShadow: {
+        'soft-ui': '0 30px 60px -15px rgba(0, 0, 0, 0.03), 0 15px 30px -10px rgba(0, 0, 0, 0.02)',
+        'soft-ui-hover': '0 40px 80px -15px rgba(0, 0, 0, 0.06), 0 20px 40px -10px rgba(0, 0, 0, 0.04)',
+        'soft-button': '0 10px 25px -5px rgba(46, 196, 182, 0.35)',
+      },
       keyframes: {
         fadeIn: {
           '0%': { opacity: '0' },
@@ -30,11 +35,16 @@ export default {
         slideUp: {
           '0%': { transform: 'translateY(20px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
         }
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out forwards',
         'slide-up': 'slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'shimmer': 'shimmer 2s infinite linear',
       }
     },
   },

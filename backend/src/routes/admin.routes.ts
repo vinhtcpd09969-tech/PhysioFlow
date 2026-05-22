@@ -27,6 +27,7 @@ router.put('/packages/:id', adminController.updatePackage);
 router.delete('/packages/:id', adminController.deletePackage);
 
 // Nhân sự (Staff)
+router.get('/staff/available', adminController.getAvailableStaff);
 router.get('/staff', adminController.getStaff);
 router.post('/staff', adminController.createStaff);
 router.patch('/staff/:id/status', adminController.updateStaffStatus);
@@ -95,6 +96,12 @@ router.get('/vouchers', adminController.getVouchers);
 router.post('/vouchers', adminController.createVoucher);
 router.put('/vouchers/:id', adminController.updateVoucher);
 router.delete('/vouchers/:id', adminController.deleteVoucher);
+
+// Quản lý Ưu đãi Thanh toán
+router.get('/payment-promotions', adminController.getPaymentPromotions);
+router.post('/payment-promotions', adminController.createPaymentPromotion);
+router.put('/payment-promotions/:id', adminController.updatePaymentPromotion);
+router.delete('/payment-promotions/:id', adminController.deletePaymentPromotion);
 
 // Đánh giá (Feedback)
 router.get('/feedback', adminController.getFeedback);

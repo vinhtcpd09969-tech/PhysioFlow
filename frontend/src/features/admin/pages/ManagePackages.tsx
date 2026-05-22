@@ -49,7 +49,7 @@ export default function ManagePackages() {
   }, []);
 
   const handleDelete = async (pkg: any) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa gói điều trị "${pkg.ten_goi}" không?\nHành động này không thể hoàn tác.`)) {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa liệu trình điều trị "${pkg.ten_goi}" không?\nHành động này không thể hoàn tác.`)) {
       try {
         await deletePackage(pkg.id);
         if (selectedPackageId === pkg.id) {
@@ -58,7 +58,7 @@ export default function ManagePackages() {
         fetchData();
       } catch (error) {
         console.error('Error deleting package:', error);
-        alert('Không thể xóa gói điều trị này. Rất có thể gói này đang được liên kết trong lịch đặt hoặc hóa đơn của khách hàng.');
+        alert('Không thể xóa liệu trình điều trị này. Rất có thể liệu trình này đang được liên kết trong lịch đặt hoặc hóa đơn của khách hàng.');
       }
     }
   };
@@ -109,7 +109,7 @@ export default function ManagePackages() {
             <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse"></span>
             <span className="text-xs font-mono tracking-widest text-teal-400 uppercase font-bold">Clinical Workspace</span>
           </div>
-          <h2 className="text-2xl font-bold font-mono tracking-tight">CẤU HÌNH GÓI ĐIỀU TRỊ</h2>
+          <h2 className="text-2xl font-bold font-mono tracking-tight">CẤU HÌNH LIỆU TRÌNH ĐIỀU TRỊ</h2>
           <p className="text-slate-400 text-sm mt-1">Hệ thống phân tích cấu trúc, định giá và tối ưu hóa liệu trình hồi phục chuyên khoa</p>
         </div>
         <button 
@@ -119,14 +119,14 @@ export default function ManagePackages() {
           }}
           className="bg-teal-600 hover:bg-teal-500 active:scale-95 text-white px-5 py-2.5 rounded-md font-mono text-sm font-bold tracking-wider transition-all shadow-md flex items-center gap-2 border border-teal-400/20"
         >
-          <span>[+]</span> TẠO GÓI MỚI
+          <span>[+]</span> TẠO LIỆU TRÌNH MỚI
         </button>
       </div>
 
       {/* KPI HUD Panel */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between transition-all hover:border-slate-400">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono mb-2">DOANH THU GÓI (T.NÀY)</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono mb-2">DOANH THU LIỆU TRÌNH (T.NÀY)</p>
           <div className="flex items-baseline gap-2">
             <h3 className="text-2xl font-bold font-mono tracking-tight text-slate-900">452,8M</h3>
             <span className="text-xs text-emerald-600 font-mono font-bold bg-emerald-50 px-2 py-0.5 border border-emerald-200 rounded">+12.5%</span>
@@ -142,7 +142,7 @@ export default function ManagePackages() {
         </div>
 
         <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between transition-all hover:border-slate-400">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono mb-2">GÓI PHỔ BIẾN NHẤT</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono mb-2">LIỆU TRÌNH PHỔ BIẾN NHẤT</p>
           <div>
             <h3 className="text-md font-bold tracking-tight text-slate-800 truncate">Cột sống chuyên sâu</h3>
             <p className="text-xs text-teal-600 font-mono font-bold mt-1">45% tổng doanh số</p>
@@ -166,14 +166,14 @@ export default function ManagePackages() {
           
           {/* Search Header */}
           <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 font-mono flex-shrink-0">Danh mục Gói điều trị</h3>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 font-mono flex-shrink-0">Danh mục Liệu trình điều trị</h3>
             <div className="relative w-full sm:w-60">
               <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input 
                 type="text" 
-                placeholder="Mã gói, tên gói..." 
+                placeholder="Mã liệu trình, tên liệu trình..." 
                 value={searchQuery}
                 onChange={(e) => setSearchParams(e.target.value ? { q: e.target.value } : {})}
                 className="pl-9 pr-4 py-1.5 w-full border border-slate-200 rounded-md text-xs outline-none focus:border-slate-400 bg-white font-medium" 
@@ -284,7 +284,7 @@ export default function ManagePackages() {
                   </button>
                   <button 
                     onClick={() => handleDelete(selectedPackage)}
-                    title="Xóa gói điều trị"
+                    title="Xóa liệu trình điều trị"
                     className="p-2 border border-slate-200 hover:border-rose-500 hover:bg-rose-50 text-slate-600 hover:text-rose-700 rounded-md transition-colors active:scale-95 bg-white shadow-sm"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -369,7 +369,7 @@ export default function ManagePackages() {
                           })
                         ) : (
                           <tr>
-                            <td colSpan={4} className="p-6 text-center text-slate-400 font-mono">KHÔNG CÓ DỊCH VỤ ĐƯỢC CHỈ ĐỊNH TRONG GÓI</td>
+                            <td colSpan={4} className="p-6 text-center text-slate-400 font-mono">KHÔNG CÓ DỊCH VỤ ĐƯỢC CHỈ ĐỊNH TRONG LIỆU TRÌNH</td>
                           </tr>
                         )}
                       </tbody>
@@ -390,7 +390,7 @@ export default function ManagePackages() {
                         <span className="font-bold">{currencyFormatter.format(selectedStats.totalRetailPrice)}đ</span>
                       </div>
                       <div className="flex justify-between items-center text-teal-300">
-                        <span>GIÁ BÁN GÓI ĐIỀU TRỊ:</span>
+                        <span>GIÁ BÁN LIỆU TRÌNH ĐIỀU TRỊ:</span>
                         <span className="font-bold text-sm text-white">{currencyFormatter.format(selectedPackage.gia_tien)}đ</span>
                       </div>
                       <div className="border-t border-teal-800 my-2 pt-2 flex justify-between items-center text-emerald-400">
@@ -411,7 +411,7 @@ export default function ManagePackages() {
               <svg className="w-12 h-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
               </svg>
-              <span>VUI LÒNG CHỌN GÓI DỊCH VỤ TRÊN THƯ MỤC ĐỂ HIỂN THỊ PHÂN TÍCH</span>
+              <span>VUI LÒNG CHỌN LIỆU TRÌNH TRÊN THƯ MỤC ĐỂ HIỂN THỊ PHÂN TÍCH</span>
             </div>
           )}
         </div>

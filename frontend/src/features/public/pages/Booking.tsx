@@ -170,18 +170,18 @@ export default function Booking() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center space-y-6">
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-[32px] shadow-soft-ui-hover p-8 text-center space-y-6 border border-gray-100/50 animate-slide-up">
+          <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[24px] flex items-center justify-center mx-auto shadow-inner">
             <CheckCircle2 size={40} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">Đặt lịch thành công!</h2>
-          <p className="text-gray-600">
-            Cảm ơn bạn đã tin tưởng Office Care. Lễ tân của chúng tôi sẽ gọi điện xác nhận trong vòng 15 phút tới.
+          <h2 className="text-2xl font-extrabold text-secondary font-heading">Đặt lịch thành công!</h2>
+          <p className="text-zinc-500 font-semibold text-sm leading-relaxed">
+            Cảm ơn bạn đã tin tưởng PhysioWaves. Lễ tân của chúng tôi sẽ gọi điện xác nhận trong vòng 15 phút tới.
           </p>
-          <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-left text-sm">
-            <p className="font-semibold mb-2">Lời khuyên trước khi đến khám:</p>
-            <ul className="list-disc list-inside space-y-1">
+          <div className="bg-primary/10 text-primary p-5 rounded-[20px] text-left text-sm border border-primary/20">
+            <p className="font-bold mb-2">Lời khuyên trước khi đến khám:</p>
+            <ul className="list-disc list-inside space-y-1.5 font-semibold text-primary/80">
               <li>Mặc trang phục rộng rãi, thoải mái.</li>
               <li>Mang theo phim chụp X-Quang/MRI (nếu có).</li>
               <li>Đến sớm 10 phút để làm thủ tục.</li>
@@ -189,7 +189,7 @@ export default function Booking() {
           </div>
           <button
             onClick={() => navigate('/')}
-            className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition"
+            className="w-full bg-primary hover:bg-[#25A89C] text-white font-bold py-4 rounded-[16px] shadow-soft-button transition-all hover:-translate-y-0.5 active:translate-y-0"
           >
             Quay lại Trang chủ
           </button>
@@ -199,70 +199,71 @@ export default function Booking() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">Đặt lịch Khám lượng giá</h1>
-          <p className="mt-4 text-lg text-gray-600">Chẩn đoán chính xác - Điều trị tận gốc cùng chuyên gia</p>
+        <div className="text-center mb-12 animate-slide-up">
+          <h1 className="text-3xl font-extrabold text-secondary sm:text-5xl font-heading tracking-tight">Đặt lịch Khám lượng giá</h1>
+          <p className="mt-4 text-lg text-zinc-500 font-semibold">Chẩn đoán chính xác - Điều trị tận gốc cùng chuyên gia</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* CỘT TRÁI: THÔNG TIN DỊCH VỤ */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="h-40 bg-blue-600 relative">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <div className="absolute bottom-4 left-4 right-4 text-white">
-                  <h2 className="text-xl font-bold leading-tight">Khám Lâm sàng & Lượng giá Y khoa</h2>
-                  <p className="text-blue-100 text-sm mt-1">Office Care Clinic</p>
+          {/* CỘT TRÁI: THÔNG TIN DỊCH VỤ - Soft UI Card */}
+          <div className="lg:col-span-4 space-y-6 opacity-0 animate-slide-up stagger-delay-2">
+            <div className="bg-white rounded-[32px] shadow-soft-ui border border-gray-100/50 overflow-hidden">
+              <div className="h-44 bg-gradient-to-br from-secondary to-primary/80 relative p-6 flex flex-col justify-end">
+                <div className="absolute inset-0 bg-black/10"></div>
+                <div className="relative z-10 text-white">
+                  <span className="bg-primary/20 text-primary border border-primary/30 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full">Clinic</span>
+                  <h2 className="text-xl font-bold leading-tight mt-3">Khám Lâm sàng & Lượng giá Y khoa</h2>
+                  <p className="text-white/70 text-xs font-semibold mt-1">PhysioWaves Clinic</p>
                 </div>
               </div>
               
-              <div className="p-6 space-y-6">
-                <div className="flex items-start space-x-3 text-gray-600">
-                  <MapPin className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm">Tầng 3, Tòa nhà Văn phòng ABC, Quận 1, TP.HCM</span>
+              <div className="p-8 space-y-6">
+                <div className="flex items-start gap-4 text-zinc-500">
+                  <MapPin className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm font-semibold leading-relaxed">Tầng 3, Tòa nhà Văn phòng ABC, Quận 7, TP.HCM</span>
                 </div>
                 
-                <div className="flex items-start space-x-3 text-gray-600">
-                  <Activity className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm">Trị liệu Cơ xương khớp, Thần kinh cột sống (Vật lý trị liệu)</span>
+                <div className="flex items-start gap-4 text-zinc-500">
+                  <Activity className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-sm font-semibold leading-relaxed">Trị liệu Cơ xương khớp, Thần kinh cột sống (Vật lý trị liệu)</span>
                 </div>
 
                 <div className="pt-6 border-t border-gray-100">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-600 font-medium">Phí khám ban đầu</span>
-                    <span className="text-xl font-bold text-blue-600">300.000đ</span>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-zinc-500 font-bold text-sm">Phí khám ban đầu</span>
+                    <span className="text-2xl font-extrabold text-primary font-heading">300.000đ</span>
                   </div>
-                  <div className="flex items-start space-x-2 bg-blue-50 text-blue-800 p-3 rounded-lg text-xs">
+                  <div className="flex items-start gap-3 bg-primary/10 text-primary p-4 rounded-[20px] text-xs border border-primary/20 leading-relaxed font-semibold">
                     <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                    <p>Miễn phí 100% phí khám nếu khách hàng đăng ký sử dụng bất kỳ dịch vụ hoặc gói trị liệu nào sau khi khám.</p>
+                    <p>Miễn phí 100% phí khám nếu khách hàng đăng ký sử dụng bất kỳ dịch vụ hoặc liệu trình nào sau khi khám.</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* CỘT PHẢI: FORM ĐẶT LỊCH */}
-          <div className="lg:col-span-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
+          {/* CỘT PHẢI: FORM ĐẶT LỊCH - Soft UI Card */}
+          <div className="lg:col-span-8 bg-white rounded-[32px] shadow-soft-ui border border-gray-100/50 p-8 lg:p-10 opacity-0 animate-slide-up stagger-delay-3">
             <form onSubmit={handleSubmit} className="space-y-8">
               
               {/* Bước 1: Chọn thời gian */}
               <div>
-                <h3 className="text-lg font-bold text-gray-900 flex items-center mb-4">
-                  <CalendarIcon className="w-5 h-5 mr-2 text-blue-600" />
+                <h3 className="text-xl font-bold text-secondary font-heading flex items-center mb-6">
+                  <CalendarIcon className="w-5 h-5 mr-3 text-primary" />
                   1. Chọn thời gian khám
                 </h3>
                 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div>
-                    <label htmlFor="selectedDate" className="block text-sm font-medium text-gray-700 mb-1">Ngày khám</label>
+                    <label htmlFor="selectedDate" className="block text-xs font-extrabold uppercase tracking-wider text-zinc-400 mb-2">Ngày khám</label>
                     <input 
                       id="selectedDate"
                       type="date" 
                       min={new Date().toISOString().split('T')[0]}
-                      className="w-full sm:w-1/2 rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 border"
+                      className="w-full sm:w-1/2 rounded-[16px] border-zinc-200 shadow-sm focus:border-primary focus:ring-primary p-4 border font-bold text-secondary text-sm transition-all"
                       value={selectedDate}
                       onChange={(e) => dispatch({ type: 'SET_DATE', date: e.target.value })}
                       required
@@ -270,17 +271,17 @@ export default function Booking() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Giờ khám ({formatFullDate(selectedDate)})</label>
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
+                    <label className="block text-xs font-extrabold uppercase tracking-wider text-zinc-400 mb-3">Giờ khám ({formatFullDate(selectedDate)})</label>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2.5">
                       {timeSlots.map((time) => (
                         <button
                           type="button"
                           key={time}
                           onClick={() => dispatch({ type: 'SET_TIME', time })}
-                          className={`py-2 px-1 text-sm font-medium rounded-lg border transition-all
+                          className={`py-3 px-2 text-sm font-extrabold rounded-[14px] border transition-all active:scale-95 duration-200
                             ${selectedTime === time 
-                              ? 'bg-blue-600 border-blue-600 text-white shadow-md' 
-                              : 'bg-white border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50'
+                              ? 'bg-primary border-primary text-white shadow-soft-button scale-105' 
+                              : 'bg-zinc-50 border-transparent text-secondary hover:border-primary/30 hover:bg-primary/5 hover:text-primary'
                             }`}
                         >
                           {time}
@@ -295,14 +296,14 @@ export default function Booking() {
 
               {/* Bước 2: Thông tin khách hàng */}
               <div>
-                <h3 className="text-lg font-bold text-gray-900 flex items-center mb-4">
-                  <User className="w-5 h-5 mr-2 text-blue-600" />
+                <h3 className="text-xl font-bold text-secondary font-heading flex items-center mb-6">
+                  <User className="w-5 h-5 mr-3 text-primary" />
                   2. Thông tin của bạn
                 </h3>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
-                    <label htmlFor="ho_ten_khach" className="block text-sm font-medium text-gray-700 mb-1">Họ và tên *</label>
+                    <label htmlFor="ho_ten_khach" className="block text-xs font-extrabold uppercase tracking-wider text-zinc-400 mb-2">Họ và tên *</label>
                     <input
                       id="ho_ten_khach"
                       type="text"
@@ -310,34 +311,34 @@ export default function Booking() {
                       required
                       readOnly={!!user?.ho_ten}
                       placeholder="Nguyễn Văn A"
-                      className={`w-full rounded-xl shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 border ${user?.ho_ten ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed' : 'border-gray-300'}`}
+                      className={`w-full rounded-[16px] shadow-sm focus:border-primary focus:ring-primary p-4 border font-bold text-secondary text-sm transition-all ${user?.ho_ten ? 'bg-zinc-50 text-zinc-400 border-zinc-100 cursor-not-allowed' : 'border-zinc-200'}`}
                       value={formData.ho_ten_khach}
                       onChange={handleChange}
                     />
                   </div>
                   <div>
-                    <label htmlFor="so_dien_thoai" className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại *</label>
+                    <label htmlFor="so_dien_thoai" className="block text-xs font-extrabold uppercase tracking-wider text-zinc-400 mb-2">Số điện thoại *</label>
                     <input
                       id="so_dien_thoai"
                       type="tel"
                       name="so_dien_thoai"
                       required
                       placeholder="0901234567"
-                      className="w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 border"
+                      className="w-full rounded-[16px] border-zinc-200 shadow-sm focus:border-primary focus:ring-primary p-4 border font-bold text-secondary text-sm transition-all"
                       value={formData.so_dien_thoai}
                       onChange={handleChange}
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Giới tính</label>
-                    <div className="flex space-x-6">
-                      <label className="flex items-center">
-                        <input type="radio" name="gioi_tinh_khach" value="nam" checked={formData.gioi_tinh_khach === 'nam'} onChange={handleChange} className="text-blue-600 focus:ring-blue-500" />
-                        <span className="ml-2 text-gray-700">Nam</span>
+                    <label className="block text-xs font-extrabold uppercase tracking-wider text-zinc-400 mb-3">Giới tính</label>
+                    <div className="flex space-x-8">
+                      <label className="flex items-center cursor-pointer group">
+                        <input type="radio" name="gioi_tinh_khach" value="nam" checked={formData.gioi_tinh_khach === 'nam'} onChange={handleChange} className="text-primary focus:ring-primary border-zinc-300 w-4 h-4" />
+                        <span className="ml-2.5 text-sm font-bold text-secondary group-hover:text-primary transition-colors">Nam</span>
                       </label>
-                      <label className="flex items-center">
-                        <input type="radio" name="gioi_tinh_khach" value="nu" checked={formData.gioi_tinh_khach === 'nu'} onChange={handleChange} className="text-blue-600 focus:ring-blue-500" />
-                        <span className="ml-2 text-gray-700">Nữ</span>
+                      <label className="flex items-center cursor-pointer group">
+                        <input type="radio" name="gioi_tinh_khach" value="nu" checked={formData.gioi_tinh_khach === 'nu'} onChange={handleChange} className="text-primary focus:ring-primary border-zinc-300 w-4 h-4" />
+                        <span className="ml-2.5 text-sm font-bold text-secondary group-hover:text-primary transition-colors">Nữ</span>
                       </label>
                     </div>
                   </div>
@@ -348,21 +349,21 @@ export default function Booking() {
 
               {/* Bước 3: Tình trạng bệnh lý */}
               <div>
-                <h3 className="text-lg font-bold text-gray-900 flex items-center mb-4">
-                  <Activity className="w-5 h-5 mr-2 text-blue-600" />
+                <h3 className="text-xl font-bold text-secondary font-heading flex items-center mb-6">
+                  <Activity className="w-5 h-5 mr-3 text-primary" />
                   3. Tình trạng của bạn
                 </h3>
                 
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="trieu_chung" className="block text-sm font-medium text-gray-700 mb-1">Mô tả triệu chứng (Vùng đau, mức độ) *</label>
+                    <label htmlFor="trieu_chung" className="block text-xs font-extrabold uppercase tracking-wider text-zinc-400 mb-2">Mô tả triệu chứng (Vùng đau, mức độ) *</label>
                     <textarea
                       id="trieu_chung"
                       name="trieu_chung"
                       required
-                      rows={3}
+                      rows={4}
                       placeholder="VD: Tôi bị đau mỏi vai gáy lan xuống cánh tay phải khoảng 2 tuần nay..."
-                      className="w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 border resize-none"
+                      className="w-full rounded-[16px] border-zinc-200 shadow-sm focus:border-primary focus:ring-primary p-4 border font-medium text-secondary text-sm resize-none transition-all"
                       value={formData.trieu_chung}
                       onChange={handleChange}
                     />
@@ -374,11 +375,11 @@ export default function Booking() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-blue-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-blue-700 transition shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
+                  className="w-full bg-primary hover:bg-[#25A89C] text-white font-extrabold text-lg py-4 rounded-[16px] hover:-translate-y-0.5 active:translate-y-0 shadow-soft-button disabled:opacity-75 disabled:cursor-not-allowed flex justify-center items-center transition-all"
                 >
                   {isSubmitting ? 'Đang xử lý...' : 'Xác nhận Đặt hẹn khám'}
                 </button>
-                <p className="text-center text-sm text-gray-500 mt-4">
+                <p className="text-center text-xs font-bold text-zinc-400 mt-4">
                   Bằng việc đặt hẹn, bạn đồng ý với các Điều khoản dịch vụ của chúng tôi.
                 </p>
               </div>
@@ -388,30 +389,30 @@ export default function Booking() {
         </div>
       </div>
 
-      {/* POPUP MODAL YÊU CẦU TÀI KHOẢN (PREMIUM DESIGN) */}
+      {/* POPUP MODAL YÊU CẦU TÀI KHOẢN (PREMIUM CLINICAL DESIGN) */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-secondary/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] max-w-md w-full p-8 shadow-soft-ui-hover overflow-hidden border border-gray-100 animate-slide-up">
             <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <div className="w-16 h-16 bg-primary/10 text-primary rounded-[20px] flex items-center justify-center mx-auto shadow-inner border border-primary/20">
                 <User size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-800">Yêu cầu Đăng nhập</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
+              <h3 className="text-2xl font-extrabold text-secondary font-heading">Yêu cầu Đăng nhập</h3>
+              <p className="text-sm font-semibold text-zinc-500 leading-relaxed">
                 Để bảo mật bệnh án và đồng bộ hóa lịch khám của bạn lên hệ thống, quý khách cần có tài khoản thành viên.
               </p>
             </div>
             
-            <div className="mt-6 flex flex-col gap-2">
+            <div className="mt-8 flex flex-col gap-3">
               <button 
                 onClick={handleRedirectToLogin}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/20 transition-all text-sm"
+                className="w-full bg-primary hover:bg-[#25A89C] text-white font-bold py-4 rounded-[16px] shadow-soft-button transition-all text-sm"
               >
                 Đăng nhập / Đăng ký ngay
               </button>
               <button 
                 onClick={() => setShowAuthModal(false)}
-                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-500 font-semibold py-3.5 rounded-xl border border-slate-100 transition-all text-sm"
+                className="w-full bg-zinc-50 hover:bg-zinc-100 text-secondary font-bold py-4 rounded-[16px] border border-gray-100 transition-all text-sm"
               >
                 Hủy bỏ
               </button>

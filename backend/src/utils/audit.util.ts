@@ -12,20 +12,9 @@ export const logAudit = async (
     const user_id = req?.user?.id || null;
     const ip_address = req?.ip || req?.headers['x-forwarded-for'] || null;
 
-    await pool.query(
-      `INSERT INTO system_audit_log (user_id, action, entity_type, entity_id, payload, ip_address)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        user_id,
-        action,
-        entity_type,
-        entity_id || null,
-        payload ? JSON.stringify(payload) : null,
-        ip_address
-      ]
-    );
+    // Since system_audit_log was deleted, we log to console instead
+    console.log(`[AUDIT LOG] Action: ${action}, Entity: ${entity_type}, EntityId: ${entity_id || 'N/A'}, User: ${user_id || 'System'}, IP: ${ip_address || 'N/A'}, Payload:`, payload || {});
   } catch (error) {
-    console.error('Failed to write audit log:', error);
-    // Don't throw error to avoid breaking the main business flow
+    console.error('Failed to log audit event:', error);
   }
 };

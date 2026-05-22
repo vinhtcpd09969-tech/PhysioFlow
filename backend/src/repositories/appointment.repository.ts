@@ -170,6 +170,10 @@ class AppointmentRepository {
       `;
       const res = await pool.query(query, values);
       rows = res.rows;
+
+      if (rows.length > 0) {
+        await this.updateCompletedSessionsCount(id);
+      }
     }
 
     return rows[0];
@@ -187,6 +191,26 @@ class AppointmentRepository {
       throw new Error('Không tìm thấy lịch khám để cập nhật hồ sơ');
     }
     return rows[0];
+  }
+
+  async updateCompletedSessionsCount(buoi_tri_lieu_id: string) {
+    const btlRes = await pool.query('SELECT lich_dieu_tri_id FROM buoi_tri_lieu WHERE id = $1', [buoi_tri_lieu_id]);
+    if (btlRes.rows.length === 0) return;
+    const ldtId = btlRes.rows[0].lich_dieu_tri_id;
+    if (!ldtId) return;
+
+    // Count actual completed buoi_tri_lieu sessions (excluding cancellations/no-shows)
+    const countRes = await pool.query(
+      "SELECT COUNT(*) FROM buoi_tri_lieu WHERE lich_dieu_tri_id = $1 AND trang_thai = 'hoan_thanh'",
+      [ldtId]
+    );
+    const completedCount = parseInt(countRes.rows[0].count || '0');
+
+    // Update lich_dieu_tri.so_buoi_da_dung
+    await pool.query(
+      'UPDATE lich_dieu_tri SET so_buoi_da_dung = $1 WHERE id = $2',
+      [completedCount, ldtId]
+    );
   }
 }
 

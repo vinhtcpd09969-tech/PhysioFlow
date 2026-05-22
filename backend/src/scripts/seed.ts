@@ -14,8 +14,8 @@ const clearDatabase = async () => {
   await pool.query(`
     TRUNCATE TABLE 
       nguoi_dung, vai_tro, khach_hang, chuyen_gia_y_te, danh_muc_dich_vu, dich_vu,
-      hoa_don, hoa_don_chi_tiet, thanh_toan, voucher, phong, lich_dat, buoi_tri_lieu, danh_gia_dich_vu,
-      goi_dich_vu, goi_dich_vu_chi_tiet, lich_dieu_tri, thiet_bi_y_te, system_audit_log, lich_lam_viec
+      hoa_don, thanh_toan, voucher, phong, lich_dat, buoi_tri_lieu, danh_gia_dich_vu,
+      goi_dich_vu, goi_dich_vu_chi_tiet, lich_dieu_tri, thiet_bi_y_te, lich_lam_viec
     CASCADE;
     ALTER SEQUENCE vai_tro_id_seq RESTART WITH 1;
   `);
@@ -112,18 +112,20 @@ const seedServices = async () => {
 
   // Dịch vụ
   const services = [
-    { catId: categories[0].id, name: 'Khám lượng giá cột sống & tư thế', price: 150000, duration: 30 },
-    { catId: categories[1].id, name: 'Trị liệu Cổ Vai Gáy cấp tốc (Giải cứu giờ trưa)', price: 250000, duration: 45 },
-    { catId: categories[1].id, name: 'Trị liệu Hội chứng văn phòng chuyên sâu', price: 390000, duration: 75 },
-    { catId: categories[2].id, name: 'Phục hồi cột sống & Định hình tư thế', price: 590000, duration: 90 },
+    { catId: categories[0].id, name: 'Khám lượng giá cột sống & tư thế', price: 150000, duration: 30, type: 'chinh' },
+    { catId: categories[1].id, name: 'Trị liệu Cổ Vai Gáy cấp tốc (Giải cứu giờ trưa)', price: 250000, duration: 45, type: 'chinh' },
+    { catId: categories[1].id, name: 'Trị liệu Hội chứng văn phòng chuyên sâu', price: 390000, duration: 75, type: 'chinh' },
+    { catId: categories[2].id, name: 'Phục hồi cột sống & Định hình tư thế', price: 590000, duration: 90, type: 'chinh' },
+    { catId: categories[1].id, name: 'Chườm nóng hồng ngoại giảm đau', price: 80000, duration: 15, type: 'bo_sung' },
+    { catId: categories[2].id, name: 'Đắp Paraffin trị liệu khớp bàn tay', price: 120000, duration: 25, type: 'bo_sung' }
   ];
 
   const serviceIds = [];
   for (const s of services) {
     const { rows } = await pool.query(`
-      INSERT INTO dich_vu (danh_muc_id, ten_dich_vu, thoi_luong_phut, don_gia)
-      VALUES ($1, $2, $3, $4) RETURNING id
-    `, [s.catId, s.name, s.duration, s.price]);
+      INSERT INTO dich_vu (danh_muc_id, ten_dich_vu, thoi_luong_phut, don_gia, loai_dich_vu)
+      VALUES ($1, $2, $3, $4, $5) RETURNING id
+    `, [s.catId, s.name, s.duration, s.price, s.type]);
     serviceIds.push({ id: rows[0].id, name: s.name, price: s.price });
   }
 

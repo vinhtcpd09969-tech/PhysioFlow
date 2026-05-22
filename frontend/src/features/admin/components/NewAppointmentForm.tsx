@@ -80,7 +80,7 @@ export default function NewAppointmentForm({ isOpen, onClose, onSuccess }: Props
       ]);
       setCustomers(custRes.data);
       setServices(servRes.data.filter((s: any) => s.ten_dich_vu.toLowerCase().includes('khám')));
-      setStaff(staffRes.data.filter((s: any) => s.vai_tro === 'Chuyên gia y tế' || s.vai_tro === 'Bác sĩ'));
+      setStaff(staffRes.data.filter((s: any) => s.vai_tro === 'Chuyên gia y tế' || s.vai_tro === 'Kỹ thuật viên' || s.vai_tro === 'Bác sĩ'));
     } catch (error) {
       console.error('Lỗi tải dữ liệu form', error);
     }

@@ -37,7 +37,8 @@ export const packageSchema = z.object({
       so_buoi: z.number().int().positive('Số buổi dịch vụ phải lớn hơn 0')
     })).default([]),
     hien_thi_website: z.boolean().default(true),
-    trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong')
+    trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong'),
+    loai_goi: z.enum(['linh_dong', 'lieu_trinh']).default('lieu_trinh')
   })
 });
 
@@ -74,5 +75,17 @@ export const scheduleSchema = z.object({
     gio_bat_dau: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Giờ bắt đầu không hợp lệ (HH:mm)'),
     gio_ket_thuc: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Giờ kết thúc không hợp lệ (HH:mm)'),
     trang_thai: z.enum(['hoat_dong', 'tam_nghi']).default('hoat_dong')
+  })
+});
+
+// --- Quản lý Ưu đãi Thanh toán ---
+export const paymentPromotionSchema = z.object({
+  body: z.object({
+    ten_uu_dai: z.string().min(1, 'Tên ưu đãi là bắt buộc'),
+    phan_tram_tra_thang: z.number().int().min(0).max(100).default(10),
+    phan_tram_tra_gop: z.number().int().min(0).max(100).default(5),
+    ngay_bat_dau: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày bắt đầu không hợp lệ (YYYY-MM-DD)'),
+    ngay_het_han: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày hết hạn không hợp lệ (YYYY-MM-DD)').optional().nullable(),
+    trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong')
   })
 });

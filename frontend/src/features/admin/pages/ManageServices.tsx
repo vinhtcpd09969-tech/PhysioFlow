@@ -162,7 +162,7 @@ export default function ManageServices() {
             <span className="text-xs font-mono tracking-widest text-teal-400 uppercase font-bold">Clinical Workspace</span>
           </div>
           <h2 className="text-2xl font-bold font-mono tracking-tight uppercase">CẤU HÌNH DANH MỤC DỊCH VỤ</h2>
-          <p className="text-slate-400 text-sm mt-1">Cấu hình thời lượng trị liệu, đơn giá và quản lý định danh dịch vụ chính/bổ trợ</p>
+          <p className="text-slate-400 text-sm mt-1">Cấu hình thời lượng trị liệu, đơn giá và quản lý định danh dịch vụ linh động/bổ trợ</p>
         </div>
         <button 
           onClick={() => { 
@@ -196,22 +196,22 @@ export default function ManageServices() {
         </div>
 
         <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between transition-all hover:border-slate-400">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono mb-2">DỊCH VỤ CHÍNH</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono mb-2">DỊCH VỤ LINH ĐỘNG</p>
           <div className="flex items-baseline gap-2">
             <h3 className="text-2xl font-bold font-mono tracking-tight text-teal-600">
               {services.filter(s => s.loai_dich_vu !== 'bo_sung').length}
             </h3>
-            <span className="text-xs text-teal-600 font-mono font-bold bg-teal-50 px-2 py-0.5 border border-teal-200 rounded">Primary</span>
+            <span className="text-xs text-teal-600 font-mono font-bold bg-teal-50 px-2 py-0.5 border border-teal-200 rounded">Linh động</span>
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between transition-all hover:border-slate-400">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono mb-2">DỊCH VỤ BỔ SUNG</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono mb-2">DỊCH VỤ BỔ TRỢ</p>
           <div className="flex items-baseline gap-2">
             <h3 className="text-2xl font-bold font-mono tracking-tight text-indigo-600">
               {services.filter(s => s.loai_dich_vu === 'bo_sung').length}
             </h3>
-            <span className="text-xs text-indigo-600 font-mono font-bold bg-indigo-50 px-2 py-0.5 border border-indigo-200 rounded">Add-on</span>
+            <span className="text-xs text-indigo-600 font-mono font-bold bg-indigo-50 px-2 py-0.5 border border-indigo-200 rounded">Bổ trợ</span>
           </div>
         </div>
 
@@ -252,7 +252,7 @@ export default function ManageServices() {
                   : 'text-slate-600 hover:text-teal-600'
               }`}
             >
-              [ DỊCH VỤ CHÍNH ]
+              [ DỊCH VỤ LINH ĐỘNG ]
             </button>
             <button
               onClick={() => setActiveTab('bo_sung')}
@@ -262,7 +262,7 @@ export default function ManageServices() {
                   : 'text-slate-600 hover:text-indigo-600'
               }`}
             >
-              [ DỊCH VỤ BỔ SUNG ]
+              [ DỊCH VỤ BỔ TRỢ ]
             </button>
           </div>
 
@@ -328,11 +328,11 @@ export default function ManageServices() {
                     <td className="p-4">
                       {svc.loai_dich_vu === 'bo_sung' ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded border border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px] font-bold font-mono uppercase">
-                          Add-on
+                          Bổ trợ
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded border border-teal-200 bg-teal-50 text-teal-700 text-[10px] font-bold font-mono uppercase">
-                          Primary
+                          Linh động
                         </span>
                       )}
                     </td>
@@ -444,8 +444,8 @@ export default function ManageServices() {
                       {...register('loai_dich_vu')}
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all font-bold text-teal-400"
                     >
-                      <option value="chinh">DỊCH VỤ CHÍNH (PRIMARY)</option>
-                      <option value="bo_sung">DỊCH VỤ BỔ SUNG (ADD-ON)</option>
+                      <option value="chinh">DỊCH VỤ LINH ĐỘNG (FLEXIBLE)</option>
+                      <option value="bo_sung">DỊCH VỤ BỔ TRỢ (ADD-ON)</option>
                     </select>
                   </div>
                   <div>
