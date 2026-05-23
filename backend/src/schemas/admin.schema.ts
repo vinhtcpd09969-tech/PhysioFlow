@@ -13,12 +13,15 @@ export const serviceSchema = z.object({
   body: z.object({
     danh_muc_id: z.number().int().positive('Danh mục không hợp lệ'),
     ten_dich_vu: z.string().min(1, 'Tên dịch vụ là bắt buộc'),
-    mo_ta: z.string().optional(),
+    mo_ta: z.string().optional().nullable(),
     thoi_gian_uoc_tinh: z.number().int().positive('Thời gian ước tính phải lớn hơn 0'),
     don_gia: z.number().min(0, 'Đơn giá không hợp lệ').optional().default(0),
-    thiet_bi_yeu_cau: z.string().optional(),
+    thiet_bi_yeu_cau: z.string().optional().nullable(),
     trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong'),
-    loai_dich_vu: z.enum(['chinh', 'bo_sung']).default('chinh')
+    loai_dich_vu: z.enum(['chinh', 'bo_sung']).default('chinh'),
+    hien_thi_website: z.boolean().optional().default(true),
+    mo_ta_chi_tiet: z.string().optional().nullable(),
+    loai_dich_vu_ho_tro: z.any().optional().nullable()
   })
 });
 
@@ -32,9 +35,13 @@ export const packageSchema = z.object({
     tong_so_buoi: z.number().int().positive('Số buổi phải lớn hơn 0'),
     gia_tien: z.number().min(0, 'Giá tiền không hợp lệ'),
     han_dung_thang: z.number().int().positive('Hạn dùng phải lớn hơn 0').default(6),
+    so_dv_toi_da_moi_buoi: z.number().int().positive().default(5),
     chi_tiet_dich_vu: z.array(z.object({
-      dich_vu_id: z.string().uuid('ID dịch vụ không hợp lệ'),
-      so_buoi: z.number().int().positive('Số buổi dịch vụ phải lớn hơn 0')
+      dich_vu_id: z.union([z.string(), z.number()]),
+      so_buoi: z.number().int().positive('Số buổi dịch vụ phải lớn hơn 0').optional(),
+      so_lan_toi_da_trong_goi: z.number().int().positive('Số lần tối đa trong gói phải lớn hơn 0').optional(),
+      bat_buoc: z.boolean().default(false),
+      thu_tu_thuc_hien: z.number().int().nonnegative().default(0)
     })).default([]),
     hien_thi_website: z.boolean().default(true),
     trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong'),

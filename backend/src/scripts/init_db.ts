@@ -83,7 +83,9 @@ CREATE TABLE IF NOT EXISTS dich_vu (
   trang_thai varchar(20) NOT NULL DEFAULT 'hoat_dong',
   loai_dich_vu varchar(20) NOT NULL DEFAULT 'chinh',
   thu_tu_hien_thi integer NOT NULL DEFAULT 0,
-  thiet_bi_yeu_cau varchar(100)
+  thiet_bi_yeu_cau varchar(100),
+  hien_thi_website boolean NOT NULL DEFAULT true,
+  loai_dich_vu_ho_tro jsonb DEFAULT '[]'::jsonb
 );
 
 -- 7. phong

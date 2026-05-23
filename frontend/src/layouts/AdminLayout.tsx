@@ -60,7 +60,7 @@ export default function AdminLayout() {
     { name: 'Hồ sơ điều trị', path: '/admin/medical-records', icon: <FileText size={18} />, searchPlaceholder: 'Tìm kiếm hồ sơ...' },
     { name: 'Nhân sự', path: '/admin/staff', icon: <Users size={18} />, searchPlaceholder: 'Tìm kiếm nhân sự...' },
     { name: 'Dịch vụ & Danh mục', path: '/admin/services', icon: <Briefcase size={18} />, searchPlaceholder: 'Tìm kiếm dịch vụ...' },
-    { name: 'Liệu trình điều trị', path: '/admin/packages', icon: <Package size={18} />, searchPlaceholder: 'Tìm kiếm liệu trình...' },
+    { name: 'Gói', path: '/admin/packages', icon: <Package size={18} />, searchPlaceholder: 'Tìm kiếm gói...' },
     { name: 'Phòng & Thiết bị', path: '/admin/rooms-equipment', icon: <Key size={18} />, searchPlaceholder: 'Tìm kiếm phòng, thiết bị...' },
     { name: 'Tài chính', path: '/admin/finance', icon: <DollarSign size={18} /> },
     { name: 'Marketing', path: '/admin/marketing', icon: <Megaphone size={18} /> },
@@ -71,7 +71,7 @@ export default function AdminLayout() {
   const currentItem = navItems.find(item => item.path === location.pathname);
 
   return (
-    <div className="min-h-screen bg-background flex font-body text-secondary">
+    <div className="h-screen overflow-hidden bg-background flex font-body text-secondary">
       {/* Sidebar - Soft UI Light Theme */}
       <aside className="w-64 bg-white text-zinc-500 flex flex-col shrink-0 border-r border-zinc-100 shadow-sm z-30">
         <div className="h-16 flex items-center gap-3 px-6 border-b border-zinc-100 bg-white">

@@ -32,27 +32,8 @@ class AdminRepository {
 
   async createService(data: any) {
     const { rows } = await pool.query(
-      `INSERT INTO dich_vu (danh_muc_id, ten_dich_vu, mo_ta_ngan, thoi_luong_phut, don_gia, thiet_bi_yeu_cau, trang_thai, loai_dich_vu) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *, thoi_luong_phut as thoi_gian_uoc_tinh`,
-      [
-        data.danh_muc_id,
-        data.ten_dich_vu,
-        data.mo_ta || null,
-        data.thoi_gian_uoc_tinh,
-        data.don_gia || 0,
-        data.thiet_bi_yeu_cau || null,
-        data.trang_thai,
-        data.loai_dich_vu || 'chinh'
-      ]
-    );
-    return rows[0];
-  }
-
-  async updateService(id: string, data: any) {
-    const { rows } = await pool.query(
-      `UPDATE dich_vu 
-       SET danh_muc_id = $1, ten_dich_vu = $2, mo_ta_ngan = $3, thoi_luong_phut = $4, don_gia = $5, thiet_bi_yeu_cau = $6, trang_thai = $7, loai_dich_vu = $8
-       WHERE id = $9 RETURNING *, thoi_luong_phut as thoi_gian_uoc_tinh`,
+      `INSERT INTO dich_vu (danh_muc_id, ten_dich_vu, mo_ta_ngan, thoi_luong_phut, don_gia, thiet_bi_yeu_cau, trang_thai, loai_dich_vu, hien_thi_website, mo_ta_chi_tiet, loai_dich_vu_ho_tro) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *, thoi_luong_phut as thoi_gian_uoc_tinh`,
       [
         data.danh_muc_id,
         data.ten_dich_vu,
@@ -62,6 +43,31 @@ class AdminRepository {
         data.thiet_bi_yeu_cau || null,
         data.trang_thai,
         data.loai_dich_vu || 'chinh',
+        data.hien_thi_website !== undefined ? data.hien_thi_website : true,
+        data.mo_ta_chi_tiet || null,
+        data.loai_dich_vu_ho_tro ? (typeof data.loai_dich_vu_ho_tro === 'string' ? data.loai_dich_vu_ho_tro : JSON.stringify(data.loai_dich_vu_ho_tro)) : '[]'
+      ]
+    );
+    return rows[0];
+  }
+
+  async updateService(id: string, data: any) {
+    const { rows } = await pool.query(
+      `UPDATE dich_vu 
+       SET danh_muc_id = $1, ten_dich_vu = $2, mo_ta_ngan = $3, thoi_luong_phut = $4, don_gia = $5, thiet_bi_yeu_cau = $6, trang_thai = $7, loai_dich_vu = $8, hien_thi_website = $9, mo_ta_chi_tiet = $10, loai_dich_vu_ho_tro = $11
+       WHERE id = $12 RETURNING *, thoi_luong_phut as thoi_gian_uoc_tinh`,
+      [
+        data.danh_muc_id,
+        data.ten_dich_vu,
+        data.mo_ta || null,
+        data.thoi_gian_uoc_tinh,
+        data.don_gia || 0,
+        data.thiet_bi_yeu_cau || null,
+        data.trang_thai,
+        data.loai_dich_vu || 'chinh',
+        data.hien_thi_website !== undefined ? data.hien_thi_website : true,
+        data.mo_ta_chi_tiet || null,
+        data.loai_dich_vu_ho_tro ? (typeof data.loai_dich_vu_ho_tro === 'string' ? data.loai_dich_vu_ho_tro : JSON.stringify(data.loai_dich_vu_ho_tro)) : '[]',
         id
       ]
     );
@@ -89,17 +95,40 @@ class AdminRepository {
     try {
       await client.query('BEGIN');
       const { rows } = await client.query(
-        `INSERT INTO goi_dich_vu (ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, han_dung_thang, hien_thi_website, trang_thai, danh_muc_id, chi_tiet_dich_vu, loai_goi) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *, gia_goi as gia_tien`,
-        [data.ten_goi, ma_goi, data.mo_ta || null, data.tong_so_buoi, data.gia_tien, data.han_dung_thang || 6, data.hien_thi_website !== undefined ? data.hien_thi_website : true, data.trang_thai, data.danh_muc_id || null, JSON.stringify(data.chi_tiet_dich_vu || []), data.loai_goi || 'lieu_trinh']
+        `INSERT INTO goi_dich_vu (ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, han_dung_thang, hien_thi_website, trang_thai, danh_muc_id, chi_tiet_dich_vu, loai_goi, so_dv_toi_da_moi_buoi) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *, gia_goi as gia_tien`,
+        [
+          data.ten_goi, 
+          ma_goi, 
+          data.mo_ta || null, 
+          data.tong_so_buoi, 
+          data.gia_tien, 
+          data.han_dung_thang || 6, 
+          data.hien_thi_website !== undefined ? data.hien_thi_website : true, 
+          data.trang_thai, 
+          data.danh_muc_id || null, 
+          JSON.stringify(data.chi_tiet_dich_vu || []), 
+          data.loai_goi || 'lieu_trinh',
+          data.so_dv_toi_da_moi_buoi || 5
+        ]
       );
       const packageId = rows[0].id;
 
       if (data.chi_tiet_dich_vu && Array.isArray(data.chi_tiet_dich_vu)) {
         for (const item of data.chi_tiet_dich_vu) {
+          const so_buoi = item.so_buoi || item.so_lan_toi_da_trong_goi || data.tong_so_buoi;
+          const so_lan_toi_da_trong_goi = item.so_lan_toi_da_trong_goi || item.so_buoi || data.tong_so_buoi;
           await client.query(
-            'INSERT INTO goi_dich_vu_chi_tiet (goi_dich_vu_id, dich_vu_id, so_buoi_trong_goi) VALUES ($1, $2, $3)',
-            [packageId, item.dich_vu_id, item.so_buoi || item.so_buoi_trong_goi]
+            `INSERT INTO goi_dich_vu_chi_tiet (goi_dich_vu_id, dich_vu_id, so_buoi_trong_goi, so_lan_toi_da_trong_goi, bat_buoc, thu_tu_thuc_hien) 
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              packageId, 
+              item.dich_vu_id, 
+              so_buoi, 
+              so_lan_toi_da_trong_goi, 
+              item.bat_buoc !== undefined ? item.bat_buoc : false, 
+              item.thu_tu_thuc_hien || 0
+            ]
           );
         }
       }
@@ -121,9 +150,23 @@ class AdminRepository {
       const { rows } = await client.query(
         `UPDATE goi_dich_vu 
          SET ten_goi = $1, ma_goi = $2, mo_ta = $3, tong_so_buoi = $4, gia_goi = $5, 
-             han_dung_thang = $6, hien_thi_website = $7, trang_thai = $8, danh_muc_id = $9, chi_tiet_dich_vu = $10, loai_goi = $11
-         WHERE id = $12 RETURNING *, gia_goi as gia_tien`,
-        [data.ten_goi, data.ma_goi, data.mo_ta || null, data.tong_so_buoi, data.gia_tien, data.han_dung_thang || 6, data.hien_thi_website !== undefined ? data.hien_thi_website : true, data.trang_thai, data.danh_muc_id || null, JSON.stringify(data.chi_tiet_dich_vu || []), data.loai_goi || 'lieu_trinh', id]
+             han_dung_thang = $6, hien_thi_website = $7, trang_thai = $8, danh_muc_id = $9, chi_tiet_dich_vu = $10, loai_goi = $11, so_dv_toi_da_moi_buoi = $12
+         WHERE id = $13 RETURNING *, gia_goi as gia_tien`,
+        [
+          data.ten_goi, 
+          data.ma_goi, 
+          data.mo_ta || null, 
+          data.tong_so_buoi, 
+          data.gia_tien, 
+          data.han_dung_thang || 6, 
+          data.hien_thi_website !== undefined ? data.hien_thi_website : true, 
+          data.trang_thai, 
+          data.danh_muc_id || null, 
+          JSON.stringify(data.chi_tiet_dich_vu || []), 
+          data.loai_goi || 'lieu_trinh', 
+          data.so_dv_toi_da_moi_buoi || 5,
+          id
+        ]
       );
 
       // Xóa các chi tiết cũ
@@ -132,9 +175,19 @@ class AdminRepository {
       // Thêm lại chi tiết mới
       if (data.chi_tiet_dich_vu && Array.isArray(data.chi_tiet_dich_vu)) {
         for (const item of data.chi_tiet_dich_vu) {
+          const so_buoi = item.so_buoi || item.so_lan_toi_da_trong_goi || data.tong_so_buoi;
+          const so_lan_toi_da_trong_goi = item.so_lan_toi_da_trong_goi || item.so_buoi || data.tong_so_buoi;
           await client.query(
-            'INSERT INTO goi_dich_vu_chi_tiet (goi_dich_vu_id, dich_vu_id, so_buoi_trong_goi) VALUES ($1, $2, $3)',
-            [id, item.dich_vu_id, item.so_buoi || item.so_buoi_trong_goi]
+            `INSERT INTO goi_dich_vu_chi_tiet (goi_dich_vu_id, dich_vu_id, so_buoi_trong_goi, so_lan_toi_da_trong_goi, bat_buoc, thu_tu_thuc_hien) 
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              id, 
+              item.dich_vu_id, 
+              so_buoi, 
+              so_lan_toi_da_trong_goi, 
+              item.bat_buoc !== undefined ? item.bat_buoc : false, 
+              item.thu_tu_thuc_hien || 0
+            ]
           );
         }
       }

@@ -105,28 +105,259 @@ const seedServices = async () => {
   const { rows: categories } = await pool.query(`
     INSERT INTO danh_muc_dich_vu (ten_danh_muc, mo_ta) VALUES
     ('Khám & Lượng giá', 'Khám lâm sàng và đánh giá tư thế'),
-    ('Trị liệu chuyên sâu', 'Các liệu trình trị liệu cơ xương khớp chuyên sâu cho dân văn phòng'),
-    ('Phục hồi & Phòng ngừa', 'Tập luyện phục hồi chức năng và định hình tư thế')
-    RETURNING id;
+    ('Trị liệu cơ sâu & Chuyên sâu', 'Các dịch vụ linh động cấu thành liệu trình hoặc bán lẻ'),
+    ('Phục hồi & Phòng ngừa', 'Tập luyện phục hồi chức năng và định hình tư thế'),
+    ('Dịch vụ bổ trợ (Add-on)', 'Các liệu pháp thư giãn và phục hồi bổ trợ')
+    RETURNING id, ten_danh_muc;
   `);
 
-  // Dịch vụ
+  const catKham = categories.find(c => c.ten_danh_muc.includes('Khám'))?.id;
+  const catTriLieu = categories.find(c => c.ten_danh_muc.includes('Trị liệu'))?.id;
+  const catPhucHoi = categories.find(c => c.ten_danh_muc.includes('Phục hồi'))?.id;
+  const catAddon = categories.find(c => c.ten_danh_muc.includes('bổ trợ'))?.id;
+
   const services = [
-    { catId: categories[0].id, name: 'Khám lượng giá cột sống & tư thế', price: 150000, duration: 30, type: 'chinh' },
-    { catId: categories[1].id, name: 'Trị liệu Cổ Vai Gáy cấp tốc (Giải cứu giờ trưa)', price: 250000, duration: 45, type: 'chinh' },
-    { catId: categories[1].id, name: 'Trị liệu Hội chứng văn phòng chuyên sâu', price: 390000, duration: 75, type: 'chinh' },
-    { catId: categories[2].id, name: 'Phục hồi cột sống & Định hình tư thế', price: 590000, duration: 90, type: 'chinh' },
-    { catId: categories[1].id, name: 'Chườm nóng hồng ngoại giảm đau', price: 80000, duration: 15, type: 'bo_sung' },
-    { catId: categories[2].id, name: 'Đắp Paraffin trị liệu khớp bàn tay', price: 120000, duration: 25, type: 'bo_sung' }
+    // 13 Shared services library (loai_dich_vu = 'chinh')
+    { 
+      catId: catTriLieu, 
+      name: 'Kéo giãn cột sống cổ bằng tay', 
+      price: 100000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: null, 
+      ma: 'SVC-CST',
+      mo_ta_chi_tiet: 'Kỹ thuật viên sử dụng lực tay chuyên môn thực hiện các kỹ thuật kéo giãn dọc trục cột sống cổ, di động nhẹ nhàng nhằm giải áp đĩa đệm vùng cổ vai gáy.',
+      loai_dich_vu_ho_tro: [
+        'Giải phóng chèn ép rễ thần kinh cổ, giảm nhanh chứng đau vai gáy lan xuống cánh tay.',
+        'Phục hồi tầm vận động tự nhiên khi xoay, cúi, nghiêng cổ.',
+        'Tăng cường lưu thông tuần hoàn máu não bộ, giảm đau đầu chóng mặt do chèn ép mạch.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Kỹ thuật giải cơ chuyên sâu', 
+      price: 150000, 
+      duration: 20, 
+      type: 'chinh', 
+      thiet_bi: null, 
+      ma: 'SVC-DTT',
+      mo_ta_chi_tiet: 'Tác động lực vật lý sâu và chậm dọc theo thớ cơ nông đến cơ sâu, xác định và giải phóng các nút thắt cơ (Trigger Points) gây co cứng dai dẳng.',
+      loai_dich_vu_ho_tro: [
+        'Phá tan các bó cơ co thắt mãn tính, trả lại chiều dài sinh lý tối ưu cho thớ cơ.',
+        'Kích thích tuần hoàn máu mang dưỡng chất và oxy đến nuôi dưỡng vùng mô cơ bị xơ hóa.',
+        'Giảm nhức mỏi cơ bắp tức thì sau vận động nặng hoặc ngồi làm việc sai tư thế kéo dài.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Trị liệu giảm đau bằng dòng điện xung', 
+      price: 120000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: 'Máy điện xung', 
+      ma: 'SVC-ELT',
+      mo_ta_chi_tiet: 'Dán các điện cực hydrogel y khoa lên vùng cơ đau nhức, sử dụng thiết bị chuyên dụng phát dòng điện xung tần số thấp thích hợp để cắt đứt tín hiệu đau dây thần kinh.',
+      loai_dich_vu_ho_tro: [
+        'Ức chế lập tức đường truyền tín hiệu đau lên não bộ theo cơ chế cổng kiểm soát đau.',
+        'Kích thích cơ thể tự giải phóng Endorphin (hormone giảm đau tự nhiên) để xoa dịu vùng tổn thương.',
+        'Kích thích tuần hoàn máu sâu giúp tiêu viêm, giảm sưng nề mô mềm cục bộ.'
+      ]
+    },
+    { 
+      catId: catPhucHoi, 
+      name: 'Hướng dẫn tập phục hồi chức năng', 
+      price: 70000, 
+      duration: 10, 
+      type: 'chinh', 
+      thiet_bi: null, 
+      ma: 'SVC-CEG',
+      mo_ta_chi_tiet: 'Bác sĩ hoặc Kỹ thuật viên trực tiếp hướng dẫn khách thực hiện chuẩn xác các bài tập ổn định khớp, kích hoạt cơ lõi yếu và điều chỉnh tư thế đứng/ngồi chuẩn y khoa.',
+      loai_dich_vu_ho_tro: [
+        'Tăng cường sức mạnh và độ bền cho các nhóm cơ hỗ trợ bảo vệ cột sống.',
+        'Sửa sai lệch tư thế (gù lưng, cổ rùa, lệch xương chậu) tận gốc.',
+        'Duy trì hiệu quả trị liệu lâu dài, ngăn ngừa tái phát cơn đau cơ xương khớp.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Nhiệt trị liệu hồng ngoại', 
+      price: 80000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: 'Đèn hồng ngoại', 
+      ma: 'SVC-HET',
+      mo_ta_chi_tiet: 'Sử dụng đèn hồng ngoại y khoa chuyên khoa chiếu tia nhiệt trực tiếp lên vùng khớp viêm hoặc thắt lưng đau nhức ở cự ly y khoa tiêu chuẩn.',
+      loai_dich_vu_ho_tro: [
+        'Tác dụng nhiệt nóng sâu làm giãn cơ toàn vùng, loại bỏ tình trạng cứng khớp buổi sáng.',
+        'Giãn nở mạch máu ngoại vi, đẩy nhanh tốc độ đào thải độc tố và hấp thụ viêm sưng.',
+        'Làm dịu hệ thần kinh nhạy cảm, đem lại cảm giác ấm áp và thư giãn sâu cho khách hàng.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Kỹ thuật di động khớp tăng biên độ', 
+      price: 130000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: null, 
+      ma: 'SVC-JMT',
+      mo_ta_chi_tiet: 'Áp dụng kỹ thuật trượt khớp cơ học bậc 1-3 theo chuẩn y khoa quốc tế lên các diện khớp bị hạn chế biên độ vận động do xơ hóa dây chằng.',
+      loai_dich_vu_ho_tro: [
+        'Kích thích tăng tiết dịch khớp tự nhiên để bôi trơn diện khớp, giảm ma sát gây thoái hóa.',
+        'Mở rộng nhanh biên độ khớp bị giới hạn do viêm bám gân hoặc thoái hóa diện khớp.',
+        'Ngăn chặn triệt để nguy cơ dính khớp và xơ cứng bao khớp gây tàn tật.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Di động mô mềm giải phóng cơ', 
+      price: 100000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: null, 
+      ma: 'SVC-MRL',
+      mo_ta_chi_tiet: 'Kỹ thuật sử dụng các ngón tay và lòng bàn tay vuốt miết, trượt mô liên kết mềm dọc bó cơ căng thẳng nhằm phá vỡ các điểm kết dính cơ nông.',
+      loai_dich_vu_ho_tro: [
+        'Tháo xoắn cơ tức thì, loại bỏ cảm giác căng tức bứt rứt khó chịu ở cơ bắp.',
+        'Phục hồi độ đàn hồi tự nhiên linh hoạt của hệ thống mô mềm quanh khớp.',
+        'Tạo cảm giác nhẹ nhõm, thư thái ngay trong buổi trị liệu.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Giải phóng cơ hình lê chuyên sâu', 
+      price: 130000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: null, 
+      ma: 'SVC-PMR',
+      mo_ta_chi_tiet: 'Kỹ thuật ấn bấm chuyên sâu giải phóng căng cơ vùng mông (đặc biệt cơ hình lê - Piriformis) để giảm áp cho dây thần kinh tọa chạy bên dưới cơ mông.',
+      loai_dich_vu_ho_tro: [
+        'Cắt đứt ngay cơn đau tê dọc mông lan xuống đùi và bắp chân (đau thần kinh tọa).',
+        'Giảm co thắt sâu vùng hông chậu, khôi phục bước đi linh hoạt vững vàng.',
+        'Giải phóng tình trạng mỏi khớp háng khi ngồi làm việc quá lâu một chỗ.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Vận động trị liệu khớp vai', 
+      price: 120000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: null, 
+      ma: 'SVC-SMT',
+      mo_ta_chi_tiet: 'Kỹ thuật viên thực hiện các kỹ thuật vận động khớp thụ động và chủ động có trợ giúp khớp vai nhằm khôi phục cơ học xoay vai.',
+      loai_dich_vu_ho_tro: [
+        'Hỗ trợ phá vỡ tổ chức xơ dính quanh bao khớp vai gây đông cứng vai (frozen shoulder).',
+        'Giúp khách hàng dễ dàng thực hiện các động tác sinh hoạt như chải đầu, giơ tay cao, gãi lưng.',
+        'Giải tỏa chứng đau mỏi vai sâu bứt rứt gây mất ngủ về đêm.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Kéo giãn cột sống thắt lưng bằng máy', 
+      price: 100000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: 'Giường kéo giãn', 
+      ma: 'SVC-SST',
+      mo_ta_chi_tiet: 'Sử dụng thiết bị kéo giãn cột sống tự động y khoa, cài đặt đai ngực đai chậu và lực kéo kéo - nhả theo chu kỳ phù hợp với trọng lượng cơ thể để giải áp cột sống.',
+      loai_dich_vu_ho_tro: [
+        'Giảm áp suất nội đĩa đệm thắt lưng tối đa, tạo lực hút âm giúp nhân nhầy thoát vị co hồi về vị trí cũ.',
+        'Mở rộng các lỗ liên hợp cột sống giải phóng chèn ép rễ thần kinh thắt lưng.',
+        'Cắt cơn đau lưng cấp và tê bì chân do thoát vị đĩa đệm gây ra.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Kéo giãn cơ toàn thân chủ động', 
+      price: 100000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: null, 
+      ma: 'SVC-STR',
+      mo_ta_chi_tiet: 'Kỹ thuật viên phối hợp cùng khách thực hiện các chuỗi động tác kéo giãn cơ chuỗi sau, cơ liên sườn và giải áp toàn bộ các khớp chính.',
+      loai_dich_vu_ho_tro: [
+        'Gia tăng độ dẻo dai đàn hồi của toàn bộ hệ thống cơ xương khớp.',
+        'Giải phóng chứng đau mỏi tích tụ toàn thân do thói quen ngồi lì làm việc cả ngày.',
+        'Tăng cường độ linh hoạt, giúp cơ thể chuyển động nhẹ nhàng thanh thoát.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Kỹ thuật giải phóng điểm bám gân', 
+      price: 120000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: null, 
+      ma: 'SVC-TRT',
+      mo_ta_chi_tiet: 'Tác động miết bấm ngang thớ gân cơ bị tổn thương tại khuỷu tay hoặc cổ tay nhằm kích thích tăng sinh tuần hoàn máu tại điểm bám tận của gân.',
+      loai_dich_vu_ho_tro: [
+        'Đặc trị đau mỏi cổ tay, khuỷu tay (Hội chứng ống cổ tay, viêm gân khuỷu tay Tennis Elbow).',
+        'Tiêu trừ các điểm viêm dính vi mô quanh bao gân cơ.',
+        'Tăng cường lực cầm nắm của bàn tay, giúp gõ phím di chuột không đau nhức.'
+      ]
+    },
+    { 
+      catId: catTriLieu, 
+      name: 'Vận động trị liệu khớp cổ tay', 
+      price: 120000, 
+      duration: 15, 
+      type: 'chinh', 
+      thiet_bi: null, 
+      ma: 'SVC-WMT',
+      mo_ta_chi_tiet: 'Di động nhẹ nhàng và vận động các diện khớp xương nhỏ vùng cổ tay và bàn ngón tay để kéo giãn dây chằng quanh ống cổ tay.',
+      loai_dich_vu_ho_tro: [
+        'Giải phóng chèn ép thần kinh giữa trong hội chứng ống cổ tay.',
+        'Khắc phục chứng tê rần, mất cảm giác hoặc đau buốt ngón tay khi làm việc văn phòng.',
+        'Khôi phục khả năng xoay gấp cổ tay mượt mà không lục cục.'
+      ]
+    },
+
+    // Nhóm Cổ truyền & Chuyên sâu (loai_dich_vu = 'chinh')
+    { catId: catKham, name: 'Khám lượng giá cột sống & tư thế', price: 150000, duration: 30, type: 'chinh', thiet_bi: null, ma: 'SVC-KHAM' },
+    { catId: catTriLieu, name: 'Trị liệu Cổ - Vai - Gáy "Khơi Thông Kinh Lạc"', price: 400000, duration: 75, type: 'chinh', thiet_bi: null, ma: 'CVG-CS-75' },
+    { catId: catTriLieu, name: 'Phục Hồi Đau Lưng - Thoát Vị Đĩa Đệm', price: 650000, duration: 90, type: 'chinh', thiet_bi: null, ma: 'DL-TVDD-90' },
+    { catId: catTriLieu, name: 'Giảm Đau Cấp Tốc - Co Thắt Cơ Cấp', price: 450000, duration: 60, type: 'chinh', thiet_bi: null, ma: 'GDC-CAP-60' },
+    { catId: catTriLieu, name: 'Trị liệu Hội Chứng Ống Cổ Tay & Tê Bì', price: 300000, duration: 45, type: 'chinh', thiet_bi: null, ma: 'CL-HAND-45' },
+    { catId: catTriLieu, name: 'Trị liệu Đau Nhức Khớp Gối / Khớp Vai', price: 350000, duration: 60, type: 'chinh', thiet_bi: null, ma: 'CL-JOINT-60' },
+    { catId: catPhucHoi, name: 'Phục Hồi Cơ Bắp Thể Thao Chuyên Sâu', price: 800000, duration: 90, type: 'chinh', thiet_bi: null, ma: 'PT-SPORTS-90' },
+    { catId: catPhucHoi, name: 'Điều Trị Thoái Hóa Khớp (Gối/Vai/Háng)', price: 900000, duration: 90, type: 'chinh', thiet_bi: null, ma: 'PT-ARTH-90' },
+    { catId: catPhucHoi, name: 'Phục Hồi Sau Chấn Thương / Phẫu Thuật', price: 1100000, duration: 105, type: 'chinh', thiet_bi: null, ma: 'PT-POST-105' },
+    { catId: catPhucHoi, name: 'Trị Liệu & Phục Hồi Chức Năng Thần Kinh', price: 1300000, duration: 120, type: 'chinh', thiet_bi: null, ma: 'PT-NEURO-120' },
+    { catId: catPhucHoi, name: 'Trị Liệu Cong Vẹo Cột Sống & Sửa Tư Thế', price: 700000, duration: 60, type: 'chinh', thiet_bi: null, ma: 'PT-POSTURE-60' },
+    { catId: catTriLieu, name: 'Trải Nghiệm Thư Giãn Wellness Toàn Thân', price: 500000, duration: 90, type: 'chinh', thiet_bi: null, ma: 'WELL-BODY-90' },
+
+    // 10 Dịch vụ bổ trợ (loai_dich_vu = 'bo_sung')
+    { catId: catAddon, name: 'Massage Thư Giãn Phục Hồi', price: 350000, duration: 60, type: 'bo_sung', thiet_bi: null, ma: 'ADD-MASSAGE-60' },
+    { catId: catAddon, name: 'Giác Hơi Phục Hồi', price: 180000, duration: 40, type: 'bo_sung', thiet_bi: null, ma: 'ADD-CUPPING-40' },
+    { catId: catAddon, name: 'Trị Liệu Đá Nóng', price: 250000, duration: 50, type: 'bo_sung', thiet_bi: null, ma: 'ADD-HOTSTONE-50' },
+    { catId: catAddon, name: 'Ngâm Đá Lạnh Phục Hồi', price: 150000, duration: 12, type: 'bo_sung', thiet_bi: 'Bể ngâm lạnh', ma: 'ADD-ICEBATH-12' },
+    { catId: catAddon, name: 'Massage Đầu Cổ Vai Gáy', price: 200000, duration: 40, type: 'bo_sung', thiet_bi: null, ma: 'ADD-HEADNECK-40' },
+    { catId: catAddon, name: 'Kéo Giãn Toàn Thân Chuyên Sâu', price: 220000, duration: 45, type: 'bo_sung', thiet_bi: null, ma: 'ADD-FULLSTR-45' },
+    { catId: catAddon, name: 'Trị Liệu Tinh Dầu Thư Giãn', price: 230000, duration: 45, type: 'bo_sung', thiet_bi: null, ma: 'ADD-AROMA-45' },
+    { catId: catAddon, name: 'Xông Phục Hồi Cơ Thể', price: 130000, duration: 25, type: 'bo_sung', thiet_bi: 'Phòng xông hơi', ma: 'ADD-STEAM-25' },
+    { catId: catAddon, name: 'Massage Chân Phục Hồi', price: 180000, duration: 45, type: 'bo_sung', thiet_bi: null, ma: 'ADD-FOOT-45' },
+    { catId: catAddon, name: 'Trị Liệu Ép Phục Hồi Cơ', price: 160000, duration: 25, type: 'bo_sung', thiet_bi: 'Máy nén ép', ma: 'ADD-COMPRESS-25' }
   ];
 
   const serviceIds = [];
   for (const s of services) {
     const { rows } = await pool.query(`
-      INSERT INTO dich_vu (danh_muc_id, ten_dich_vu, thoi_luong_phut, don_gia, loai_dich_vu)
-      VALUES ($1, $2, $3, $4, $5) RETURNING id
-    `, [s.catId, s.name, s.duration, s.price, s.type]);
-    serviceIds.push({ id: rows[0].id, name: s.name, price: s.price });
+      INSERT INTO dich_vu (danh_muc_id, ten_dich_vu, thoi_luong_phut, don_gia, loai_dich_vu, thiet_bi_yeu_cau, mo_ta_ngan, mo_ta_chi_tiet, loai_dich_vu_ho_tro)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id
+    `, [
+      s.catId, 
+      s.name, 
+      s.duration, 
+      s.price, 
+      s.type, 
+      s.thiet_bi, 
+      `Dịch vụ ${s.name} (Mã: ${s.ma})`,
+      (s as any).mo_ta_chi_tiet || null,
+      (s as any).loai_dich_vu_ho_tro ? JSON.stringify((s as any).loai_dich_vu_ho_tro) : '[]'
+    ]);
+    serviceIds.push({ id: rows[0].id, name: s.name, price: s.price, code: s.ma });
   }
 
   return serviceIds;
@@ -135,60 +366,135 @@ const seedServices = async () => {
 const seedPackages = async (services: any[]) => {
   console.log('Seeding packages...');
 
-  // Tìm các dịch vụ tương ứng
-  const g1Service = services.find(s => s.name === 'Trị liệu Cổ Vai Gáy cấp tốc (Giải cứu giờ trưa)');
-  const g2Service = services.find(s => s.name === 'Trị liệu Hội chứng văn phòng chuyên sâu');
-  const g3Service = services.find(s => s.name === 'Phục hồi cột sống & Định hình tư thế');
+  // Helper to find service ID by shorthand matching
+  const findSvcId = (shorthand: string) => {
+    const code = 'SVC-' + shorthand;
+    const found = services.find(s => s.code === code);
+    if (!found) {
+      throw new Error(`Shorthand service not found for code: ${code}`);
+    }
+    return found.id;
+  };
 
-  if (!g1Service || !g2Service || !g3Service) {
-    console.error('Không tìm thấy dịch vụ tương ứng để seed gói!');
-    return;
+  const officePackages = [
+    {
+      code: 'PKG-CVG',
+      name: 'Cervical Spine Recovery (Trị Liệu Cổ Vai Gáy)',
+      desc: 'Liệu trình giảm đau mỏi vai gáy cho người làm việc máy tính nhiều, tái tạo vận động đốt sống cổ.',
+      sessions: 10,
+      price: 4000000,
+      originalPrice: 5000000,
+      services: ['DTT', 'ELT', 'HET', 'CST', 'CEG']
+    },
+    {
+      code: 'PKG-LBR',
+      name: 'Lower Back Recovery (Trị Liệu Đau Lưng)',
+      desc: 'Hỗ trợ giải tỏa căng thẳng vùng thắt lưng, định hình tư thế ngồi, giảm nhức mỏi thắt lưng cấp và mãn tính.',
+      sessions: 10,
+      price: 4000000,
+      originalPrice: 5000000,
+      services: ['ELT', 'HET', 'SST', 'CEG']
+    },
+    {
+      code: 'PKG-OPC',
+      name: 'Office Posture Correction (Chỉnh Dáng Văn Phòng)',
+      desc: 'Khắc phục tư thế cổ rùa, gù lưng, lệch khớp do ngồi sai tư thế nhiều năm.',
+      sessions: 12,
+      price: 4704000,
+      originalPrice: 5880000,
+      services: ['MRL', 'SST', 'SMT', 'CEG']
+    },
+    {
+      code: 'PKG-SUR',
+      name: 'Shoulder & Upper Back (Phục Hồi Khớp Vai)',
+      desc: 'Trị liệu căng cơ bả vai, khó giơ tay, mỏi vùng lưng trên do áp lực làm việc kéo dài.',
+      sessions: 10,
+      price: 4160000,
+      originalPrice: 5200000,
+      services: ['DTT', 'ELT', 'HET', 'STR', 'SMT']
+    },
+    {
+      code: 'PKG-SCR',
+      name: 'Sciatica Relief (Giải Tỏa Đau Thần Kinh Tọa)',
+      desc: 'Tập trung giải phóng chèn ép rễ thần kinh lưng hông và mông, giúp đi lại linh hoạt.',
+      sessions: 10,
+      price: 4000000,
+      originalPrice: 5000000,
+      services: ['DTT', 'ELT', 'HET', 'PMR', 'CEG']
+    },
+    {
+      code: 'PKG-WER',
+      name: 'Wrist & Elbow Recovery (Trị Liệu Cổ Tay/Khuỷu Tay)',
+      desc: 'Đặc trị hội chứng ống cổ tay, mỏi khớp ngón tay gõ phím, khuỷu tay tennis elbow.',
+      sessions: 8,
+      price: 3136000,
+      originalPrice: 3920000,
+      services: ['ELT', 'HET', 'WMT', 'TRT', 'CEG']
+    },
+    {
+      code: 'PKG-SRT',
+      name: 'Stress Recovery (Hồi Phục Căng Thẳng)',
+      desc: 'Liệu trình ngắn ngày kết hợp nhiệt và giải phóng cơ nông giúp ngủ ngon, giải tỏa mệt mỏi hệ thần kinh.',
+      sessions: 6,
+      price: 2064000,
+      originalPrice: 2580000,
+      services: ['MRL', 'HET']
+    },
+    {
+      code: 'PKG-FBR',
+      name: 'Full Body Office Recovery (Trị Liệu Xương Khớp Toàn Thân)',
+      desc: 'Sự kết hợp hoàn hảo từ cột sống cổ đến thắt lưng, giúp cơ thể sảng khoái và tràn đầy năng lượng.',
+      sessions: 10,
+      price: 4000000,
+      originalPrice: 5000000,
+      services: ['DTT', 'MRL', 'ELT', 'HET', 'SST']
+    },
+    {
+      code: 'PKG-MFP',
+      name: 'Mobility & Flexibility (Tăng Cường Độ Linh Hoạt)',
+      desc: 'Kéo giãn và vận động khớp chủ động, lấy lại biên độ chuyển động tự nhiên cho cơ thể.',
+      sessions: 8,
+      price: 3200000,
+      originalPrice: 4000000,
+      services: ['MRL', 'STR', 'JMT', 'CEG']
+    },
+    {
+      code: 'PKG-PVC',
+      name: 'Preventive Office Care (Chăm Sóc Chủ Động)',
+      desc: 'Gói chăm sóc định kỳ hàng tuần ngăn ngừa thoái hóa đốt sống sớm cho quản lý và nhân viên.',
+      sessions: 12,
+      price: 3648000,
+      originalPrice: 4560000,
+      services: ['MRL', 'HET', 'STR', 'CEG']
+    }
+  ];
+
+  for (const pkg of officePackages) {
+    const pkgDetailArr = pkg.services.map((svcShort, index) => {
+      const svcId = findSvcId(svcShort);
+      return {
+        dich_vu_id: svcId,
+        so_buoi: pkg.sessions,
+        so_lan_toi_da_trong_goi: pkg.sessions,
+        bat_buoc: true,
+        thu_tu_thuc_hien: index + 1
+      };
+    });
+
+    const { rows } = await pool.query(`
+      INSERT INTO goi_dich_vu (ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, gia_goc, han_dung_thang, hien_thi_website, trang_thai, chi_tiet_dich_vu, so_dv_toi_da_moi_buoi, loai_goi)
+      VALUES ($1, $2, $3, $4, $5, $6, 6, true, 'hoat_dong', $7, 5, 'lieu_trinh')
+      RETURNING id
+    `, [pkg.name, pkg.code, pkg.desc, pkg.sessions, pkg.price, pkg.originalPrice, JSON.stringify(pkgDetailArr)]);
+    const pkgId = rows[0].id;
+
+    for (const item of pkgDetailArr) {
+      await pool.query(`
+        INSERT INTO goi_dich_vu_chi_tiet (goi_dich_vu_id, dich_vu_id, so_buoi_trong_goi, so_lan_toi_da_trong_goi, bat_buoc, thu_tu_thuc_hien)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [pkgId, item.dich_vu_id, item.so_buoi, item.so_lan_toi_da_trong_goi, item.bat_buoc, item.thu_tu_thuc_hien]);
+    }
   }
-
-  const package1Details = JSON.stringify([
-    { dich_vu_id: g1Service.id, so_buoi: 5 }
-  ]);
-  const package2Details = JSON.stringify([
-    { dich_vu_id: g2Service.id, so_buoi: 10 }
-  ]);
-  const package3Details = JSON.stringify([
-    { dich_vu_id: g3Service.id, so_buoi: 15 }
-  ]);
-
-  // Insert packages
-  const { rows: p1Rows } = await pool.query(`
-    INSERT INTO goi_dich_vu (ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, gia_goc, han_dung_thang, hien_thi_website, trang_thai, chi_tiet_dich_vu)
-    VALUES ('Combo 5 buổi - Giải cứu cột sống cấp tốc', 'PKG-5-SPINE', 'Cắt nhanh cơn đau thắt lưng, vai gáy cấp tính cho người ngồi làm việc nhiều.', 5, 1180000, 1250000, 3, true, 'hoat_dong', $1)
-    RETURNING id
-  `, [package1Details]);
-  const p1Id = p1Rows[0].id;
-
-  const { rows: p2Rows } = await pool.query(`
-    INSERT INTO goi_dich_vu (ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, gia_goc, han_dung_thang, hien_thi_website, trang_thai, chi_tiet_dich_vu)
-    VALUES ('Combo 10 buổi - Tái tạo & Trị liệu chuyên sâu', 'PKG-10-OFFICE', 'Liệu trình 10 buổi trị liệu dứt điểm cơn đau vai gáy, tê bì tay chân mãn tính.', 10, 3400000, 3900000, 6, true, 'hoat_dong', $1)
-    RETURNING id
-  `, [package2Details]);
-  const p2Id = p2Rows[0].id;
-
-  const { rows: p3Rows } = await pool.query(`
-    INSERT INTO goi_dich_vu (ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, gia_goc, han_dung_thang, hien_thi_website, trang_thai, chi_tiet_dich_vu)
-    VALUES ('Combo 15 buổi - Định hình tư thế & Bảo dưỡng trọn đời', 'PKG-15-POSTURE', 'Liệu trình 15 buổi sửa hoàn toàn tư thế gù lưng, cổ rùa, lệch xương chậu.', 15, 7000000, 8850000, 9, true, 'hoat_dong', $1)
-    RETURNING id
-  `, [package3Details]);
-  const p3Id = p3Rows[0].id;
-
-  // Insert package services details
-  await pool.query(`
-    INSERT INTO goi_dich_vu_chi_tiet (goi_dich_vu_id, dich_vu_id, so_buoi_trong_goi)
-    VALUES 
-      ($1, $2, 5),
-      ($3, $4, 10),
-      ($5, $6, 15)
-  `, [
-    p1Id, g1Service.id,
-    p2Id, g2Service.id,
-    p3Id, g3Service.id
-  ]);
 };
 
 const seedInvoicesAndAnalytics = async (customerIds: string[], serviceIds: any[]) => {
