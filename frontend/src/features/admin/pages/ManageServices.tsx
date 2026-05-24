@@ -145,7 +145,7 @@ export default function ManageServices() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'chinh' | 'bo_sung'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'noi_bo' | 'dieu_tri' | 'bo_tro'>('all');
   
   const [expandedServiceIds, setExpandedServiceIds] = useState<Record<string, boolean>>({});
 
@@ -352,8 +352,12 @@ export default function ManageServices() {
     let result = services;
     
     // Filter by Tab
-    if (activeTab !== 'all') {
-      result = result.filter(svc => svc.loai_dich_vu === activeTab);
+    if (activeTab === 'noi_bo') {
+      result = result.filter(svc => svc.hien_thi_website === false);
+    } else if (activeTab === 'dieu_tri') {
+      result = result.filter(svc => svc.loai_dich_vu === 'chinh' && svc.hien_thi_website !== false);
+    } else if (activeTab === 'bo_tro') {
+      result = result.filter(svc => svc.loai_dich_vu === 'bo_sung');
     }
 
     // Filter by search query
@@ -464,24 +468,34 @@ export default function ManageServices() {
               TẤT CẢ
             </button>
             <button
-              onClick={() => setActiveTab('chinh')}
+              onClick={() => setActiveTab('noi_bo')}
               className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                activeTab === 'chinh' 
+                activeTab === 'noi_bo' 
                   ? 'bg-primary text-white shadow-sm border border-primary/20' 
                   : 'text-zinc-500 hover:text-primary'
               }`}
             >
-              KỸ THUẬT TRỊ LIỆU (NỘI BỘ)
+              KỸ THUẬT NỘI BỘ
             </button>
             <button
-              onClick={() => setActiveTab('bo_sung')}
+              onClick={() => setActiveTab('dieu_tri')}
               className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                activeTab === 'bo_sung' 
-                  ? 'bg-zinc-700 text-white shadow-sm border border-zinc-650' 
-                  : 'text-zinc-500 hover:text-zinc-700'
+                activeTab === 'dieu_tri' 
+                  ? 'bg-blue-600 text-white shadow-sm border border-blue-500' 
+                  : 'text-zinc-500 hover:text-blue-600'
               }`}
             >
-              DỊCH VỤ ĐƠN LẺ (CÔNG KHAI)
+              DỊCH VỤ ĐIỀU TRỊ
+            </button>
+            <button
+              onClick={() => setActiveTab('bo_tro')}
+              className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activeTab === 'bo_tro' 
+                  ? 'bg-emerald-600 text-white shadow-sm border border-emerald-500' 
+                  : 'text-zinc-500 hover:text-emerald-700'
+              }`}
+            >
+              DỊCH VỤ BỔ TRỢ
             </button>
           </div>
 
@@ -590,13 +604,17 @@ export default function ManageServices() {
                           </div>
                         </td>
                         <td className="p-4">
-                          {svc.loai_dich_vu === 'bo_sung' ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-lg border border-emerald-250 bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase">
-                              Dịch vụ đơn lẻ
+                          {svc.hien_thi_website === false ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-lg border border-primary/25 bg-primary-container text-primary text-[10px] font-bold uppercase" title="Dùng cấu hình phác đồ, không bán lẻ">
+                              Kỹ thuật Nội bộ
+                            </span>
+                          ) : svc.loai_dich_vu === 'chinh' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase" title="Buổi trị liệu chuyên sâu, có bán lẻ">
+                              Dịch vụ Điều trị
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-lg border border-primary/20 bg-primary-container text-primary text-[10px] font-bold uppercase">
-                              Kỹ thuật trị liệu
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-lg border border-emerald-250 bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase" title="Dịch vụ bổ sung thư giãn, có bán lẻ">
+                              Dịch vụ Bổ trợ
                             </span>
                           )}
                         </td>
@@ -823,8 +841,8 @@ export default function ManageServices() {
                         {...register('loai_dich_vu')}
                         className="w-full px-3.5 py-2.5 bg-white border border-zinc-200 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all font-semibold text-primary text-xs shadow-sm"
                       >
-                        <option value="chinh">KỸ THUẬT TRỊ LIỆU (NỘI BỘ - CẤU HÌNH GÓI)</option>
-                        <option value="bo_sung">DỊCH VỤ ĐƠN LẺ (CÔNG KHAI WEBSITE)</option>
+                        <option value="chinh">DỊCH VỤ ĐIỀU TRỊ / KỸ THUẬT Y KHOA</option>
+                        <option value="bo_sung">DỊCH VỤ BỔ TRỢ / THƯ GIÃN (ADD-ON)</option>
                       </select>
                     </div>
 
