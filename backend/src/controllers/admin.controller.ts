@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import adminService from '../services/admin.service';
-import { categorySchema, serviceSchema, packageSchema, staffSchema, paymentPromotionSchema } from '../schemas/admin.schema';
+import { categorySchema, serviceSchema, packageSchema, staffSchema } from '../schemas/admin.schema';
 import { refundSchema } from '../schemas/finance.schema';
 import { voucherSchema } from '../schemas/marketing.schema';
 import { logAudit } from '../utils/audit.util';
@@ -355,58 +355,6 @@ export const deleteVoucher = async (req: Request, res: Response): Promise<any> =
   } catch (error: any) {
     if (error.message === 'Không tìm thấy voucher') return res.status(404).json({ message: error.message });
     res.status(500).json({ message: 'Lỗi server khi xóa voucher' });
-  }
-};
-
-// --- QUẢN LÝ ƯU ĐÃI THANH TOÁN ---
-
-export const getPaymentPromotions = async (req: Request, res: Response) => {
-  try {
-    const promotions = await adminService.getPaymentPromotions();
-    res.json(promotions);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy danh sách ưu đãi thanh toán' });
-  }
-};
-
-export const createPaymentPromotion = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { body } = paymentPromotionSchema.parse({ body: req.body });
-    const promotion = await adminService.createPaymentPromotion(body);
-
-    await logAudit(req, 'CREATE_PAYMENT_PROMOTION', 'PAYMENT_PROMOTION', promotion.id.toString(), body);
-    res.status(201).json(promotion);
-  } catch (error) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    res.status(500).json({ message: 'Lỗi server khi tạo ưu đãi thanh toán' });
-  }
-};
-
-export const updatePaymentPromotion = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params as { id: string };
-    const { body } = paymentPromotionSchema.parse({ body: req.body });
-    const promotion = await adminService.updatePaymentPromotion(id, body);
-
-    await logAudit(req, 'UPDATE_PAYMENT_PROMOTION', 'PAYMENT_PROMOTION', id, body);
-    res.json(promotion);
-  } catch (error: any) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    if (error.message === 'Không tìm thấy ưu đãi thanh toán') return res.status(404).json({ message: error.message });
-    res.status(500).json({ message: 'Lỗi server khi cập nhật ưu đãi thanh toán' });
-  }
-};
-
-export const deletePaymentPromotion = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params as { id: string };
-    await adminService.deletePaymentPromotion(id);
-
-    await logAudit(req, 'DELETE_PAYMENT_PROMOTION', 'PAYMENT_PROMOTION', id, {});
-    res.json({ message: 'Xóa ưu đãi thanh toán thành công' });
-  } catch (error: any) {
-    if (error.message === 'Không tìm thấy ưu đãi thanh toán') return res.status(404).json({ message: error.message });
-    res.status(500).json({ message: 'Lỗi server khi xóa ưu đãi thanh toán' });
   }
 };
 

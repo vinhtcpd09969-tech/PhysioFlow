@@ -97,11 +97,6 @@ router.post('/vouchers', adminController.createVoucher);
 router.put('/vouchers/:id', adminController.updateVoucher);
 router.delete('/vouchers/:id', adminController.deleteVoucher);
 
-// Quản lý Ưu đãi Thanh toán
-router.get('/payment-promotions', adminController.getPaymentPromotions);
-router.post('/payment-promotions', adminController.createPaymentPromotion);
-router.put('/payment-promotions/:id', adminController.updatePaymentPromotion);
-router.delete('/payment-promotions/:id', adminController.deletePaymentPromotion);
 
 // Đánh giá (Feedback)
 router.get('/feedback', adminController.getFeedback);

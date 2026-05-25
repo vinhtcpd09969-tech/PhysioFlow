@@ -128,6 +128,46 @@ class ReceptionistService {
       throw new Error('Loại vật phẩm thanh toán không hợp lệ');
     }
 
+    // 1. Calculate auto-apply voucher discount (so_tien_giam_phuong_thuc) first
+    let so_tien_giam_phuong_thuc = 0;
+    let uu_dai_thanh_toan_id: string | null = null; // Store auto-applied voucher ID in this column
+
+    const autoVouchers = await receptionistRepository.getAutoApplyVouchers();
+    
+    // Find the first matching auto-apply voucher
+    const matchingAutoVoucher = autoVouchers.find((v: any) => {
+      // Check if matches payment method
+      if (v.yeu_cau_thanh_toan === 'tra_thang' && loai_thanh_toan !== 'tra_thang') return false;
+      if (v.yeu_cau_thanh_toan === 'tra_gop' && loai_thanh_toan !== 'tra_gop') return false;
+
+      // Check targeting
+      if (v.ap_dung_cho === 'dich_vu' || v.ap_dung_cho === 'dich_vu_don' || v.ap_dung_cho === 'dich_vu_cu_the') {
+        return item_type === 'dich_vu' && Array.isArray(v.dich_vu_ids) && v.dich_vu_ids.includes(item_id);
+      }
+      if (v.ap_dung_cho === 'goi' || v.ap_dung_cho === 'goi_dich_vu' || v.ap_dung_cho === 'goi_dieu_tri' || v.ap_dung_cho === 'goi_cu_the') {
+        return item_type === 'goi' && Array.isArray(v.goi_dich_vu_ids) && v.goi_dich_vu_ids.includes(item_id);
+      }
+      return v.ap_dung_cho === 'tat_ca';
+    });
+
+    if (matchingAutoVoucher) {
+      uu_dai_thanh_toan_id = matchingAutoVoucher.id;
+      if (matchingAutoVoucher.loai_giam === 'phan_tram' || matchingAutoVoucher.loai_giam === 'percentage') {
+        so_tien_giam_phuong_thuc = Math.round(gia_goc * (Number(matchingAutoVoucher.gia_tri_giam) / 100));
+        if (matchingAutoVoucher.giam_toi_da && so_tien_giam_phuong_thuc > Number(matchingAutoVoucher.giam_toi_da)) {
+          so_tien_giam_phuong_thuc = Number(matchingAutoVoucher.giam_toi_da);
+        }
+      } else {
+        so_tien_giam_phuong_thuc = Number(matchingAutoVoucher.gia_tri_giam);
+      }
+      if (so_tien_giam_phuong_thuc > gia_goc) {
+        so_tien_giam_phuong_thuc = gia_goc;
+      }
+    }
+
+    const gia_sau_auto = Math.max(0, gia_goc - so_tien_giam_phuong_thuc);
+
+    // 2. Calculate manual voucher discount on the remaining price
     let voucher_id: string | null = null;
     let so_tien_giam_voucher = 0;
 
@@ -162,23 +202,31 @@ class ReceptionistService {
       }
 
       // Check targeting
-      if (voucher.ap_dung_cho === 'dich_vu') {
+      if (voucher.ap_dung_cho === 'dich_vu' || voucher.ap_dung_cho === 'dich_vu_don' || voucher.ap_dung_cho === 'dich_vu_cu_the') {
         const linkedSvcIds = Array.isArray(voucher.dich_vu_ids) ? voucher.dich_vu_ids : JSON.parse(voucher.dich_vu_ids || '[]');
         if (item_type !== 'dich_vu' || !linkedSvcIds.includes(item_id)) {
           throw new Error('Mã giảm giá không áp dụng cho dịch vụ này');
         }
-      } else if (voucher.ap_dung_cho === 'goi_dich_vu' || voucher.ap_dung_cho === 'goi_dieu_tri') {
+      } else if (voucher.ap_dung_cho === 'goi' || voucher.ap_dung_cho === 'goi_dich_vu' || voucher.ap_dung_cho === 'goi_dieu_tri' || voucher.ap_dung_cho === 'goi_cu_the') {
         const linkedPkgIds = Array.isArray(voucher.goi_dich_vu_ids) ? voucher.goi_dich_vu_ids : JSON.parse(voucher.goi_dich_vu_ids || '[]');
         if (item_type !== 'goi' || !linkedPkgIds.includes(item_id)) {
           throw new Error('Mã giảm giá không áp dụng cho gói dịch vụ này');
         }
       }
 
+      // Check payment requirements
+      if (voucher.yeu_cau_thanh_toan === 'tra_thang' && loai_thanh_toan !== 'tra_thang') {
+        throw new Error('Mã giảm giá này chỉ áp dụng cho hình thức thanh toán trả thẳng');
+      }
+      if (voucher.yeu_cau_thanh_toan === 'tra_gop' && loai_thanh_toan !== 'tra_gop') {
+        throw new Error('Mã giảm giá này chỉ áp dụng cho hình thức thanh toán trả góp');
+      }
+
       voucher_id = voucher.id;
 
-      // Calculate voucher discount
+      // Calculate voucher discount on remaining price
       if (voucher.loai_giam === 'phan_tram' || voucher.loai_giam === 'percentage') {
-        so_tien_giam_voucher = Math.round(gia_goc * (Number(voucher.gia_tri_giam) / 100));
+        so_tien_giam_voucher = Math.round(gia_sau_auto * (Number(voucher.gia_tri_giam) / 100));
         if (voucher.giam_toi_da && so_tien_giam_voucher > Number(voucher.giam_toi_da)) {
           so_tien_giam_voucher = Number(voucher.giam_toi_da);
         }
@@ -186,46 +234,14 @@ class ReceptionistService {
         so_tien_giam_voucher = Number(voucher.gia_tri_giam);
       }
 
-      // Ensure discount does not exceed item price
-      if (so_tien_giam_voucher > gia_goc) {
-        so_tien_giam_voucher = gia_goc;
+      // Ensure discount does not exceed remaining price
+      if (so_tien_giam_voucher > gia_sau_auto) {
+        so_tien_giam_voucher = gia_sau_auto;
       }
-    }
-
-    // Clamp at 0đ minimum after voucher (must be non-negative)
-    const gia_sau_voucher = Math.max(0, gia_goc - so_tien_giam_voucher);
-
-    // Get active payment promotion - only for packages with <= 2 sessions
-    let phan_tram_tra_thang = 0;
-    let phan_tram_tra_gop = 0;
-    let uu_dai_thanh_toan_id: string | null = null;
-
-    if (item_type === 'goi' && so_buoi_goi <= 2) {
-      const promotion = await receptionistRepository.getActivePaymentPromotion();
-      if (promotion) {
-        phan_tram_tra_thang = promotion.phan_tram_tra_thang;
-        phan_tram_tra_gop = promotion.phan_tram_tra_gop;
-        uu_dai_thanh_toan_id = promotion.id;
-      } else {
-        phan_tram_tra_thang = 10;
-        phan_tram_tra_gop = 5;
-      }
-    }
-
-    let so_tien_giam_phuong_thuc = 0;
-    if (loai_thanh_toan === 'tra_thang') {
-      so_tien_giam_phuong_thuc = Math.round(gia_sau_voucher * (phan_tram_tra_thang / 100));
-    } else {
-      so_tien_giam_phuong_thuc = Math.round(gia_sau_voucher * (phan_tram_tra_gop / 100));
-    }
-
-    // Ensure discount does not exceed remaining price
-    if (so_tien_giam_phuong_thuc > gia_sau_voucher) {
-      so_tien_giam_phuong_thuc = gia_sau_voucher;
     }
 
     // Clamp final total at 0đ minimum
-    const tong_tien_thanh_toan = Math.max(0, gia_sau_voucher - so_tien_giam_phuong_thuc);
+    const tong_tien_thanh_toan = Math.max(0, gia_sau_auto - so_tien_giam_voucher);
 
     let so_tien_dot_1 = tong_tien_thanh_toan;
     let so_tien_dot_2 = 0;

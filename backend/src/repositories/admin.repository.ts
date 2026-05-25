@@ -443,10 +443,32 @@ class AdminRepository {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      
+      // Auto-generate ma_voucher for auto-applied campaigns if empty
+      let maVoucher = data.ma_voucher;
+      if (data.tu_dong_ap_dung && (!maVoucher || maVoucher.trim() === '')) {
+        maVoucher = `AUTO_PRM_${Math.floor(100000 + Math.random() * 900000)}`;
+      }
+
       const { rows } = await client.query(
-        `INSERT INTO voucher (ma_voucher, ten_chien_dich, loai_giam, gia_tri_giam, giam_toi_da, don_hang_toi_thieu, ap_dung_cho, so_luong_toi_da, ngay_bat_dau, ngay_het_han, trang_thai, tao_boi) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-        [data.ma_voucher, data.ten_chien_dich, data.loai_giam, data.gia_tri_giam, data.giam_toi_da, data.don_hang_toi_thieu, data.ap_dung_cho, data.so_luong_toi_da, data.ngay_bat_dau, data.ngay_het_han, data.trang_thai, userId]
+        `INSERT INTO voucher (ma_voucher, ten_chien_dich, loai_giam, gia_tri_giam, giam_toi_da, don_hang_toi_thieu, ap_dung_cho, so_luong_toi_da, ngay_bat_dau, ngay_het_han, trang_thai, tao_boi, tu_dong_ap_dung, yeu_cau_thanh_toan) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+        [
+          maVoucher, 
+          data.ten_chien_dich, 
+          data.loai_giam, 
+          data.gia_tri_giam, 
+          data.giam_toi_da, 
+          data.don_hang_toi_thieu, 
+          data.ap_dung_cho, 
+          data.so_luong_toi_da, 
+          data.ngay_bat_dau, 
+          data.ngay_het_han, 
+          data.trang_thai, 
+          userId,
+          data.tu_dong_ap_dung || false,
+          data.yeu_cau_thanh_toan || 'tat_ca'
+        ]
       );
       const voucher = rows[0];
 
@@ -486,13 +508,35 @@ class AdminRepository {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      
+      let maVoucher = data.ma_voucher;
+      if (data.tu_dong_ap_dung && (!maVoucher || maVoucher.trim() === '')) {
+        maVoucher = `AUTO_PRM_${Math.floor(100000 + Math.random() * 900000)}`;
+      }
+
       const { rows } = await client.query(
         `UPDATE voucher SET 
-          ten_chien_dich = $1, loai_giam = $2, gia_tri_giam = $3, giam_toi_da = $4, 
-          don_hang_toi_thieu = $5, ap_dung_cho = $6, so_luong_toi_da = $7, 
-          ngay_bat_dau = $8, ngay_het_han = $9, trang_thai = $10
-         WHERE id = $11 RETURNING *`,
-        [data.ten_chien_dich, data.loai_giam, data.gia_tri_giam, data.giam_toi_da, data.don_hang_toi_thieu, data.ap_dung_cho, data.so_luong_toi_da, data.ngay_bat_dau, data.ngay_het_han, data.trang_thai, id]
+          ma_voucher = $1, ten_chien_dich = $2, loai_giam = $3, gia_tri_giam = $4, giam_toi_da = $5, 
+          don_hang_toi_thieu = $6, ap_dung_cho = $7, so_luong_toi_da = $8, 
+          ngay_bat_dau = $9, ngay_het_han = $10, trang_thai = $11,
+          tu_dong_ap_dung = $12, yeu_cau_thanh_toan = $13
+         WHERE id = $14 RETURNING *`,
+        [
+          maVoucher,
+          data.ten_chien_dich, 
+          data.loai_giam, 
+          data.gia_tri_giam, 
+          data.giam_toi_da, 
+          data.don_hang_toi_thieu, 
+          data.ap_dung_cho, 
+          data.so_luong_toi_da, 
+          data.ngay_bat_dau, 
+          data.ngay_het_han, 
+          data.trang_thai, 
+          data.tu_dong_ap_dung || false,
+          data.yeu_cau_thanh_toan || 'tat_ca',
+          id
+        ]
       );
       
       if (rows.length === 0) {
@@ -541,48 +585,7 @@ class AdminRepository {
     return rows[0];
   }
 
-  // --- QUẢN LÝ ƯU ĐÃI THANH TOÁN ---
-  async getPaymentPromotions() {
-    const { rows } = await pool.query('SELECT * FROM uu_dai_thanh_toan ORDER BY ngay_bat_dau DESC');
-    return rows;
-  }
 
-  async getActivePaymentPromotion() {
-    const { rows } = await pool.query(
-      `SELECT * FROM uu_dai_thanh_toan 
-       WHERE trang_thai = 'hoat_dong' 
-       AND ngay_bat_dau <= CURRENT_DATE 
-       AND (ngay_het_han IS NULL OR ngay_het_han >= CURRENT_DATE)
-       ORDER BY thoi_gian_tao DESC
-       LIMIT 1`
-    );
-    return rows[0];
-  }
-
-  async createPaymentPromotion(data: any) {
-    const { rows } = await pool.query(
-      `INSERT INTO uu_dai_thanh_toan (ten_uu_dai, phan_tram_tra_thang, phan_tram_tra_gop, ngay_bat_dau, ngay_het_han, trang_thai)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [data.ten_uu_dai, data.phan_tram_tra_thang, data.phan_tram_tra_gop, data.ngay_bat_dau, data.ngay_het_han || null, data.trang_thai || 'hoat_dong']
-    );
-    return rows[0];
-  }
-
-  async updatePaymentPromotion(id: string, data: any) {
-    const { rows } = await pool.query(
-      `UPDATE uu_dai_thanh_toan SET
-        ten_uu_dai = $1, phan_tram_tra_thang = $2, phan_tram_tra_gop = $3,
-        ngay_bat_dau = $4, ngay_het_han = $5, trang_thai = $6
-       WHERE id = $7 RETURNING *`,
-      [data.ten_uu_dai, data.phan_tram_tra_thang, data.phan_tram_tra_gop, data.ngay_bat_dau, data.ngay_het_han || null, data.trang_thai, id]
-    );
-    return rows[0];
-  }
-
-  async deletePaymentPromotion(id: string) {
-    const { rows } = await pool.query('DELETE FROM uu_dai_thanh_toan WHERE id = $1 RETURNING *', [id]);
-    return rows[0];
-  }
 
   // --- QUẢN LÝ ĐÁNH GIÁ ---
   async getFeedback() {

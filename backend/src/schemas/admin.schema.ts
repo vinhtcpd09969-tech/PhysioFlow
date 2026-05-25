@@ -93,6 +93,7 @@ export const paymentPromotionSchema = z.object({
     phan_tram_tra_gop: z.number().int().min(0).max(100).default(5),
     ngay_bat_dau: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày bắt đầu không hợp lệ (YYYY-MM-DD)'),
     ngay_het_han: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày hết hạn không hợp lệ (YYYY-MM-DD)').optional().nullable(),
-    trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong')
+    trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong'),
+    goi_dich_vu_ids: z.any().optional()
   })
 });

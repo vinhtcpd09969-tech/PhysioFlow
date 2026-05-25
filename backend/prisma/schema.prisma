@@ -1,0 +1,423 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model buoi_dich_vu_su_dung {
+  id                                                    Int           @id @default(autoincrement())
+  buoi_tri_lieu_id                                      String        @db.Uuid
+  dich_vu_id                                            String        @db.Uuid
+  so_lan_thuc_te                                        Int           @default(1)
+  ghi_chu_ly_do                                         String?
+  ktv_id                                                String?       @db.Uuid
+  trang_thai                                            String        @default("da_duyet") @db.VarChar(20)
+  tao_luc                                               DateTime      @default(now()) @db.Timestamptz(6)
+  duyet_boi                                             String?       @db.Uuid
+  duyet_luc                                             DateTime?     @db.Timestamptz(6)
+  buoi_tri_lieu                                         buoi_tri_lieu @relation(fields: [buoi_tri_lieu_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dich_vu                                               dich_vu       @relation(fields: [dich_vu_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  nguoi_dung_buoi_dich_vu_su_dung_duyet_boiTonguoi_dung nguoi_dung?   @relation("buoi_dich_vu_su_dung_duyet_boiTonguoi_dung", fields: [duyet_boi], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  nguoi_dung_buoi_dich_vu_su_dung_ktv_idTonguoi_dung    nguoi_dung?   @relation("buoi_dich_vu_su_dung_ktv_idTonguoi_dung", fields: [ktv_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([buoi_tri_lieu_id], map: "idx_bdvsu_buoi")
+  @@index([dich_vu_id], map: "idx_bdvsu_dv")
+}
+
+model buoi_tri_lieu {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lich_dieu_tri_id      String                  @db.Uuid
+  khach_hang_id         String                  @db.Uuid
+  ky_thuat_vien_id      String                  @db.Uuid
+  phong_id              BigInt?
+  dich_vu_id            String?                 @db.Uuid
+  thoi_gian_bat_dau     DateTime                @db.Timestamp(6)
+  thoi_gian_ket_thuc    DateTime?               @db.Timestamp(6)
+  danh_gia_truoc_buoi   Int?
+  danh_gia_sau_buoi     Int?
+  danh_gia_hieu_qua     Int?
+  so_thu_tu_buoi        Int?
+  danh_gia_id           String?                 @db.Uuid
+  trang_thai            String                  @default("dang_thuc_hien") @db.VarChar(20)
+  canh_bao_dac_biet     String?
+  ai_tom_tat_ngan       String?                 @db.VarChar(300)
+  thoi_gian_ghi_chu     DateTime?               @db.Timestamp(6)
+  buoi_dich_vu_su_dung  buoi_dich_vu_su_dung[]
+  dich_vu               dich_vu?                @relation(fields: [dich_vu_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  khach_hang            khach_hang              @relation(fields: [khach_hang_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  chuyen_gia_y_te       chuyen_gia_y_te         @relation(fields: [ky_thuat_vien_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lich_dieu_tri         lich_dieu_tri           @relation(fields: [lich_dieu_tri_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  phong                 phong?                  @relation(fields: [phong_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  buoi_tri_lieu_dich_vu buoi_tri_lieu_dich_vu[]
+  danh_gia_dich_vu      danh_gia_dich_vu[]
+}
+
+model buoi_tri_lieu_dich_vu {
+  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buoi_tri_lieu_id    String        @db.Uuid
+  dich_vu_id          String        @db.Uuid
+  so_luong            Int?          @default(1)
+  thoi_gian_thuc_hien DateTime?     @default(now()) @db.Timestamp(6)
+  buoi_tri_lieu       buoi_tri_lieu @relation(fields: [buoi_tri_lieu_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dich_vu             dich_vu       @relation(fields: [dich_vu_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model chuyen_gia_y_te {
+  id                 String             @id(map: "ky_thuat_vien_pkey") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nguoi_dung_id      String             @db.Uuid
+  ma_nhan_vien       String             @db.VarChar(20)
+  chuyen_mon_chinh   String             @db.VarChar(200)
+  so_nam_kinh_nghiem Int?
+  chung_chi          String?
+  mo_ta_ban_than     String?
+  anh_dai_dien_url   String?
+  trang_thai         String             @default("hoat_dong") @db.VarChar(20)
+  ngay_vao_lam       DateTime?          @db.Date
+  buoi_tri_lieu      buoi_tri_lieu[]
+  nguoi_dung         nguoi_dung         @relation(fields: [nguoi_dung_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ky_thuat_vien_nguoi_dung_id_fkey")
+  danh_gia_dich_vu   danh_gia_dich_vu[]
+  lich_dat           lich_dat[]
+}
+
+model danh_gia_dich_vu {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buoi_tri_lieu_id   String          @db.Uuid
+  khach_hang_id      String          @db.Uuid
+  ky_thuat_vien_id   String          @db.Uuid
+  so_sao_tong        Int
+  so_sao_ktv         Int?
+  nhan_xet           String?
+  hieu_qua_dieu_tri  String?         @db.VarChar(30)
+  se_quay_lai        Boolean?
+  hien_thi_cong_khai Boolean         @default(false)
+  thoi_gian_danh_gia DateTime        @default(now()) @db.Timestamp(6)
+  buoi_tri_lieu      buoi_tri_lieu   @relation(fields: [buoi_tri_lieu_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  khach_hang         khach_hang      @relation(fields: [khach_hang_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  chuyen_gia_y_te    chuyen_gia_y_te @relation(fields: [ky_thuat_vien_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model danh_muc_dich_vu {
+  id              BigInt        @id @default(autoincrement())
+  ten_danh_muc    String        @db.VarChar(100)
+  mo_ta           String?
+  thu_tu_hien_thi Int           @default(0)
+  an_hien         Boolean       @default(true)
+  dich_vu         dich_vu[]
+  goi_dich_vu     goi_dich_vu[]
+}
+
+model dich_vu {
+  id                                                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  danh_muc_id                                       BigInt
+  ten_dich_vu                                       String                  @db.VarChar(200)
+  mo_ta_ngan                                        String?                 @db.VarChar(500)
+  mo_ta_chi_tiet                                    String?
+  thoi_luong_phut                                   Int
+  don_gia                                           BigInt
+  hinh_anh_url                                      String?
+  trang_thai                                        String                  @default("hoat_dong") @db.VarChar(20)
+  thu_tu_hien_thi                                   Int                     @default(0)
+  thiet_bi_yeu_cau                                  String?                 @db.VarChar(100)
+  loai_dich_vu                                      String                  @default("chinh") @db.VarChar(20)
+  hien_thi_website                                  Boolean                 @default(true)
+  loai_dich_vu_ho_tro                               Json?                   @default("[]")
+  buoi_dich_vu_su_dung                              buoi_dich_vu_su_dung[]
+  buoi_tri_lieu                                     buoi_tri_lieu[]
+  buoi_tri_lieu_dich_vu                             buoi_tri_lieu_dich_vu[]
+  danh_muc_dich_vu                                  danh_muc_dich_vu        @relation(fields: [danh_muc_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  goi_dich_vu_chi_tiet                              goi_dich_vu_chi_tiet[]
+  lich_dat_lich_dat_dich_vu_idTodich_vu             lich_dat[]              @relation("lich_dat_dich_vu_idTodich_vu")
+  lich_dat_lich_dat_khuyen_nghi_dich_vu_idTodich_vu lich_dat[]              @relation("lich_dat_khuyen_nghi_dich_vu_idTodich_vu")
+  lich_dieu_tri                                     lich_dieu_tri[]
+  voucher_dich_vu                                   voucher_dich_vu[]
+}
+
+model goi_dich_vu {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ten_goi               String                 @db.VarChar(200)
+  ma_goi                String                 @unique @db.VarChar(30)
+  mo_ta                 String?
+  tong_so_buoi          Int
+  gia_goi               BigInt
+  gia_goc               BigInt?
+  han_dung_thang        Int                    @default(6)
+  hien_thi_website      Boolean                @default(true)
+  trang_thai            String                 @default("hoat_dong") @db.VarChar(20)
+  chi_tiet_dich_vu      Json?                  @default("[]")
+  thoi_gian_tao         DateTime               @default(now()) @db.Timestamp(6)
+  danh_muc_id           BigInt?
+  loai_goi              String?                @default("lieu_trinh") @db.VarChar(20)
+  so_dv_toi_da_moi_buoi Int?                   @default(5)
+  danh_muc_dich_vu      danh_muc_dich_vu?      @relation(fields: [danh_muc_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  goi_dich_vu_chi_tiet  goi_dich_vu_chi_tiet[]
+  lich_dat              lich_dat[]
+  lich_dieu_tri         lich_dieu_tri[]
+  voucher_goi_dich_vu   voucher_goi_dich_vu[]
+}
+
+model goi_dich_vu_chi_tiet {
+  id                      Int          @id @default(autoincrement())
+  goi_dich_vu_id          String?      @db.Uuid
+  dich_vu_id              String?      @db.Uuid
+  so_buoi_trong_goi       Int?         @default(1)
+  so_lan_toi_da_trong_goi Int?         @default(10)
+  bat_buoc                Boolean?     @default(false)
+  thu_tu_thuc_hien        Int?         @default(0)
+  dich_vu                 dich_vu?     @relation(fields: [dich_vu_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  goi_dich_vu             goi_dich_vu? @relation(fields: [goi_dich_vu_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model hoa_don {
+  id                       String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ma_hoa_don               String             @db.VarChar(20)
+  khach_hang_id            String             @db.Uuid
+  loai_hoa_don             String             @db.VarChar(20)
+  tong_tien_truoc_giam     BigInt             @default(0)
+  so_tien_giam             BigInt             @default(0)
+  tong_tien_thanh_toan     BigInt
+  da_thanh_toan            BigInt             @default(0)
+  trang_thai               String             @default("chua_thanh_toan") @db.VarChar(30)
+  ghi_chu                  String?
+  ngay_tao                 DateTime           @default(now()) @db.Timestamp(6)
+  ngay_thanh_toan          DateTime?          @db.Timestamp(6)
+  thu_boi                  String?            @db.Uuid
+  loai_thanh_toan          String?            @default("tra_thang") @db.VarChar(20)
+  voucher_id               String?            @db.Uuid
+  so_tien_giam_voucher     BigInt?            @default(0)
+  so_tien_giam_phuong_thuc BigInt?            @default(0)
+  lich_dieu_tri_id         String?            @db.Uuid
+  khach_hang               khach_hang         @relation(fields: [khach_hang_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lich_dieu_tri            lich_dieu_tri?     @relation(fields: [lich_dieu_tri_id], references: [id], onUpdate: NoAction)
+  voucher                  voucher?           @relation(fields: [voucher_id], references: [id], onUpdate: NoAction)
+  thanh_toan               thanh_toan[]
+}
+
+model khach_hang {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nguoi_dung_id    String             @db.Uuid
+  ngay_sinh        DateTime?          @db.Date
+  gioi_tinh        String?            @db.VarChar(10)
+  dia_chi          String?
+  hang_khach_hang  String             @default("thuong") @db.VarChar(20)
+  preferred_ktv_id String?            @db.Uuid
+  thoi_gian_tao    DateTime           @default(now()) @db.Timestamp(6)
+  deleted_at       DateTime?          @db.Timestamp(6)
+  so_cccd          String?            @db.VarChar(20)
+  buoi_tri_lieu    buoi_tri_lieu[]
+  danh_gia_dich_vu danh_gia_dich_vu[]
+  hoa_don          hoa_don[]
+  nguoi_dung       nguoi_dung         @relation(fields: [nguoi_dung_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lich_dat         lich_dat[]
+  lich_dieu_tri    lich_dieu_tri[]
+}
+
+model lich_dat {
+  id                                               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ma_lich_dat                                      String           @db.VarChar(20)
+  khach_hang_id                                    String?          @db.Uuid
+  ho_ten_khach                                     String?          @db.VarChar(150)
+  so_dien_thoai                                    String?          @db.VarChar(20)
+  gioi_tinh_khach                                  String?          @db.VarChar(10)
+  dich_vu_id                                       String?          @db.Uuid
+  ky_thuat_vien_id                                 String?          @db.Uuid
+  phong_id                                         BigInt?
+  ngay_gio_bat_dau                                 DateTime         @db.Timestamp(6)
+  ngay_gio_ket_thuc                                DateTime         @db.Timestamp(6)
+  ly_do_kham                                       String?
+  anh_dinh_kem_url                                 String?
+  trang_thai                                       String           @default("cho_xac_nhan") @db.VarChar(30)
+  ghi_chu_dat_lich                                 String?
+  ghi_chu_noi_bo                                   String?
+  thoi_gian_checkin                                DateTime?        @db.Timestamp(6)
+  thoi_gian_huy                                    DateTime?        @db.Timestamp(6)
+  ly_do_huy                                        String?
+  nguoi_tao                                        String           @default("khach_hang") @db.VarChar(20)
+  thoi_gian_tao                                    DateTime         @default(now()) @db.Timestamp(6)
+  chan_doan                                        String?
+  chong_chi_dinh                                   String?
+  khuyen_nghi_dich_vu_id                           String?          @db.Uuid
+  khuyen_nghi_goi_id                               String?          @db.Uuid
+  dich_vu_lich_dat_dich_vu_idTodich_vu             dich_vu?         @relation("lich_dat_dich_vu_idTodich_vu", fields: [dich_vu_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  khach_hang                                       khach_hang?      @relation(fields: [khach_hang_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dich_vu_lich_dat_khuyen_nghi_dich_vu_idTodich_vu dich_vu?         @relation("lich_dat_khuyen_nghi_dich_vu_idTodich_vu", fields: [khuyen_nghi_dich_vu_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  goi_dich_vu                                      goi_dich_vu?     @relation(fields: [khuyen_nghi_goi_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  chuyen_gia_y_te                                  chuyen_gia_y_te? @relation(fields: [ky_thuat_vien_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  phong                                            phong?           @relation(fields: [phong_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lich_dieu_tri                                    lich_dieu_tri[]
+}
+
+model lich_dieu_tri {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  khach_hang_id    String          @db.Uuid
+  loai_dieu_tri    String          @db.VarChar(20)
+  dich_vu_id       String?         @db.Uuid
+  goi_dich_vu_id   String?         @db.Uuid
+  tong_so_buoi     Int
+  so_buoi_da_dung  Int             @default(0)
+  trang_thai       String          @default("dang_dieu_tri") @db.VarChar(20)
+  thoi_gian_tao    DateTime        @default(now()) @db.Timestamp(6)
+  ma_lich_dieu_tri String?         @unique @db.VarChar(20)
+  phong_id         BigInt?
+  ho_ten_khach     String?         @db.VarChar(150)
+  so_dien_thoai    String?         @db.VarChar(20)
+  ghi_chu_noi_bo   String?
+  lich_dat_id      String?         @db.Uuid
+  ngay_bat_dau     DateTime?       @db.Timestamp(6)
+  ngay_ket_thuc    DateTime?       @db.Timestamp(6)
+  buoi_tri_lieu    buoi_tri_lieu[]
+  hoa_don          hoa_don[]
+  dich_vu          dich_vu?        @relation(fields: [dich_vu_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  goi_dich_vu      goi_dich_vu?    @relation(fields: [goi_dich_vu_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  khach_hang       khach_hang      @relation(fields: [khach_hang_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lich_dat         lich_dat?       @relation(fields: [lich_dat_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  phong            phong?          @relation(fields: [phong_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model lich_lam_viec {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nguoi_dung_id String     @db.Uuid
+  ngay          DateTime   @db.Date
+  gio_bat_dau   DateTime   @db.Time(6)
+  gio_ket_thuc  DateTime   @db.Time(6)
+  trang_thai    String?    @default("hoat_dong") @db.VarChar(20)
+  nguoi_dung    nguoi_dung @relation(fields: [nguoi_dung_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model nguoi_dung {
+  id                                                              String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ho_ten                                                          String                 @db.VarChar(150)
+  email                                                           String                 @db.VarChar(255)
+  so_dien_thoai                                                   String?                @db.VarChar(20)
+  mat_khau_hash                                                   String                 @db.VarChar(255)
+  vai_tro_id                                                      Int                    @db.SmallInt
+  trang_thai                                                      String                 @default("hoat_dong") @db.VarChar(20)
+  da_xac_thuc_email                                               Boolean                @default(false)
+  avatar_url                                                      String?
+  thoi_gian_tao                                                   DateTime               @default(now()) @db.Timestamp(6)
+  lan_dang_nhap_cuoi                                              DateTime?              @db.Timestamp(6)
+  deleted_at                                                      DateTime?              @db.Timestamp(6)
+  buoi_dich_vu_su_dung_buoi_dich_vu_su_dung_duyet_boiTonguoi_dung buoi_dich_vu_su_dung[] @relation("buoi_dich_vu_su_dung_duyet_boiTonguoi_dung")
+  buoi_dich_vu_su_dung_buoi_dich_vu_su_dung_ktv_idTonguoi_dung    buoi_dich_vu_su_dung[] @relation("buoi_dich_vu_su_dung_ktv_idTonguoi_dung")
+  chuyen_gia_y_te                                                 chuyen_gia_y_te[]
+  khach_hang                                                      khach_hang[]
+  lich_lam_viec                                                   lich_lam_viec[]
+  vai_tro                                                         vai_tro                @relation(fields: [vai_tro_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  refresh_tokens                                                  refresh_tokens[]
+  voucher                                                         voucher[]
+}
+
+model otp_codes {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email      String   @db.VarChar(255)
+  otp        String   @db.VarChar(6)
+  expires_at DateTime @db.Timestamptz(6)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model phong {
+  id                  BigInt          @id @default(autoincrement())
+  ten_phong           String          @db.VarChar(100)
+  ma_phong            String          @db.VarChar(20)
+  loai_phong          String?         @db.VarChar(100)
+  loai_dich_vu_ho_tro Json?
+  thiet_bi            Json?
+  mo_ta               String?
+  trang_thai          String          @default("san_sang") @db.VarChar(20)
+  tang                String?         @db.VarChar(20)
+  buoi_tri_lieu       buoi_tri_lieu[]
+  lich_dat            lich_dat[]
+  lich_dieu_tri       lich_dieu_tri[]
+}
+
+model refresh_tokens {
+  id            Int        @id @default(autoincrement())
+  nguoi_dung_id String     @db.Uuid
+  token         String
+  expires_at    DateTime   @db.Timestamp(6)
+  created_at    DateTime?  @default(now()) @db.Timestamp(6)
+  nguoi_dung    nguoi_dung @relation(fields: [nguoi_dung_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model thanh_toan {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ma_giao_dich        String   @db.VarChar(50)
+  hoa_don_id          String   @db.Uuid
+  so_tien             BigInt
+  phuong_thuc         String   @db.VarChar(20)
+  trang_thai          String   @default("cho_xu_ly") @db.VarChar(20)
+  ma_tham_chieu       String?  @db.VarChar(100)
+  nguoi_thu_tien_id   String?  @db.Uuid
+  thoi_gian_giao_dich DateTime @default(now()) @db.Timestamp(6)
+  ghi_chu             String?
+  hoa_don             hoa_don  @relation(fields: [hoa_don_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model thiet_bi_y_te {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ma_thiet_bi            String    @unique @db.VarChar(20)
+  ten_thiet_bi           String    @db.VarChar(100)
+  loai_thiet_bi          String?   @db.VarChar(100)
+  ngay_mua               DateTime? @db.Date
+  ngay_bao_tri_tiep_theo DateTime? @db.Date
+  trang_thai             String    @default("san_sang") @db.VarChar(20)
+  phong_id_hien_tai      BigInt?
+  ghi_chu                String?
+  thoi_gian_tao          DateTime  @default(now()) @db.Timestamp(6)
+}
+
+
+
+model vai_tro {
+  id           Int          @id @default(autoincrement()) @db.SmallInt
+  ma_vai_tro   String       @db.VarChar(20)
+  ten_hien_thi String       @db.VarChar(50)
+  mo_ta_quyen  String?
+  nguoi_dung   nguoi_dung[]
+}
+
+model voucher {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ma_voucher          String                @db.VarChar(50)
+  ten_chien_dich      String?               @db.VarChar(200)
+  loai_giam           String                @db.VarChar(20)
+  gia_tri_giam        BigInt
+  giam_toi_da         BigInt?
+  don_hang_toi_thieu  BigInt                @default(0)
+  ap_dung_cho         String                @default("tat_ca") @db.VarChar(30)
+  so_luong_toi_da     Int?
+  so_luong_da_dung    Int                   @default(0)
+  ngay_bat_dau        DateTime              @db.Date
+  ngay_het_han        DateTime?             @db.Date
+  tao_boi             String                @db.Uuid
+  trang_thai          String                @default("hoat_dong") @db.VarChar(20)
+  tu_dong_ap_dung     Boolean               @default(false)
+  yeu_cau_thanh_toan  String                @default("tat_ca") @db.VarChar(30)
+  thoi_gian_tao       DateTime              @default(now()) @db.Timestamp(6)
+  hoa_don             hoa_don[]
+  nguoi_dung          nguoi_dung            @relation(fields: [tao_boi], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  voucher_dich_vu     voucher_dich_vu[]
+  voucher_goi_dich_vu voucher_goi_dich_vu[]
+}
+
+model voucher_dich_vu {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  voucher_id String  @db.Uuid
+  dich_vu_id String  @db.Uuid
+  dich_vu    dich_vu @relation(fields: [dich_vu_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  voucher    voucher @relation(fields: [voucher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([voucher_id, dich_vu_id], map: "unique_voucher_dich_vu")
+}
+
+model voucher_goi_dich_vu {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  voucher_id     String      @db.Uuid
+  goi_dich_vu_id String      @db.Uuid
+  goi_dich_vu    goi_dich_vu @relation(fields: [goi_dich_vu_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  voucher        voucher     @relation(fields: [voucher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([voucher_id, goi_dich_vu_id], map: "unique_voucher_goi_dich_vu")
+}

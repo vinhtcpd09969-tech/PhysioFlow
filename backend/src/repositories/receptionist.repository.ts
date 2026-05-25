@@ -297,16 +297,33 @@ class ReceptionistRepository {
     return parseInt(rows[0].count || '0');
   }
 
-  async getActivePaymentPromotion() {
-    const { rows } = await pool.query(
-      `SELECT * FROM uu_dai_thanh_toan 
+  async getAutoApplyVouchers() {
+    const { rows: vouchers } = await pool.query(
+      `SELECT * FROM voucher 
        WHERE trang_thai = 'hoat_dong' 
+       AND tu_dong_ap_dung = true 
        AND ngay_bat_dau <= CURRENT_DATE 
        AND (ngay_het_han IS NULL OR ngay_het_han >= CURRENT_DATE)
-       ORDER BY thoi_gian_tao DESC
-       LIMIT 1`
+       ORDER BY thoi_gian_tao DESC`
     );
-    return rows[0];
+
+    const result = [];
+    for (const v of vouchers) {
+      const { rows: packageRows } = await pool.query(
+        'SELECT goi_dich_vu_id FROM voucher_goi_dich_vu WHERE voucher_id = $1',
+        [v.id]
+      );
+      const { rows: serviceRows } = await pool.query(
+        'SELECT dich_vu_id FROM voucher_dich_vu WHERE voucher_id = $1',
+        [v.id]
+      );
+      result.push({
+        ...v,
+        goi_dich_vu_ids: packageRows.map(r => r.goi_dich_vu_id),
+        dich_vu_ids: serviceRows.map(r => r.dich_vu_id)
+      });
+    }
+    return result;
   }
 
   async getCustomerContactInfo(khach_hang_id: string) {
