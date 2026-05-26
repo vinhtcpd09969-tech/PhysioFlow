@@ -7,19 +7,28 @@ function App() {
   return (
     <>
       <Toaster 
-        position="bottom-right"
+        position="top-right"
         toastOptions={{
           style: {
-            borderRadius: '4px',
-            background: '#18181b', // zinc-900
+            borderRadius: '16px',
+            background: '#0B1222',
             color: '#fff',
-            border: '1px solid #27272a', // zinc-800
-            padding: '12px 16px',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15)'
+            border: '1px solid rgba(46, 196, 182, 0.25)',
+            padding: '14px 18px',
+            boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.3), 0 10px 20px -10px rgba(0, 0, 0, 0.2)',
+            fontFamily: 'Manrope, sans-serif',
+            fontSize: '13px',
+            fontWeight: '700',
           },
           success: {
             iconTheme: {
-              primary: '#0d9488', // teal-600
+              primary: '#2EC4B6',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#EF4444',
               secondary: '#fff',
             },
           },

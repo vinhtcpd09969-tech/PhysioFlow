@@ -212,6 +212,63 @@ class AppointmentRepository {
       [completedCount, ldtId]
     );
   }
+
+  async getCustomerAppointments(nguoi_dung_id: string) {
+    const query = `
+      SELECT 
+        ld.id, ld.ma_lich_dat, 
+        ld.ngay_gio_bat_dau as ngay_gio_bat_dau, 
+        ld.ngay_gio_ket_thuc as ngay_gio_ket_thuc, 
+        ld.trang_thai, 'kham_moi' as loai_lich,
+        COALESCE(nd_kh.ho_ten, ld.ho_ten_khach) AS ten_khach_hang, 
+        COALESCE(nd_kh.so_dien_thoai, ld.so_dien_thoai) AS so_dien_thoai,
+        kh.id as khach_hang_id,
+        dv.ten_dich_vu,
+        nd_ktv.ho_ten AS ten_ky_thuat_vien,
+        ld.ky_thuat_vien_id,
+        ld.phong_id,
+        p.ten_phong,
+        ld.chan_doan,
+        ld.chong_chi_dinh,
+        ld.ly_do_huy,
+        ld.thoi_gian_huy,
+        ld.ly_do_kham,
+        ld.thoi_gian_tao
+      FROM lich_dat ld
+      JOIN khach_hang kh ON ld.khach_hang_id = kh.id
+      JOIN nguoi_dung nd_kh ON kh.nguoi_dung_id = nd_kh.id
+      LEFT JOIN dich_vu dv ON ld.dich_vu_id = dv.id
+      LEFT JOIN chuyen_gia_y_te ktv ON ld.ky_thuat_vien_id = ktv.id
+      LEFT JOIN nguoi_dung nd_ktv ON ktv.nguoi_dung_id = nd_ktv.id
+      LEFT JOIN phong p ON ld.phong_id = p.id
+      WHERE nd_kh.id = $1
+      ORDER BY ld.ngay_gio_bat_dau DESC
+    `;
+    const { rows } = await pool.query(query, [nguoi_dung_id]);
+    return rows;
+  }
+
+  async cancelCustomerAppointment(id: string, nguoi_dung_id: string, ly_do_huy: string) {
+    const checkQuery = `
+      SELECT ld.id 
+      FROM lich_dat ld
+      JOIN khach_hang kh ON ld.khach_hang_id = kh.id
+      WHERE ld.id = $1 AND kh.nguoi_dung_id = $2
+    `;
+    const checkRes = await pool.query(checkQuery, [id, nguoi_dung_id]);
+    if (checkRes.rows.length === 0) {
+      throw new Error('Lịch hẹn không tồn tại hoặc không thuộc quyền quản lý của bạn.');
+    }
+
+    const query = `
+      UPDATE lich_dat
+      SET trang_thai = 'da_huy', ly_do_huy = $1, thoi_gian_huy = NOW()
+      WHERE id = $2
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [ly_do_huy, id]);
+    return rows[0];
+  }
 }
 
 export default new AppointmentRepository();

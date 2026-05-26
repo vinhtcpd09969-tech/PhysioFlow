@@ -1,4 +1,6 @@
 import receptionistRepository from '../repositories/receptionist.repository';
+import notificationService from './notification.service';
+
 
 class ReceptionistService {
   async getTodayAppointments() {
@@ -64,6 +66,12 @@ class ReceptionistService {
   async updateAppointmentStatus(id: string, trang_thai: string) {
     const appointment = await receptionistRepository.updateAppointmentStatus(id, trang_thai);
     if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
+
+    // Kích hoạt gửi thông báo tự động cho khách hàng
+    notificationService.triggerAppointmentNotification(id, trang_thai).catch(err => {
+      console.error('Lỗi khi trigger thông báo từ le_tan service:', err);
+    });
+
     return appointment;
   }
 

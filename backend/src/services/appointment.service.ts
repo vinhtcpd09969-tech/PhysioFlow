@@ -1,4 +1,5 @@
 import appointmentRepository from '../repositories/appointment.repository';
+import notificationService from './notification.service';
 
 class AppointmentService {
   async getAllAppointments() {
@@ -22,11 +23,29 @@ class AppointmentService {
     if (!appointment) {
       throw new Error('Không tìm thấy lịch hẹn');
     }
+    
+    // Kích hoạt thông báo bất đồng bộ cho khách hàng
+    notificationService.triggerAppointmentNotification(id, data.trang_thai).catch(err => {
+      console.error('Lỗi khi trigger thông báo từ service:', err);
+    });
+
     return appointment;
   }
 
   async updateMedicalRecord(id: string, data: { chan_doan?: string, chong_chi_dinh?: string, khuyen_nghi_dich_vu_id?: string | null, khuyen_nghi_goi_id?: string | null }) {
     return appointmentRepository.updateMedicalRecord(id, data);
+  }
+
+  async getCustomerAppointments(nguoi_dung_id: string) {
+    return appointmentRepository.getCustomerAppointments(nguoi_dung_id);
+  }
+
+  async cancelCustomerAppointment(id: string, nguoi_dung_id: string, ly_do_huy: string) {
+    const appointment = await appointmentRepository.cancelCustomerAppointment(id, nguoi_dung_id, ly_do_huy);
+    if (!appointment) {
+      throw new Error('Lịch hẹn không tồn tại hoặc không thể hủy.');
+    }
+    return appointment;
   }
 }
 

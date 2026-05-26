@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import api from '../api/axios';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -11,13 +12,76 @@ import {
   Bell, 
   Search,
   Menu,
-  X
+  X,
+  Activity
 } from 'lucide-react';
 
 export default function DashboardLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Notification states
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/client/notifications');
+      setNotifications(res.data);
+    } catch (err) {
+      console.error('Lỗi khi tải thông báo:', err);
+    }
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await api.patch(`/client/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, da_doc: true } : n));
+      setIsNotifDropdownOpen(false);
+      navigate('/appointments');
+    } catch (err) {
+      console.error('Lỗi khi đánh dấu thông báo đã đọc:', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await api.patch('/client/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({ ...n, da_doc: true })));
+    } catch (err) {
+      console.error('Lỗi khi đánh dấu tất cả thông báo đã đọc:', err);
+    }
+  };
+
+  const toggleNotifDropdown = () => {
+    setIsNotifDropdownOpen(!isNotifDropdownOpen);
+    if (!isNotifDropdownOpen) {
+      fetchNotifications();
+    }
+  };
+
+  const formatTime = (isoString: string) => {
+    const d = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    if (diffMins < 1) return 'Vừa xong';
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    return d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric' });
+  };
+
+  useEffect(() => {
+    if (user && Number(user.vai_tro_id) === 1) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const unreadCount = notifications.filter(n => !n.da_doc).length;
 
   const handleLogout = () => {
     logout();
@@ -26,8 +90,9 @@ export default function DashboardLayout() {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: [1, 2, 3, 4] },
-    { name: 'Lịch hẹn', path: '/appointments', icon: <Calendar size={20} />, roles: [2, 4] },
+    { name: 'Lịch hẹn', path: '/appointments', icon: <Calendar size={20} />, roles: [1, 2, 4] },
     { name: 'Gói điều trị', path: '/packages', icon: <Package size={20} />, roles: [1, 2, 4] },
+    { name: 'Bài tập tại nhà', path: '/exercises', icon: <Activity size={20} />, roles: [1] },
     { name: 'Hồ sơ', path: '/profile', icon: <FileText size={20} />, roles: [1, 2, 3, 4] },
     { name: 'Cài đặt', path: '/settings', icon: <Settings size={20} />, roles: [1, 2, 3, 4] },
   ];
@@ -49,6 +114,17 @@ export default function DashboardLayout() {
             </h1>
             <p className="text-[8px] text-zinc-400 font-extrabold tracking-widest uppercase mt-0.5">Phục hồi chức năng</p>
           </div>
+        </div>
+
+        {/* Back to Landing Page Button */}
+        <div className="px-3 pt-4 pb-1 border-b border-zinc-50">
+          <NavLink
+            to="/"
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-[12px] text-zinc-400 hover:text-primary hover:bg-primary/5 transition-all text-[11px] font-bold uppercase tracking-wider group"
+          >
+            <span className="transition-transform group-hover:-translate-x-1 duration-200">←</span>
+            Quay lại Trang chủ
+          </NavLink>
         </div>
         
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -166,10 +242,86 @@ export default function DashboardLayout() {
           </div>
 
           <div className="flex items-center gap-4 sm:gap-6">
-            <button className="relative text-zinc-500 hover:text-primary transition-colors">
-              <Bell size={22} />
-              <span className="absolute top-0 right-0 size-2.5 bg-red-500 border-2 border-white rounded-full"></span>
-            </button>
+            {/* Notification Bell Dropdown */}
+            {Number(user?.vai_tro_id) === 1 ? (
+              <div className="relative">
+                <button 
+                  onClick={toggleNotifDropdown}
+                  className="relative text-zinc-500 hover:text-primary transition-colors p-1"
+                >
+                  <Bell size={22} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white shadow-xs select-none">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {isNotifDropdownOpen && (
+                  <>
+                    {/* Transparent Click-Outside Overlay */}
+                    <div className="fixed inset-0 z-20" onClick={() => setIsNotifDropdownOpen(false)} />
+                    
+                    {/* Dropdown Container */}
+                    <div className="absolute right-0 mt-3.5 w-80 bg-white/95 backdrop-blur-md border border-zinc-150 rounded-[24px] shadow-lg py-4 z-30 animate-in fade-in slide-in-from-top-3 duration-200">
+                      {/* Header */}
+                      <div className="px-4.5 pb-3 border-b border-zinc-100 flex items-center justify-between">
+                        <h3 className="text-[10px] font-black text-secondary uppercase tracking-wider">Thông báo ({unreadCount})</h3>
+                        {unreadCount > 0 && (
+                          <button 
+                            onClick={handleMarkAllAsRead}
+                            className="text-[10px] text-primary hover:underline font-bold"
+                          >
+                            Đọc tất cả
+                          </button>
+                        )}
+                      </div>
+
+                      {/* List */}
+                      <div className="max-h-64 overflow-y-auto divide-y divide-zinc-50">
+                        {notifications.length === 0 ? (
+                          <div className="px-4 py-8 text-center text-zinc-400 text-xs font-semibold">
+                            Không có thông báo nào
+                          </div>
+                        ) : (
+                          notifications.map(notif => (
+                            <button 
+                              key={notif.id}
+                              onClick={() => handleMarkAsRead(notif.id)}
+                              className={`w-full px-4.5 py-3.5 text-left flex gap-3 transition-colors ${notif.da_doc ? 'hover:bg-zinc-50/50' : 'bg-primary/5 hover:bg-primary/10'}`}
+                            >
+                              <div className="size-2 bg-primary rounded-full mt-1.5 flex-shrink-0" style={{ visibility: notif.da_doc ? 'hidden' : 'visible' }} />
+                              <div className="flex-1 space-y-0.5">
+                                <p className="text-xs font-black text-secondary leading-tight">{notif.tieu_de}</p>
+                                <p className="text-[10px] text-zinc-500 font-semibold leading-relaxed">{notif.noi_dung}</p>
+                                <p className="text-[9px] text-zinc-400 font-bold mt-1">{formatTime(notif.thoi_gian_tao)}</p>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="px-4.5 pt-3 border-t border-zinc-100 text-center">
+                        <button 
+                          onClick={() => {
+                            setIsNotifDropdownOpen(false);
+                            navigate('/appointments');
+                          }}
+                          className="text-[10px] text-secondary hover:text-primary font-bold uppercase tracking-wider block w-full"
+                        >
+                          Xem tất cả lịch hẹn
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <button className="relative text-zinc-500 hover:text-primary transition-colors">
+                <Bell size={22} />
+              </button>
+            )}
             
             <div className="flex items-center gap-3 cursor-pointer group">
               <div className="text-right hidden sm:block">

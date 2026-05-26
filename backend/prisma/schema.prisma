@@ -307,6 +307,20 @@ model nguoi_dung {
   vai_tro                                                         vai_tro                @relation(fields: [vai_tro_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   refresh_tokens                                                  refresh_tokens[]
   voucher                                                         voucher[]
+  thong_bao                                                       thong_bao[]
+}
+
+model thong_bao {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nguoi_dung_id String     @db.Uuid
+  tieu_de       String     @db.VarChar(200)
+  noi_dung      String
+  loai          String     @default("he_thong") @db.VarChar(30)
+  da_doc        Boolean    @default(false)
+  thoi_gian_tao DateTime   @default(now()) @db.Timestamp(6)
+  nguoi_dung    nguoi_dung @relation(fields: [nguoi_dung_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([nguoi_dung_id], map: "idx_thong_bao_user")
 }
 
 model otp_codes {

@@ -90,3 +90,34 @@ export const updateMedicalRecord = async (req: Request, res: Response): Promise<
     return res.status(500).json({ message: 'Lỗi server' });
   }
 };
+
+// Lấy danh sách lịch hẹn của Khách hàng đang đăng nhập
+export const getCustomerAppointments = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const nguoi_dung_id = (req as any).user.id;
+    const appointments = await appointmentService.getCustomerAppointments(nguoi_dung_id);
+    return res.json(appointments);
+  } catch (error) {
+    console.error('Lỗi khi lấy lịch hẹn của khách hàng:', error);
+    return res.status(500).json({ message: 'Lỗi server khi truy vấn lịch hẹn.' });
+  }
+};
+
+// Khách hàng tự hủy lịch hẹn của mình
+export const cancelCustomerAppointment = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+    const nguoi_dung_id = (req as any).user.id;
+    const ly_do_huy = req.body.ly_do_huy as string;
+
+    if (!ly_do_huy) {
+      return res.status(400).json({ message: 'Vui lòng cung cấp lý do hủy lịch hẹn.' });
+    }
+
+    const appointment = await appointmentService.cancelCustomerAppointment(id, nguoi_dung_id, ly_do_huy);
+    return res.json({ success: true, message: 'Đã hủy lịch hẹn thành công.', appointment });
+  } catch (error: any) {
+    console.error('Lỗi khi khách hàng hủy lịch:', error);
+    return res.status(500).json({ message: error.message || 'Lỗi server khi hủy lịch hẹn.' });
+  }
+};
