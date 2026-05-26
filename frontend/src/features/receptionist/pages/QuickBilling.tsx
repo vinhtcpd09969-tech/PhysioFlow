@@ -1,6 +1,6 @@
 import { useReducer, useState, useEffect } from 'react';
 import axiosInstance from '../../../api/axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { 
   Search, 
@@ -59,6 +59,7 @@ export default function QuickBilling() {
   });
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Tab & Package states
   const [activeTab, setActiveTab] = useState<'single' | 'package'>('package');
@@ -91,6 +92,27 @@ export default function QuickBilling() {
       console.error('Lỗi tải dữ liệu quầy thanh toán:', err);
     }
   };
+
+  // Auto select from redirect parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const queryLichDatId = params.get('lich_dat_id');
+    if (queryLichDatId && completedConsultations.length > 0) {
+      const matched = completedConsultations.find(c => String(c.id) === String(queryLichDatId));
+      if (matched) {
+        setSelectedConsultation(matched);
+        setActiveTab('package'); // Always route to package tab
+        
+        // Auto-select recommended package if it is loaded
+        if (matched.khuyen_nghi_goi_id && packages.length > 0) {
+          const matchedPkg = packages.find(p => String(p.id) === String(matched.khuyen_nghi_goi_id));
+          if (matchedPkg) {
+            setSelectedPackage(matchedPkg);
+          }
+        }
+      }
+    }
+  }, [completedConsultations, packages, location.search]);
 
   // Run calculation when package, voucher, or payment type changes
   useEffect(() => {

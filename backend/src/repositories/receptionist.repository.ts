@@ -293,13 +293,30 @@ class ReceptionistRepository {
         kh_table.id as khach_hang_id,
         COALESCE(ld.ho_ten_khach, kh.ho_ten) as ten_khach_hang, 
         COALESCE(ld.so_dien_thoai, kh.so_dien_thoai) as sdt_khach_hang,
-        dv.ten_dich_vu, dv.don_gia
+        dv.ten_dich_vu, dv.don_gia,
+        ld.khuyen_nghi_goi_id
       FROM lich_dat ld
       JOIN khach_hang kh_table ON ld.khach_hang_id = kh_table.id
       JOIN nguoi_dung kh ON kh_table.nguoi_dung_id = kh.id
       JOIN dich_vu dv ON ld.dich_vu_id = dv.id
       WHERE ld.trang_thai = 'hoan_thanh'
-      ORDER BY ld.ngay_gio_bat_dau DESC
+
+      UNION ALL
+
+      SELECT
+        btl.id, 'TR' || UPPER(SUBSTRING(btl.id::text FROM 1 FOR 6)) as ma_lich_dat,
+        btl.thoi_gian_bat_dau as ngay_gio_bat_dau, btl.trang_thai,
+        kh_table.id as khach_hang_id,
+        kh.ho_ten as ten_khach_hang, kh.so_dien_thoai as sdt_khach_hang,
+        dv.ten_dich_vu, dv.don_gia,
+        ldt.goi_dich_vu_id as khuyen_nghi_goi_id
+      FROM buoi_tri_lieu btl
+      JOIN khach_hang kh_table ON btl.khach_hang_id = kh_table.id
+      JOIN nguoi_dung kh ON kh_table.nguoi_dung_id = kh.id
+      JOIN dich_vu dv ON btl.dich_vu_id = dv.id
+      JOIN lich_dieu_tri ldt ON btl.lich_dieu_tri_id = ldt.id
+      WHERE btl.so_thu_tu_buoi = 1 AND btl.trang_thai = 'hoan_thanh'
+      ORDER BY ngay_gio_bat_dau DESC
     `);
     return rows;
   }

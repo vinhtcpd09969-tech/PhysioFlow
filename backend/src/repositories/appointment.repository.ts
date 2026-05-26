@@ -21,7 +21,9 @@ class AppointmentRepository {
         ld.khuyen_nghi_dich_vu_id,
         ld.khuyen_nghi_goi_id,
         kn_dv.ten_dich_vu AS khuyen_nghi_ten_dich_vu,
-        kn_goi.ten_goi AS khuyen_nghi_ten_goi
+        kn_goi.ten_goi AS khuyen_nghi_ten_goi,
+        NULL::integer AS so_thu_tu_buoi,
+        NULL::uuid AS goi_dich_vu_id
       FROM lich_dat ld
       LEFT JOIN khach_hang kh ON ld.khach_hang_id = kh.id
       LEFT JOIN nguoi_dung nd_kh ON kh.nguoi_dung_id = nd_kh.id
@@ -50,9 +52,11 @@ class AppointmentRepository {
         ld_goc.chan_doan,
         ld_goc.chong_chi_dinh,
         NULL::uuid AS khuyen_nghi_dich_vu_id,
-        NULL::uuid AS khuyen_nghi_goi_id,
+        ld_goc.khuyen_nghi_goi_id AS khuyen_nghi_goi_id,
         NULL::text AS khuyen_nghi_ten_dich_vu,
-        NULL::text AS khuyen_nghi_ten_goi
+        kn_goi.ten_goi AS khuyen_nghi_ten_goi,
+        btl.so_thu_tu_buoi,
+        ldt.goi_dich_vu_id
       FROM buoi_tri_lieu btl
       JOIN khach_hang kh ON btl.khach_hang_id = kh.id
       JOIN nguoi_dung nd_kh ON kh.nguoi_dung_id = nd_kh.id
@@ -62,6 +66,7 @@ class AppointmentRepository {
       LEFT JOIN phong p ON btl.phong_id = p.id
       LEFT JOIN lich_dieu_tri ldt ON btl.lich_dieu_tri_id = ldt.id
       LEFT JOIN lich_dat ld_goc ON ldt.lich_dat_id = ld_goc.id
+      LEFT JOIN goi_dich_vu kn_goi ON ld_goc.khuyen_nghi_goi_id = kn_goi.id
     `;
     const { rows } = await pool.query(query);
     return rows;
