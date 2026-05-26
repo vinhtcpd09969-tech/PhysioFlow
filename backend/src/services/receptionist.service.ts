@@ -314,7 +314,7 @@ class ReceptionistService {
   }
 
   async processPayment(data: any) {
-    const { hoa_don_id, phuong_thuc, so_tien_nhan } = data;
+    const { hoa_don_id, phuong_thuc, so_tien_nhan, ghi_chu } = data;
     const hd = await receptionistRepository.getInvoiceById(hoa_don_id);
     if (!hd) throw new Error('Không tìm thấy hóa đơn');
 
@@ -365,12 +365,14 @@ class ReceptionistService {
       tien_nhan, 
       da_thanh_toan_moi, 
       trang_thai_moi, 
-      phuong_thuc
+      phuong_thuc,
+      ghi_chu
     );
 
-    // Update linked treatment plan to dang_dieu_tri on first payment
+    // Update linked treatment plan status on first payment
     if (hd.lich_dieu_tri_id && da_thanh_toan_truoc === 0) {
-      await receptionistRepository.updateTreatmentPlanStatus(hd.lich_dieu_tri_id, 'dang_dieu_tri');
+      const statusToSet = hd.loai_hoa_don === 'dich_vu_don' ? 'da_thanh_toan' : 'dang_dieu_tri';
+      await receptionistRepository.updateTreatmentPlanStatus(hd.lich_dieu_tri_id, statusToSet);
     }
 
     return { success: true, trang_thai_moi, da_thanh_toan_moi };
@@ -383,6 +385,18 @@ class ReceptionistService {
 
   async getSessionServices(buoi_tri_lieu_id: string) {
     return receptionistRepository.getSessionServices(buoi_tri_lieu_id);
+  }
+
+  async getActivePackages() {
+    return receptionistRepository.getActivePackages();
+  }
+
+  async getAutoVouchers() {
+    return receptionistRepository.getAutoApplyVouchers();
+  }
+
+  async getCompletedAppointments() {
+    return receptionistRepository.getCompletedAppointments();
   }
 }
 

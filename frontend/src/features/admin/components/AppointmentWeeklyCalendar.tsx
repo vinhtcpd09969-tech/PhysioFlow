@@ -103,9 +103,16 @@ export default function AppointmentWeeklyCalendar({
                                 <Clock size={10} className="text-slate-400" />
                                 {aptTime}
                               </span>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${status.color}`}>
-                                {status.label}
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                {apt.loai_lich === 'dieu_tri' && Number(apt.so_thu_tu_buoi) === 1 && apt.trang_thai === 'hoan_thanh' && apt.trang_thai_thanh_toan === 'chua_thanh_toan' && (
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-250 flex items-center gap-0.5 uppercase tracking-wide animate-pulse" title="Cần thanh toán gói">
+                                    💵 Cần TT
+                                  </span>
+                                )}
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${status.color}`}>
+                                  {status.label}
+                                </span>
+                              </div>
                             </div>
                             
                             <div className="text-sm font-bold text-slate-800 line-clamp-1">{apt.ten_khach_hang}</div>

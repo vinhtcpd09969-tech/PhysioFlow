@@ -1,5 +1,6 @@
 
 import { X, Activity, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface AppointmentDetailModalProps {
   selectedAppointment: any;
@@ -36,6 +37,7 @@ export default function AppointmentDetailModal({
   onOpenTreatment,
   appointments = []
 }: AppointmentDetailModalProps) {
+  const navigate = useNavigate();
 
 
   if (!selectedAppointment) return null;
@@ -207,6 +209,17 @@ export default function AppointmentDetailModal({
                   </button>
                 )}
               </div>
+            ) : selectedAppointment.loai_lich === 'dieu_tri' && Number(selectedAppointment.so_thu_tu_buoi) === 1 && selectedAppointment.trang_thai === 'hoan_thanh' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  navigate(`/admin/quick-billing?lich_dat_id=${selectedAppointment.id}`);
+                  onClose();
+                }}
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white shadow-sm text-sm font-black rounded-xl flex items-center gap-2 transition-all animate-pulse"
+              >
+                💵 Thanh toán Gói trị liệu
+              </button>
             ) : <div></div>}
 
             <div className="flex gap-2">

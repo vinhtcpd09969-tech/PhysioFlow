@@ -203,13 +203,23 @@ class ReceptionistRepository {
   }
 
   async getAppointmentForBilling(lich_dat_id: string) {
-    const { rows } = await pool.query(`
+    // 1. Query lich_dat first
+    const { rows: ldRows } = await pool.query(`
       SELECT ld.khach_hang_id, ld.dich_vu_id, dv.don_gia 
       FROM lich_dat ld
       JOIN dich_vu dv ON ld.dich_vu_id = dv.id
       WHERE ld.id = $1 AND ld.trang_thai = 'hoan_thanh'
     `, [lich_dat_id]);
-    return rows[0];
+    if (ldRows.length > 0) return ldRows[0];
+
+    // 2. If not found, check if it is a completed buoi_tri_lieu (session 1)
+    const { rows: btlRows } = await pool.query(`
+      SELECT btl.khach_hang_id, btl.dich_vu_id, dv.don_gia 
+      FROM buoi_tri_lieu btl
+      JOIN dich_vu dv ON btl.dich_vu_id = dv.id
+      WHERE btl.id = $1 AND btl.trang_thai = 'hoan_thanh'
+    `, [lich_dat_id]);
+    return btlRows[0];
   }
 
   async createBilling(maHoaDon: string, khach_hang_id: string, lich_dat_id: string, don_gia: number, dich_vu_id: string) {
@@ -217,15 +227,32 @@ class ReceptionistRepository {
     try {
       await client.query('BEGIN');
       
-      const maLichDieuTri = `LDT${Math.floor(100000 + Math.random() * 900000)}`;
-      const { rows: ldtRows } = await client.query(`
-        INSERT INTO lich_dieu_tri (
-          khach_hang_id, loai_dieu_tri, dich_vu_id, tong_so_buoi, 
-          so_buoi_da_dung, trang_thai, ma_lich_dieu_tri, lich_dat_id
-        ) VALUES ($1, 'dich_vu_le', $2, 1, 0, 'cho_thanh_toan', $3, $4)
-        RETURNING id
-      `, [khach_hang_id, dich_vu_id, maLichDieuTri, lich_dat_id || null]);
-      const ldtId = ldtRows[0].id;
+      // Check if this ID is a buoi_tri_lieu
+      const { rows: btlRows } = await client.query(`
+        SELECT lich_dieu_tri_id FROM buoi_tri_lieu WHERE id = $1
+      `, [lich_dat_id]);
+
+      let ldtId;
+      if (btlRows.length > 0) {
+        // Downgrade existing treatment plan
+        ldtId = btlRows[0].lich_dieu_tri_id;
+        await client.query(`
+          UPDATE lich_dieu_tri 
+          SET loai_dieu_tri = 'dich_vu_le', tong_so_buoi = 1, trang_thai = 'cho_thanh_toan' 
+          WHERE id = $1
+        `, [ldtId]);
+      } else {
+        // Create new flexible treatment plan
+        const maLichDieuTri = `LDT${Math.floor(100000 + Math.random() * 900000)}`;
+        const { rows: ldtRows } = await client.query(`
+          INSERT INTO lich_dieu_tri (
+            khach_hang_id, loai_dieu_tri, dich_vu_id, tong_so_buoi, 
+            so_buoi_da_dung, trang_thai, ma_lich_dieu_tri, lich_dat_id
+          ) VALUES ($1, 'dich_vu_le', $2, 1, 0, 'cho_thanh_toan', $3, $4)
+          RETURNING id
+        `, [khach_hang_id, dich_vu_id, maLichDieuTri, lich_dat_id || null]);
+        ldtId = ldtRows[0].id;
+      }
 
       const { rows: hoaDonRows } = await client.query(`
         INSERT INTO hoa_don (ma_hoa_don, khach_hang_id, loai_hoa_don, lich_dieu_tri_id, tong_tien_truoc_giam, tong_tien_thanh_toan, trang_thai)
@@ -243,7 +270,7 @@ class ReceptionistRepository {
   }
 
   async getInvoiceById(id: string) {
-    const { rows } = await pool.query('SELECT tong_tien_thanh_toan, da_thanh_toan, loai_thanh_toan, lich_dieu_tri_id FROM hoa_don WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT tong_tien_thanh_toan, da_thanh_toan, loai_thanh_toan, loai_hoa_don, lich_dieu_tri_id FROM hoa_don WHERE id = $1', [id]);
     return rows[0];
   }
 
@@ -274,6 +301,51 @@ class ReceptionistRepository {
   async getPackageById(id: string) {
     const { rows } = await pool.query('SELECT * FROM goi_dich_vu WHERE id = $1', [id]);
     return rows[0];
+  }
+
+  async getActivePackages() {
+    const { rows } = await pool.query(`
+      SELECT id, ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, gia_goc, han_dung_thang
+      FROM goi_dich_vu
+      WHERE trang_thai = 'hoat_dong'
+      ORDER BY ten_goi ASC
+    `);
+    return rows;
+  }
+
+  async getCompletedAppointments() {
+    const { rows } = await pool.query(`
+      SELECT 
+        ld.id, ld.ma_lich_dat, ld.ngay_gio_bat_dau, ld.trang_thai,
+        kh_table.id as khach_hang_id,
+        COALESCE(ld.ho_ten_khach, kh.ho_ten) as ten_khach_hang, 
+        COALESCE(ld.so_dien_thoai, kh.so_dien_thoai) as sdt_khach_hang,
+        dv.ten_dich_vu, dv.don_gia,
+        ld.khuyen_nghi_goi_id
+      FROM lich_dat ld
+      JOIN khach_hang kh_table ON ld.khach_hang_id = kh_table.id
+      JOIN nguoi_dung kh ON kh_table.nguoi_dung_id = kh.id
+      JOIN dich_vu dv ON ld.dich_vu_id = dv.id
+      WHERE ld.trang_thai = 'hoan_thanh'
+
+      UNION ALL
+
+      SELECT
+        btl.id, 'TR' || UPPER(SUBSTRING(btl.id::text FROM 1 FOR 6)) as ma_lich_dat,
+        btl.thoi_gian_bat_dau as ngay_gio_bat_dau, btl.trang_thai,
+        kh_table.id as khach_hang_id,
+        kh.ho_ten as ten_khach_hang, kh.so_dien_thoai as sdt_khach_hang,
+        dv.ten_dich_vu, dv.don_gia,
+        ldt.goi_dich_vu_id as khuyen_nghi_goi_id
+      FROM buoi_tri_lieu btl
+      JOIN khach_hang kh_table ON btl.khach_hang_id = kh_table.id
+      JOIN nguoi_dung kh ON kh_table.nguoi_dung_id = kh.id
+      JOIN dich_vu dv ON btl.dich_vu_id = dv.id
+      JOIN lich_dieu_tri ldt ON btl.lich_dieu_tri_id = ldt.id
+      WHERE btl.so_thu_tu_buoi = 1 AND btl.trang_thai = 'hoan_thanh'
+      ORDER BY ngay_gio_bat_dau DESC
+    `);
+    return rows;
   }
 
   async getServiceById(id: string) {
@@ -446,23 +518,32 @@ class ReceptionistRepository {
     so_tien_nhan: number, 
     da_thanh_toan_moi: number, 
     trang_thai_moi: string, 
-    phuong_thuc: string
+    phuong_thuc: string,
+    ghi_chu?: string
   ) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       
       const ngayThanhToanSql = trang_thai_moi === 'da_thanh_toan' ? ', ngay_thanh_toan = NOW()' : '';
-      await client.query(`
-        UPDATE hoa_don 
-        SET da_thanh_toan = $1, trang_thai = $2 ${ngayThanhToanSql}
-        WHERE id = $3
-      `, [da_thanh_toan_moi, trang_thai_moi, hoa_don_id]);
+      if (ghi_chu) {
+        await client.query(`
+          UPDATE hoa_don 
+          SET da_thanh_toan = $1, trang_thai = $2, ghi_chu = $3 ${ngayThanhToanSql}
+          WHERE id = $4
+        `, [da_thanh_toan_moi, trang_thai_moi, ghi_chu, hoa_don_id]);
+      } else {
+        await client.query(`
+          UPDATE hoa_don 
+          SET da_thanh_toan = $1, trang_thai = $2 ${ngayThanhToanSql}
+          WHERE id = $3
+        `, [da_thanh_toan_moi, trang_thai_moi, hoa_don_id]);
+      }
 
       await client.query(`
-        INSERT INTO thanh_toan (hoa_don_id, ma_giao_dich, so_tien, phuong_thuc, trang_thai)
-        VALUES ($1, $2, $3, $4, 'thanh_cong')
-      `, [hoa_don_id, maGiaoDich, so_tien_nhan, phuong_thuc]);
+        INSERT INTO thanh_toan (hoa_don_id, ma_giao_dich, so_tien, phuong_thuc, trang_thai, ghi_chu)
+        VALUES ($1, $2, $3, $4, 'thanh_cong', $5)
+      `, [hoa_don_id, maGiaoDich, so_tien_nhan, phuong_thuc, ghi_chu || null]);
 
       await client.query('COMMIT');
     } catch (e) {

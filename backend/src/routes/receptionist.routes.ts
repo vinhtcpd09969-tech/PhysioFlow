@@ -10,7 +10,10 @@ import {
   calculateBilling,
   createBillingDirect,
   updateSessionServices,
-  getSessionServices
+  getSessionServices,
+  getPackagesForReceptionist,
+  getCompletedConsultations,
+  getAutoVouchers
 } from '../controllers/receptionist.controller';
 
 const router = Router();
@@ -27,5 +30,9 @@ router.post('/billing/calculate', calculateBilling);
 router.post('/billing/create', createBillingDirect);
 router.post('/sessions/:id/services', updateSessionServices);
 router.get('/sessions/:id/services', getSessionServices);
+
+router.get('/packages', getPackagesForReceptionist);
+router.get('/completed-consultations', getCompletedConsultations);
+router.get('/auto-vouchers', getAutoVouchers);
 
 export default router;
