@@ -64,6 +64,7 @@ export default function AdminLayout() {
     { name: 'Gói', path: '/admin/packages', icon: <Package size={18} />, searchPlaceholder: 'Tìm kiếm gói...' },
     { name: 'Phòng & Thiết bị', path: '/admin/rooms-equipment', icon: <Key size={18} />, searchPlaceholder: 'Tìm kiếm phòng, thiết bị...' },
     { name: 'Tài chính', path: '/admin/finance', icon: <DollarSign size={18} /> },
+    { name: 'Thu ngân Gói (Lễ tân)', path: '/admin/quick-billing', icon: <DollarSign size={18} /> },
     { name: 'Marketing', path: '/admin/marketing', icon: <Megaphone size={18} /> },
     { name: 'Đánh giá', path: '/admin/feedback', icon: <Star size={18} /> },
     { name: 'Nhật ký hệ thống', path: '/admin/audit', icon: <ClipboardList size={18} /> },

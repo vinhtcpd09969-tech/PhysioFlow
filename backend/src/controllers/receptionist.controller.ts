@@ -145,3 +145,25 @@ export const getSessionServices = async (req: Request, res: Response): Promise<a
     res.status(500).json({ message: 'Lỗi server' });
   }
 };
+
+// GET /api/receptionist/packages
+export const getPackagesForReceptionist = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const result = await receptionistService.getActivePackages();
+    res.json(result);
+  } catch (error: any) {
+    console.error('Lỗi lấy danh sách gói trị liệu:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// GET /api/receptionist/completed-consultations
+export const getCompletedConsultations = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const result = await receptionistService.getCompletedAppointments();
+    res.json(result);
+  } catch (error: any) {
+    console.error('Lỗi lấy danh sách khám hoàn thành:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};

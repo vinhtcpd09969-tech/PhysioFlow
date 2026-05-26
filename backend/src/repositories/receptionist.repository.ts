@@ -276,6 +276,34 @@ class ReceptionistRepository {
     return rows[0];
   }
 
+  async getActivePackages() {
+    const { rows } = await pool.query(`
+      SELECT id, ten_goi, ma_goi, mo_ta, tong_so_buoi, gia_goi, gia_goc, han_dung_thang
+      FROM goi_dich_vu
+      WHERE trang_thai = 'hoat_dong'
+      ORDER BY ten_goi ASC
+    `);
+    return rows;
+  }
+
+  async getCompletedAppointments() {
+    const { rows } = await pool.query(`
+      SELECT 
+        ld.id, ld.ma_lich_dat, ld.ngay_gio_bat_dau, ld.trang_thai,
+        kh_table.id as khach_hang_id,
+        COALESCE(ld.ho_ten_khach, kh.ho_ten) as ten_khach_hang, 
+        COALESCE(ld.so_dien_thoai, kh.so_dien_thoai) as sdt_khach_hang,
+        dv.ten_dich_vu, dv.don_gia
+      FROM lich_dat ld
+      JOIN khach_hang kh_table ON ld.khach_hang_id = kh_table.id
+      JOIN nguoi_dung kh ON kh_table.nguoi_dung_id = kh.id
+      JOIN dich_vu dv ON ld.dich_vu_id = dv.id
+      WHERE ld.trang_thai = 'hoan_thanh'
+      ORDER BY ld.ngay_gio_bat_dau DESC
+    `);
+    return rows;
+  }
+
   async getServiceById(id: string) {
     const { rows } = await pool.query('SELECT * FROM dich_vu WHERE id = $1', [id]);
     return rows[0];

@@ -384,6 +384,14 @@ class ReceptionistService {
   async getSessionServices(buoi_tri_lieu_id: string) {
     return receptionistRepository.getSessionServices(buoi_tri_lieu_id);
   }
+
+  async getActivePackages() {
+    return receptionistRepository.getActivePackages();
+  }
+
+  async getCompletedAppointments() {
+    return receptionistRepository.getCompletedAppointments();
+  }
 }
 
 export default new ReceptionistService();

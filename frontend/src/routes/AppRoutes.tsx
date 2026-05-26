@@ -91,6 +91,7 @@ export default function AppRoutes() {
             <Route path="/admin/rooms-equipment" element={<ManageRoomsEquipment />} />
             <Route path="/admin/packages" element={<ManagePackages />} />
             <Route path="/admin/finance" element={<ManageFinance />} />
+            <Route path="/admin/quick-billing" element={<QuickBilling />} />
             <Route path="/admin/marketing" element={<ManageVouchers />} />
             <Route path="/admin/feedback" element={<ViewFeedback />} />
             <Route path="/admin/audit" element={<AuditLogs />} />
