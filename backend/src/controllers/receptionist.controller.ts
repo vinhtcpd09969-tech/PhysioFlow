@@ -167,3 +167,14 @@ export const getCompletedConsultations = async (req: Request, res: Response): Pr
     res.status(500).json({ message: 'Lỗi server' });
   }
 };
+
+// GET /api/receptionist/auto-vouchers
+export const getAutoVouchers = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const result = await receptionistService.getAutoVouchers();
+    res.json(result);
+  } catch (error: any) {
+    console.error('Lỗi lấy danh sách voucher tự động:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};

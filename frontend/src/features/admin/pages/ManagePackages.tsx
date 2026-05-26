@@ -32,21 +32,33 @@ export default function ManagePackages() {
   const activePromo = useMemo(() => {
     if (!selectedPackage || !vouchers.length) return null;
 
+    const now = new Date();
+
     // Find auto-applied voucher for straight payment (tra_thang)
-    const straightPromo = vouchers.find((v: any) =>
-      v.trang_thai === 'hoat_dong' &&
-      v.tu_dong_ap_dung === true &&
-      (v.yeu_cau_thanh_toan === 'tra_thang' || v.yeu_cau_thanh_toan === 'tat_ca') &&
-      (v.ap_dung_cho === 'tat_ca' || (Array.isArray(v.goi_dich_vu_ids) && v.goi_dich_vu_ids.includes(selectedPackage.id)))
-    ) || null;
+    const straightPromo = vouchers.find((v: any) => {
+      const startDate = new Date(v.ngay_bat_dau);
+      const endDate = v.ngay_het_han ? new Date(v.ngay_het_han) : null;
+      const isTimeActive = now >= startDate && (!endDate || now <= endDate);
+
+      return v.trang_thai === 'hoat_dong' &&
+        v.tu_dong_ap_dung === true &&
+        isTimeActive &&
+        (v.yeu_cau_thanh_toan === 'tra_thang' || v.yeu_cau_thanh_toan === 'tat_ca') &&
+        (v.ap_dung_cho === 'tat_ca' || (Array.isArray(v.goi_dich_vu_ids) && v.goi_dich_vu_ids.includes(selectedPackage.id)));
+    }) || null;
 
     // Find auto-applied voucher for installment (tra_gop)
-    const installmentPromo = vouchers.find((v: any) =>
-      v.trang_thai === 'hoat_dong' &&
-      v.tu_dong_ap_dung === true &&
-      (v.yeu_cau_thanh_toan === 'tra_gop' || v.yeu_cau_thanh_toan === 'tat_ca') &&
-      (v.ap_dung_cho === 'tat_ca' || (Array.isArray(v.goi_dich_vu_ids) && v.goi_dich_vu_ids.includes(selectedPackage.id)))
-    ) || null;
+    const installmentPromo = vouchers.find((v: any) => {
+      const startDate = new Date(v.ngay_bat_dau);
+      const endDate = v.ngay_het_han ? new Date(v.ngay_het_han) : null;
+      const isTimeActive = now >= startDate && (!endDate || now <= endDate);
+
+      return v.trang_thai === 'hoat_dong' &&
+        v.tu_dong_ap_dung === true &&
+        isTimeActive &&
+        (v.yeu_cau_thanh_toan === 'tra_gop' || v.yeu_cau_thanh_toan === 'tat_ca') &&
+        (v.ap_dung_cho === 'tat_ca' || (Array.isArray(v.goi_dich_vu_ids) && v.goi_dich_vu_ids.includes(selectedPackage.id)));
+    }) || null;
 
     if (!straightPromo && !installmentPromo) return null;
 
@@ -491,7 +503,7 @@ export default function ManagePackages() {
                             <div className="flex justify-between items-center text-secondary py-0.5">
                               <div className="flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                <span className="font-semibold text-zinc-650">Thanh toán 100% (Trả thẳng):</span>
+                                <span className="font-semibold text-zinc-650">{activePromo.straightPromo.ten_chien_dich}:</span>
                               </div>
                               <div className="flex items-baseline gap-2">
                                 <span className="font-bold text-sm text-emerald-600">
@@ -515,7 +527,7 @@ export default function ManagePackages() {
                             <div className="flex justify-between items-center text-secondary py-0.5">
                               <div className="flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                <span className="font-semibold text-zinc-650">Thanh toán trả góp:</span>
+                                <span className="font-semibold text-zinc-650">{activePromo.installmentPromo.ten_chien_dich}:</span>
                               </div>
                               <div className="flex items-baseline gap-2">
                                 <span className="font-bold text-sm text-amber-600">

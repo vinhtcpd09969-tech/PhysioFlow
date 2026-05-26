@@ -12,7 +12,8 @@ import {
   updateSessionServices,
   getSessionServices,
   getPackagesForReceptionist,
-  getCompletedConsultations
+  getCompletedConsultations,
+  getAutoVouchers
 } from '../controllers/receptionist.controller';
 
 const router = Router();
@@ -32,5 +33,6 @@ router.get('/sessions/:id/services', getSessionServices);
 
 router.get('/packages', getPackagesForReceptionist);
 router.get('/completed-consultations', getCompletedConsultations);
+router.get('/auto-vouchers', getAutoVouchers);
 
 export default router;

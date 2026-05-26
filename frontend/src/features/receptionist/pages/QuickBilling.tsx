@@ -1,4 +1,4 @@
-import { useReducer, useState, useEffect } from 'react';
+import { useReducer, useState, useEffect, useMemo } from 'react';
 import axiosInstance from '../../../api/axios';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -72,6 +72,50 @@ export default function QuickBilling() {
   const [appliedVoucher, setAppliedVoucher] = useState<any | null>(null);
   const [calculatedData, setCalculatedData] = useState<any | null>(null);
   const [calculating, setCalculating] = useState(false);
+  const [feedbackLyDo, setFeedbackLyDo] = useState('');
+  const [vouchers, setVouchers] = useState<any[]>([]);
+
+  // Find active auto-applied vouchers targeted to this package
+  const activePromo = useMemo(() => {
+    if (!selectedPackage || !vouchers.length) return null;
+
+    const now = new Date();
+
+    // Find auto-applied voucher for straight payment (tra_thang)
+    const straightPromo = vouchers.find((v: any) => {
+      const startDate = new Date(v.ngay_bat_dau);
+      const endDate = v.ngay_het_han ? new Date(v.ngay_het_han) : null;
+      const isTimeActive = now >= startDate && (!endDate || now <= endDate);
+
+      return v.trang_thai === 'hoat_dong' &&
+        v.tu_dong_ap_dung === true &&
+        isTimeActive &&
+        (v.yeu_cau_thanh_toan === 'tra_thang' || v.yeu_cau_thanh_toan === 'tat_ca') &&
+        (v.ap_dung_cho === 'tat_ca' || (Array.isArray(v.goi_dich_vu_ids) && v.goi_dich_vu_ids.includes(selectedPackage.id)));
+    }) || null;
+
+    // Find auto-applied voucher for installment (tra_gop)
+    const installmentPromo = vouchers.find((v: any) => {
+      const startDate = new Date(v.ngay_bat_dau);
+      const endDate = v.ngay_het_han ? new Date(v.ngay_het_han) : null;
+      const isTimeActive = now >= startDate && (!endDate || now <= endDate);
+
+      return v.trang_thai === 'hoat_dong' &&
+        v.tu_dong_ap_dung === true &&
+        isTimeActive &&
+        (v.yeu_cau_thanh_toan === 'tra_gop' || v.yeu_cau_thanh_toan === 'tat_ca') &&
+        (v.ap_dung_cho === 'tat_ca' || (Array.isArray(v.goi_dich_vu_ids) && v.goi_dich_vu_ids.includes(selectedPackage.id)));
+    }) || null;
+
+    if (!straightPromo && !installmentPromo) return null;
+
+    return {
+      straightPromo,
+      installmentPromo
+    };
+  }, [selectedPackage, vouchers]);
+
+  const isLocked = !!new URLSearchParams(location.search).get('lich_dat_id');
 
   // Quick cash list
   const quickCashOptions = [200000, 500000, 1000000, 2000000, 5000000];
@@ -82,12 +126,14 @@ export default function QuickBilling() {
 
   const fetchPackageBillingData = async () => {
     try {
-      const [pkgRes, consRes] = await Promise.all([
+      const [pkgRes, consRes, vouchersRes] = await Promise.all([
         axiosInstance.get('/receptionist/packages'),
-        axiosInstance.get('/receptionist/completed-consultations')
+        axiosInstance.get('/receptionist/completed-consultations'),
+        axiosInstance.get('/receptionist/auto-vouchers')
       ]);
       setPackages(Array.isArray(pkgRes.data) ? pkgRes.data : []);
       setCompletedConsultations(Array.isArray(consRes.data) ? consRes.data : []);
+      setVouchers(Array.isArray(vouchersRes.data) ? vouchersRes.data : []);
     } catch (err) {
       console.error('Lỗi tải dữ liệu quầy thanh toán:', err);
     }
@@ -113,6 +159,25 @@ export default function QuickBilling() {
       }
     }
   }, [completedConsultations, packages, location.search]);
+
+  // Automatically load invoice for single service checkout if patient is fixed
+  useEffect(() => {
+    if (activeTab === 'single' && selectedConsultation && !state.hoaDon && !state.loading) {
+      const autoLoadSingleInvoice = async () => {
+        dispatch({ type: 'SET_LOADING', loading: true });
+        const toastId = toast.loading('Đang tự động lập hóa đơn dịch vụ lẻ...');
+        try {
+          const res = await axiosInstance.post('/receptionist/billing', { lich_dat_id: selectedConsultation.id });
+          dispatch({ type: 'SET_HOA_DON', hoaDon: res.data.hoa_don });
+          toast.success('Đã lập hóa đơn dịch vụ lẻ thành công!', { id: toastId });
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || 'Lỗi lập hóa đơn dịch vụ lẻ', { id: toastId });
+          dispatch({ type: 'SET_LOADING', loading: false });
+        }
+      };
+      autoLoadSingleInvoice();
+    }
+  }, [activeTab, selectedConsultation, state.hoaDon, state.loading]);
 
   // Run calculation when package, voucher, or payment type changes
   useEffect(() => {
@@ -200,16 +265,25 @@ export default function QuickBilling() {
       return;
     }
 
+    if (selectedConsultation && !feedbackLyDo.trim()) {
+      toast.error('Vui lòng nhập lý do khách không hài lòng về gói!');
+      return;
+    }
+
     const toastId = toast.loading('Đang ghi nhận giao dịch thanh toán...');
     dispatch({ type: 'SET_LOADING', loading: true });
     try {
       await axiosInstance.post('/receptionist/payment', {
         hoa_don_id: state.hoaDon.id,
         so_tien_nhan: state.phuongThuc === 'tien_mat' ? state.soTienNhan : totalAmount.toString(),
-        phuong_thuc: state.phuongThuc
+        phuong_thuc: state.phuongThuc,
+        ghi_chu: feedbackLyDo ? `Khách không hài lòng gói: ${feedbackLyDo}` : undefined
       });
       toast.success('Giao dịch thanh toán y khoa đã hoàn tất thành công!', { id: toastId });
       setTimeout(() => {
+        setFeedbackLyDo('');
+        setSelectedConsultation(null);
+        dispatch({ type: 'RESET_HOA_DON' });
         navigate('/admin/finance');
       }, 1000);
     } catch (error: any) {
@@ -295,7 +369,7 @@ export default function QuickBilling() {
     toast.success(`Đã chọn gói: ${pkg.ten_goi}`);
   };
 
-  const { lichDatId, soTienNhan, phuongThuc, hoaDon, loading } = state;
+  const { soTienNhan, phuongThuc, hoaDon, loading } = state;
 
   // Change computation logic based on active tab
   const getChangeMath = () => {
@@ -348,6 +422,7 @@ export default function QuickBilling() {
           onClick={() => {
             setActiveTab('package');
             dispatch({ type: 'RESET_HOA_DON' });
+            setFeedbackLyDo('');
           }}
           className={`flex-1 py-3 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
             activeTab === 'package' ? 'bg-primary text-white shadow-sm' : 'text-zinc-500 hover:text-secondary'
@@ -358,9 +433,9 @@ export default function QuickBilling() {
         <button
           onClick={() => {
             setActiveTab('single');
-            setSelectedConsultation(null);
             setSelectedPackage(null);
             setCalculatedData(null);
+            setFeedbackLyDo('');
           }}
           className={`flex-1 py-3 px-4 text-xs font-black uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
             activeTab === 'single' ? 'bg-primary text-white shadow-sm' : 'text-zinc-500 hover:text-secondary'
@@ -400,19 +475,21 @@ export default function QuickBilling() {
                         <p className="text-[10px] text-primary font-bold mt-0.5">Chỉ định: {selectedConsultation.ten_dich_vu}</p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedConsultation(null);
-                        setSelectedPackage(null);
-                        setCalculatedData(null);
-                        setAppliedVoucher(null);
-                        setMaVoucher('');
-                      }}
-                      className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-wider bg-rose-50 px-3 py-2 rounded-lg border border-rose-100 hover:bg-rose-100/50 transition-all active:scale-95"
-                    >
-                      Thay đổi khách
-                    </button>
+                    {!isLocked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedConsultation(null);
+                          setSelectedPackage(null);
+                          setCalculatedData(null);
+                          setAppliedVoucher(null);
+                          setMaVoucher('');
+                        }}
+                        className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-wider bg-rose-50 px-3 py-2 rounded-lg border border-rose-100 hover:bg-rose-100/50 transition-all active:scale-95"
+                      >
+                        Thay đổi khách
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -498,18 +575,20 @@ export default function QuickBilling() {
                         <p className="text-[10px] text-amber-600 font-bold mt-0.5">Giá gói: {formatCurrency(Number(selectedPackage.gia_goi))}</p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedPackage(null);
-                        setCalculatedData(null);
-                        setAppliedVoucher(null);
-                        setMaVoucher('');
-                      }}
-                      className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-wider bg-rose-50 px-3 py-2 rounded-lg border border-rose-100 hover:bg-rose-100/50 transition-all active:scale-95"
-                    >
-                      Thay đổi gói
-                    </button>
+                    {!isLocked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPackage(null);
+                          setCalculatedData(null);
+                          setAppliedVoucher(null);
+                          setMaVoucher('');
+                        }}
+                        className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-wider bg-rose-50 px-3 py-2 rounded-lg border border-rose-100 hover:bg-rose-100/50 transition-all active:scale-95"
+                      >
+                        Thay đổi gói
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -587,8 +666,16 @@ export default function QuickBilling() {
                         onChange={(e: any) => setLoaiThanhToan(e.target.value)}
                         className="w-full px-3 py-3.5 bg-zinc-50 border border-zinc-200 focus:border-primary rounded-xl font-bold text-secondary text-xs outline-none cursor-pointer"
                       >
-                        <option value="tra_thang">💳 Trả thẳng (100% Phí)</option>
-                        <option value="tra_gop">🏦 Trả góp (Đợt 1 - 50% Phí)</option>
+                        <option value="tra_thang">
+                          💳 {activePromo?.straightPromo 
+                            ? `Trả thẳng - ${activePromo.straightPromo.ten_chien_dich}` 
+                            : 'Trả thẳng (100% Phí)'}
+                        </option>
+                        <option value="tra_gop">
+                          🏦 {activePromo?.installmentPromo 
+                            ? `Trả góp - ${activePromo.installmentPromo.ten_chien_dich}` 
+                            : 'Trả góp (Đợt 1 - 50% Phí)'}
+                        </option>
                       </select>
                     </div>
 
@@ -731,45 +818,87 @@ export default function QuickBilling() {
 
           {activeTab === 'single' && (
             <>
-              {!hoaDon ? (
-                /* Step 1: Search and Create Invoice */
-                <form onSubmit={handleTaoHoaDonSingle} className="bg-white rounded-2xl border border-zinc-150 p-6 space-y-6 relative overflow-hidden shadow-sm">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full pointer-events-none"></div>
-                  
-                  <div className="space-y-1.5 border-b border-zinc-100 pb-3">
-                    <span className="text-[10px] font-black text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                      Bước 1: Tra cứu lịch đặt
-                    </span>
-                    <h3 className="font-heading font-black text-secondary text-sm">Tìm kiếm lịch hẹn hoàn thành</h3>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="lichDatId" className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Nhập mã lịch đặt khám *</label>
-                    <div className="relative">
-                      <Search className="absolute left-4 top-3.5 text-zinc-400" size={18} />
-                      <input 
-                        id="lichDatId"
-                        required
-                        type="text" 
-                        value={lichDatId}
-                        onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'lichDatId', value: e.target.value })}
-                        placeholder="VD: LD-38294"
-                        className="w-full pl-12 pr-4 py-4 bg-zinc-50 border border-zinc-200 focus:border-primary rounded-xl font-bold text-secondary text-sm outline-none transition-all focus:bg-white"
-                      />
+              {selectedConsultation && (
+                /* Locked Patient card when downgraded */
+                <div className="bg-white rounded-2xl border border-zinc-150 shadow-sm p-6 space-y-4 mb-6">
+                  <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-black text-amber-500 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                        Bệnh nhân hạ cấp gói
+                      </span>
+                      <h3 className="font-heading font-black text-secondary text-sm">Thông tin bệnh nhân</h3>
                     </div>
-                    <p className="text-[10px] font-semibold text-gray-400 leading-relaxed">
-                      Lưu ý: Chỉ những lịch hẹn đã hoàn thành khám/trị liệu buổi đầu tiên và chưa thanh toán mới có thể lập hóa đơn.
-                    </p>
+                    <Users className="text-amber-500 size-5" />
                   </div>
+                  <div className="bg-amber-50/20 border border-amber-100 p-4.5 rounded-xl flex items-center justify-between transition-all">
+                    <div className="flex items-center gap-3.5">
+                      <div className="size-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-sm font-bold shadow-inner">
+                        👤
+                      </div>
+                      <div>
+                        <h4 className="text-secondary font-black text-xs">{selectedConsultation.ten_khach_hang}</h4>
+                        <p className="text-[10px] text-zinc-500 font-semibold mt-0.5">SĐT: {selectedConsultation.sdt_khach_hang} | Mã ca: {selectedConsultation.ma_lich_dat}</p>
+                        <p className="text-[10px] text-primary font-bold mt-0.5">Thực hiện: {selectedConsultation.ten_dich_vu}</p>
+                      </div>
+                    </div>
+                    {!isLocked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedConsultation(null);
+                          dispatch({ type: 'RESET_HOA_DON' });
+                          setFeedbackLyDo('');
+                        }}
+                        className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-wider bg-rose-50 px-3 py-2 rounded-lg border border-rose-100 hover:bg-rose-100/50 transition-all active:scale-95"
+                      >
+                        Thay đổi khách
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                  <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="w-full py-4 text-white bg-primary hover:opacity-90 rounded-xl font-extrabold text-xs uppercase tracking-widest transition-all shadow-xs disabled:opacity-75"
-                  >
-                    {loading ? 'Đang xác thực dữ liệu...' : 'Xác thực & Lập Hóa Đơn'}
-                  </button>
-                </form>
+              {!state.hoaDon ? (
+                /* Step 1: Search and Create Invoice (Only if no selectedConsultation exists) */
+                !selectedConsultation && (
+                  <form onSubmit={handleTaoHoaDonSingle} className="bg-white rounded-2xl border border-zinc-150 p-6 space-y-6 relative overflow-hidden shadow-sm">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full pointer-events-none"></div>
+                    
+                    <div className="space-y-1.5 border-b border-zinc-100 pb-3">
+                      <span className="text-[10px] font-black text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        Bước 1: Tra cứu lịch đặt
+                      </span>
+                      <h3 className="font-heading font-black text-secondary text-sm">Tìm kiếm lịch hẹn hoàn thành</h3>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="lichDatId" className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Nhập mã lịch đặt khám *</label>
+                      <div className="relative">
+                        <Search className="absolute left-4 top-3.5 text-zinc-400" size={18} />
+                        <input 
+                          id="lichDatId"
+                          required
+                          type="text" 
+                          value={state.lichDatId}
+                          onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'lichDatId', value: e.target.value })}
+                          placeholder="VD: LD-38294"
+                          className="w-full pl-12 pr-4 py-4 bg-zinc-50 border border-zinc-200 focus:border-primary rounded-xl font-bold text-secondary text-sm outline-none transition-all focus:bg-white"
+                        />
+                      </div>
+                      <p className="text-[10px] font-semibold text-gray-400 leading-relaxed">
+                        Lưu ý: Chỉ những lịch hẹn đã hoàn thành khám/trị liệu buổi đầu tiên và chưa thanh toán mới có thể lập hóa đơn.
+                      </p>
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      disabled={state.loading}
+                      className="w-full py-4 text-white bg-primary hover:opacity-90 rounded-xl font-extrabold text-xs uppercase tracking-widest transition-all shadow-xs disabled:opacity-75"
+                    >
+                      {state.loading ? 'Đang xác thực dữ liệu...' : 'Xác thực & Lập Hóa Đơn'}
+                    </button>
+                  </form>
+                )
               ) : (
                 /* Step 2: Input cash amount & complete transaction */
                 <form onSubmit={handleThanhToanSingle} className="bg-white rounded-2xl border border-zinc-150 p-6 space-y-6 relative overflow-hidden shadow-sm">
@@ -785,7 +914,7 @@ export default function QuickBilling() {
                       <label htmlFor="phuongThuc" className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Hình thức thanh toán</label>
                       <select 
                         id="phuongThuc"
-                        value={phuongThuc}
+                        value={state.phuongThuc}
                         onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'phuongThuc', value: e.target.value })}
                         className="w-full px-4 py-4 bg-zinc-50 border border-zinc-200 focus:border-primary rounded-xl font-bold text-secondary text-sm outline-none transition-all cursor-pointer"
                       >
@@ -795,24 +924,40 @@ export default function QuickBilling() {
                       </select>
                     </div>
 
-                    {phuongThuc === 'tien_mat' && (
+                    {state.phuongThuc === 'tien_mat' && (
                       <div className="space-y-1.5">
                         <label htmlFor="soTienNhan" className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Số tiền khách đưa (VNĐ) *</label>
                         <input 
                           id="soTienNhan"
                           required
                           type="number" 
-                          value={soTienNhan}
+                          value={state.soTienNhan}
                           onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'soTienNhan', value: e.target.value })}
                           placeholder="VD: 500000"
                           className="w-full px-4 py-4 bg-zinc-50 border border-zinc-200 focus:border-primary rounded-xl font-bold text-secondary text-sm outline-none transition-all"
                         />
                       </div>
                     )}
+
+                    {selectedConsultation && (
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <label htmlFor="feedbackLyDo" className="text-[10px] font-extrabold text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded uppercase tracking-wider block w-fit">
+                          Lý do khách không hài lòng về gói * (Lễ tân thu thập phản hồi)
+                        </label>
+                        <textarea 
+                          id="feedbackLyDo"
+                          required
+                          value={feedbackLyDo}
+                          onChange={(e) => setFeedbackLyDo(e.target.value)}
+                          placeholder="Note phản hồi của khách hàng tại đây (VD: khách thấy giá đắt, muốn thanh toán theo từng buổi lẻ)..."
+                          className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 focus:border-primary rounded-xl font-bold text-secondary text-xs outline-none transition-all focus:bg-white min-h-[90px]"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Quick Cash selections */}
-                  {phuongThuc === 'tien_mat' && (
+                  {state.phuongThuc === 'tien_mat' && (
                     <div className="space-y-2">
                       <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Gợi ý mệnh giá tiền mặt nhanh</span>
                       <div className="flex flex-wrap gap-2">
@@ -831,7 +976,7 @@ export default function QuickBilling() {
                   )}
 
                   {/* Automatic Cash change indicator */}
-                  {phuongThuc === 'tien_mat' && (
+                  {state.phuongThuc === 'tien_mat' && (
                     <div className="p-4 rounded-xl border flex justify-between items-center transition-all bg-[#F8FAFC] border-zinc-200">
                       <div className="space-y-0.5">
                         <span className="text-[9px] font-bold text-gray-400 uppercase block tracking-wider">Tiền thừa trả khách</span>
@@ -845,7 +990,7 @@ export default function QuickBilling() {
                     </div>
                   )}
 
-                  {phuongThuc !== 'tien_mat' && (
+                  {state.phuongThuc !== 'tien_mat' && (
                     <div className="bg-[#E6F4F1] border border-primary/10 rounded-xl p-4 text-xs text-secondary flex items-start gap-3 leading-relaxed font-semibold">
                       <Info className="text-primary flex-shrink-0 mt-0.5" size={18} />
                       <p>
@@ -857,7 +1002,10 @@ export default function QuickBilling() {
                   <div className="flex gap-3.5 pt-2">
                     <button 
                       type="button" 
-                      onClick={() => dispatch({ type: 'RESET_HOA_DON' })}
+                      onClick={() => {
+                        dispatch({ type: 'RESET_HOA_DON' });
+                        setFeedbackLyDo('');
+                      }}
                       className="flex-1 py-4 text-secondary bg-zinc-50 hover:bg-zinc-100 rounded-xl font-extrabold text-xs uppercase tracking-widest border border-zinc-200 transition-all active:scale-98"
                     >
                       Hủy hóa đơn
@@ -965,6 +1113,15 @@ export default function QuickBilling() {
 
                   {activeTab === 'package' ? (
                     <>
+                      {Number(calculatedData.so_tien_giam_phuong_thuc) > 0 && (
+                        <div className="flex justify-between items-center text-emerald-500">
+                          <span className="font-extrabold">
+                            Ưu đãi tự động ({loaiThanhToan === 'tra_gop' ? activePromo?.installmentPromo?.ten_chien_dich : activePromo?.straightPromo?.ten_chien_dich}):
+                          </span>
+                          <span className="font-black">-{formatCurrency(Number(calculatedData.so_tien_giam_phuong_thuc))}</span>
+                        </div>
+                      )}
+
                       {Number(calculatedData.so_tien_giam_voucher) > 0 && (
                         <div className="flex justify-between items-center text-emerald-500">
                           <span className="font-extrabold">Ưu đãi Voucher ({appliedVoucher?.ma_voucher}):</span>
