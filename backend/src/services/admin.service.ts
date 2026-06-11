@@ -27,6 +27,14 @@ class AdminService {
     return adminRepository.createCategory(data);
   }
 
+  async updateCategory(id: string, data: any) {
+    return adminRepository.updateCategory(id, data);
+  }
+
+  async deleteCategory(id: string) {
+    return adminRepository.deleteCategory(id);
+  }
+
   async getServices() {
     return adminRepository.getServices();
   }

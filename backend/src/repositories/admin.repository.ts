@@ -1,9 +1,25 @@
 import { pool } from '../config/db';
 
 class AdminRepository {
+  constructor() {
+    this.initDatabase();
+  }
+
+  async initDatabase() {
+    try {
+      await pool.query(`
+        ALTER TABLE danh_muc_dich_vu 
+        ADD COLUMN IF NOT EXISTS loai_danh_muc VARCHAR(20) DEFAULT 'dich_vu'
+      `);
+      console.log('Database verified: loai_danh_muc column exists in danh_muc_dich_vu.');
+    } catch (err) {
+      console.error('Error verifying/altering database tables:', err);
+    }
+  }
+
   // --- QUẢN LÝ DỊCH VỤ & DANH MỤC ---
   async getCategories() {
-    const { rows } = await pool.query('SELECT * FROM danh_muc_dich_vu ORDER BY id ASC');
+    const { rows } = await pool.query('SELECT * FROM danh_muc_dich_vu ORDER BY thu_tu_hien_thi ASC, id ASC');
     return rows;
   }
 
@@ -12,12 +28,30 @@ class AdminRepository {
     return rows;
   }
 
-  async createCategory(data: { ten_danh_muc: string; mo_ta?: string; trang_thai: string }) {
+  async createCategory(data: any) {
+    const an_hien = data.trang_thai !== 'vo_hieu';
+    const loai_danh_muc = data.loai_danh_muc || 'dich_vu';
+    const thu_tu_hien_thi = data.thu_tu_hien_thi || 0;
     const { rows } = await pool.query(
-      'INSERT INTO danh_muc_dich_vu (ten_danh_muc, mo_ta, trang_thai) VALUES ($1, $2, $3) RETURNING *',
-      [data.ten_danh_muc, data.mo_ta, data.trang_thai]
+      'INSERT INTO danh_muc_dich_vu (ten_danh_muc, mo_ta, an_hien, loai_danh_muc, thu_tu_hien_thi) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [data.ten_danh_muc, data.mo_ta || null, an_hien, loai_danh_muc, thu_tu_hien_thi]
     );
     return rows[0];
+  }
+
+  async updateCategory(id: string, data: any) {
+    const an_hien = data.trang_thai !== 'vo_hieu';
+    const loai_danh_muc = data.loai_danh_muc || 'dich_vu';
+    const thu_tu_hien_thi = data.thu_tu_hien_thi || 0;
+    const { rows } = await pool.query(
+      'UPDATE danh_muc_dich_vu SET ten_danh_muc = $1, mo_ta = $2, an_hien = $3, loai_danh_muc = $4, thu_tu_hien_thi = $5 WHERE id = $6 RETURNING *',
+      [data.ten_danh_muc, data.mo_ta || null, an_hien, loai_danh_muc, thu_tu_hien_thi, id]
+    );
+    return rows[0];
+  }
+
+  async deleteCategory(id: string) {
+    await pool.query('DELETE FROM danh_muc_dich_vu WHERE id = $1', [id]);
   }
 
   async getServices() {

@@ -41,8 +41,10 @@ const ManageAppointments = lazy(() => import('../features/admin/pages/ManageAppo
 const ManageTreatments = lazy(() => import('../features/admin/pages/ManageTreatments'));
 const ManageMedicalRecords = lazy(() => import('../features/admin/pages/ManageMedicalRecords'));
 const ManageServices = lazy(() => import('../features/admin/pages/ManageServices'));
+const ManageCategories = lazy(() => import('../features/admin/pages/ManageCategories'));
 const ManageRoomsEquipment = lazy(() => import('../features/admin/pages/ManageRoomsEquipment'));
 const ManagePackages = lazy(() => import('../features/admin/pages/ManagePackages'));
+const ManagePackageServices = lazy(() => import('../features/admin/pages/ManagePackageServices'));
 const ManageFinance = lazy(() => import('../features/admin/pages/ManageFinance'));
 const ManageVouchers = lazy(() => import('../features/admin/pages/ManageVouchers'));
 const ViewFeedback = lazy(() => import('../features/admin/pages/ViewFeedback'));
@@ -101,8 +103,10 @@ export default function AppRoutes() {
 
             <Route path="/admin/schedules" element={<ManageSchedules />} />
             <Route path="/admin/services" element={<ManageServices />} />
+            <Route path="/admin/categories" element={<ManageCategories />} />
             <Route path="/admin/rooms-equipment" element={<ManageRoomsEquipment />} />
             <Route path="/admin/packages" element={<ManagePackages />} />
+            <Route path="/admin/packages/:id/services" element={<ManagePackageServices />} />
             <Route path="/admin/finance" element={<ManageFinance />} />
             <Route path="/admin/quick-billing" element={<QuickBilling />} />
             <Route path="/admin/marketing" element={<ManageVouchers />} />

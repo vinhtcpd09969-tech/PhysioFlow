@@ -1,102 +1,104 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { getPackages, getServices, deletePackage, getVouchers } from '../../../api/admin.api';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { getPackages, deletePackage, getCategories } from '../../../api/admin.api';
 import PackageModal from '../components/PackageModal';
 
 const currencyFormatter = new Intl.NumberFormat('vi-VN');
 
 export default function ManagePackages() {
+  const navigate = useNavigate();
   const [packages, setPackages] = useState<any[]>([]);
-  const [services, setServices] = useState<any[]>([]);
-  const [vouchers, setVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPackage, setEditingPackage] = useState<any>(null);
-  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
 
+  // Nhóm các phân khúc Basic, Standard, Intensive của gói cố định thành 1 dòng duy nhất trên UI
+  const groupedPackages = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    const singles: any[] = [];
+
+    packages.forEach((pkg) => {
+      // Xác định gói cố định thuộc phân khúc Basic/Standard/Intensive bằng suffix tên
+      const match = pkg.ten_goi.match(/\s*-\s*(BASIC|STANDARD|INTENSIVE)\s*$/i);
+      if (match) {
+        const baseName = pkg.ten_goi.replace(/\s*-\s*(BASIC|STANDARD|INTENSIVE)\s*$/i, '').trim();
+        if (!groups[baseName]) {
+          groups[baseName] = [];
+        }
+        groups[baseName].push(pkg);
+      } else {
+        singles.push(pkg);
+      }
+    });
+
+    const result: any[] = [...singles];
+
+    Object.entries(groups).forEach(([baseName, list]) => {
+      // Sắp xếp các phân khúc: BASIC -> STANDARD -> INTENSIVE
+      const sorted = [...list].sort((a, b) => {
+        const aName = a.ten_goi.toUpperCase();
+        const bName = b.ten_goi.toUpperCase();
+        if (aName.includes('BASIC')) return -1;
+        if (bName.includes('BASIC')) return 1;
+        if (aName.includes('STANDARD')) return -1;
+        if (bName.includes('STANDARD')) return 1;
+        return 0;
+      });
+
+      const basic = sorted.find(p => p.ten_goi.toUpperCase().includes('BASIC')) || sorted[0];
+      const standard = sorted.find(p => p.ten_goi.toUpperCase().includes('STANDARD')) || sorted[0];
+      const intensive = sorted.find(p => p.ten_goi.toUpperCase().includes('INTENSIVE')) || sorted[0];
+
+      // Tạo một gói ảo đã được gộp phân khúc để hiển thị đại diện trên bảng
+      result.push({
+        id: standard.id, // Sử dụng ID của Standard làm ID đại diện (khi click xem chi tiết phác đồ)
+        isGrouped: true,
+        baseName,
+        ten_goi: baseName,
+        ma_goi: standard.ma_goi ? standard.ma_goi.replace(/-STD$/i, '') : '',
+        mo_ta: standard.mo_ta,
+        loai_goi: 'lieu_trinh',
+        trang_thai: standard.trang_thai,
+        ten_danh_muc: standard.ten_danh_muc,
+        danh_muc_id: standard.danh_muc_id,
+        so_dv_toi_da_moi_buoi: standard.so_dv_toi_da_moi_buoi,
+        tong_so_buoi_range: `${basic.tong_so_buoi} - ${intensive.tong_so_buoi}`,
+        gia_tien_range: `${currencyFormatter.format(basic.gia_tien)}đ - ${currencyFormatter.format(intensive.gia_tien)}đ`,
+        basicPkg: basic,
+        standardPkg: standard,
+        intensivePkg: intensive,
+        subPackages: sorted // giữ các tham chiếu của cả 3 gói y khoa để xóa/sửa đồng thời
+      });
+    });
+
+    return result;
+  }, [packages]);
+
   const filteredPackages = useMemo(() => {
-    return packages.filter((pkg: any) =>
-      pkg.ten_goi.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (pkg.ma_goi && pkg.ma_goi.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-  }, [packages, searchQuery]);
-
-  const selectedPackage = useMemo(() => {
-    return packages.find(p => String(p.id) === selectedPackageId) || filteredPackages[0] || null;
-  }, [packages, selectedPackageId, filteredPackages]);
-
-  // Find active auto-applied vouchers targeted to this package
-  const activePromo = useMemo(() => {
-    if (!selectedPackage || !vouchers.length) return null;
-
-    const now = new Date();
-
-    // Find auto-applied voucher for straight payment (tra_thang)
-    const straightPromo = vouchers.find((v: any) => {
-      const startDate = new Date(v.ngay_bat_dau);
-      const endDate = v.ngay_het_han ? new Date(v.ngay_het_han) : null;
-      const isTimeActive = now >= startDate && (!endDate || now <= endDate);
-
-      return v.trang_thai === 'hoat_dong' &&
-        v.tu_dong_ap_dung === true &&
-        isTimeActive &&
-        (v.yeu_cau_thanh_toan === 'tra_thang' || v.yeu_cau_thanh_toan === 'tat_ca') &&
-        (v.ap_dung_cho === 'tat_ca' || (Array.isArray(v.goi_dich_vu_ids) && v.goi_dich_vu_ids.includes(selectedPackage.id)));
-    }) || null;
-
-    // Find auto-applied voucher for installment (tra_gop)
-    const installmentPromo = vouchers.find((v: any) => {
-      const startDate = new Date(v.ngay_bat_dau);
-      const endDate = v.ngay_het_han ? new Date(v.ngay_het_han) : null;
-      const isTimeActive = now >= startDate && (!endDate || now <= endDate);
-
-      return v.trang_thai === 'hoat_dong' &&
-        v.tu_dong_ap_dung === true &&
-        isTimeActive &&
-        (v.yeu_cau_thanh_toan === 'tra_gop' || v.yeu_cau_thanh_toan === 'tat_ca') &&
-        (v.ap_dung_cho === 'tat_ca' || (Array.isArray(v.goi_dich_vu_ids) && v.goi_dich_vu_ids.includes(selectedPackage.id)));
-    }) || null;
-
-    if (!straightPromo && !installmentPromo) return null;
-
-    return {
-      straightPromo,
-      installmentPromo
-    };
-  }, [selectedPackage, vouchers]);
-
-  useEffect(() => {
-    if (filteredPackages.length === 0) {
-      setSelectedPackageId(null);
-      return;
-    }
-
-    if (!selectedPackageId || !filteredPackages.some(pkg => String(pkg.id) === selectedPackageId)) {
-      setSelectedPackageId(String(filteredPackages[0].id));
-    }
-  }, [filteredPackages, selectedPackageId]);
+    return groupedPackages.filter((pkg: any) => {
+      const matchesSearch = pkg.ten_goi.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (pkg.ma_goi && pkg.ma_goi.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesCategory = selectedCategory === 'all' || String(pkg.danh_muc_id) === String(selectedCategory);
+      return matchesSearch && matchesCategory;
+    });
+  }, [groupedPackages, searchQuery, selectedCategory]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [pkgsRes, svcsRes, vouchersRes] = await Promise.all([
+      const [pkgsRes, catsRes] = await Promise.all([
         getPackages(),
-        getServices(),
-        getVouchers()
+        getCategories()
       ]);
-      setPackages(pkgsRes.data);
-      setServices(svcsRes.data.filter((s: any) => s.trang_thai === 'hoat_dong'));
-      setVouchers(vouchersRes.data || []);
-
-      // Auto select first package if none selected
-      if (pkgsRes.data.length > 0 && !selectedPackageId) {
-        setSelectedPackageId(String(pkgsRes.data[0].id));
-      }
+      setPackages(pkgsRes.data || []);
+      setCategories((catsRes.data || []).filter((c: any) => c.loai_danh_muc === 'goi' && c.an_hien !== false));
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching packages:', error);
     } finally {
       setLoading(false);
     }
@@ -107,11 +109,15 @@ export default function ManagePackages() {
   }, []);
 
   const handleDelete = async (pkg: any) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa gói dịch vụ "${pkg.ten_goi}" không?\nHành động này không thể hoàn tác.`)) {
+    const confirmName = pkg.isGrouped ? pkg.baseName : pkg.ten_goi;
+    if (window.confirm(`Bạn có chắc chắn muốn xóa gói dịch vụ "${confirmName}" không?\nHành động này sẽ xóa toàn bộ các phân khúc liên quan.`)) {
       try {
-        await deletePackage(pkg.id);
-        if (selectedPackageId === String(pkg.id)) {
-          setSelectedPackageId(null);
+        if (pkg.isGrouped && pkg.subPackages) {
+          for (const sub of pkg.subPackages) {
+            await deletePackage(sub.id);
+          }
+        } else {
+          await deletePackage(pkg.id);
         }
         fetchData();
       } catch (error) {
@@ -124,57 +130,22 @@ export default function ManagePackages() {
   const handleDuplicate = (pkg: any) => {
     const duplicatedPkg = {
       ...pkg,
-      ten_goi: `${pkg.ten_goi} (Copy)`,
+      id: undefined, // Clear the ID so it's treated as a new package creation flow
+      ten_goi: `${pkg.isGrouped ? pkg.baseName : pkg.ten_goi} (Bản sao)`,
       ma_goi: '', // Let backend auto-generate a new code
     };
     setEditingPackage(duplicatedPkg);
     setIsModalOpen(true);
   };
 
-  // Calculate package pricing stats
-  const getPackageStats = (pkg: any) => {
-    if (!pkg || !pkg.chi_tiet_dich_vu || !Array.isArray(pkg.chi_tiet_dich_vu)) {
-      return { totalRetailPrice: 0, savings: 0, savingsPercent: 0 };
-    }
+  // KPI calculations
+  const activeCount = useMemo(() => {
+    return groupedPackages.filter((p: any) => p.trang_thai === 'hoat_dong').length;
+  }, [groupedPackages]);
 
-    let totalRetailPrice = 0;
-    pkg.chi_tiet_dich_vu.forEach((item: any) => {
-      const svc = services.find(s => s.id === item.dich_vu_id);
-      if (svc) {
-        const price = typeof svc.don_gia === 'string' ? parseInt(svc.don_gia) : (svc.don_gia || 0);
-        const qty = item.so_lan_toi_da_trong_goi || item.so_buoi || item.so_buoi_trong_goi || 0;
-        totalRetailPrice += price * qty;
-      }
-    });
-
-    const pkgPrice = typeof pkg.gia_tien === 'string' ? parseInt(pkg.gia_tien) : (pkg.gia_tien || 0);
-    const savings = totalRetailPrice - pkgPrice;
-    const savingsPercent = totalRetailPrice > 0 ? Math.round((savings / totalRetailPrice) * 100) : 0;
-
-    return { totalRetailPrice, savings, savingsPercent };
-  };
-
-  const selectedStats = useMemo(() => {
-    return selectedPackage ? getPackageStats(selectedPackage) : null;
-  }, [selectedPackage, services]);
-
-  // Overall Statistics for KPI panels
-  const overallStats = useMemo(() => {
-    const activeCount = packages.filter(p => p.trang_thai === 'hoat_dong').length;
-    const totalCount = packages.length;
-    const avgPrice = totalCount > 0
-      ? packages.reduce((acc, p) => acc + (typeof p.gia_tien === 'string' ? parseInt(p.gia_tien) : (p.gia_tien || 0)), 0) / totalCount
-      : 0;
-    const shortExpiryCount = packages.filter(p => p.han_dung_thang <= 3).length;
-
-    return { activeCount, totalCount, avgPrice, shortExpiryCount };
-  }, [packages]);
-
-  const formatCurrencyShort = (amount: number) => {
-    if (amount >= 1000000) return `${amount / 1000000}M`;
-    if (amount >= 1000) return `${amount / 1000}K`;
-    return amount.toString();
-  };
+  const totalCount = useMemo(() => {
+    return groupedPackages.length;
+  }, [groupedPackages]);
 
   return (
     <div className="space-y-6 pb-8 animate-fade-in text-zinc-800 font-sans text-sm">
@@ -188,7 +159,7 @@ export default function ManagePackages() {
             <span className="text-xs font-heading tracking-wider text-primary uppercase font-bold">Không gian làm việc</span>
           </div>
           <h2 className="text-2xl font-bold font-heading text-secondary tracking-tight">CẤU HÌNH GÓI DỊCH VỤ</h2>
-          <p className="text-zinc-500 text-xs mt-1">Cấu hình phân loại, định giá và tối ưu hóa gói dịch vụ</p>
+          <p className="text-zinc-500 text-xs mt-1">Quản lý định giá, phân loại và cấu trúc phác đồ điều trị của các gói dịch vụ</p>
         </div>
         <button
           onClick={() => {
@@ -202,406 +173,306 @@ export default function ManagePackages() {
       </div>
 
       {/* KPI HUD Panel */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm flex flex-col justify-between transition-all hover:border-zinc-300 hover:shadow-md">
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">GIÁ TRỊ TRUNG BÌNH THÈ</p>
+          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">GÓI ĐANG HOẠT ĐỘNG</p>
           <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold text-secondary">
-              {currencyFormatter.format(Math.round(overallStats.avgPrice))}đ
-            </h3>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm flex flex-col justify-between transition-all hover:border-zinc-300 hover:shadow-md">
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">GÓI ĐANG KÍCH HOẠT</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold text-primary">{overallStats.activeCount}</h3>
-            <span className="text-[10px] text-primary font-bold bg-primary-container px-2 py-0.5 border border-primary/20 rounded-lg">Hoạt động</span>
+            <h3 className="text-2xl font-bold text-primary">{activeCount}</h3>
+            <span className="text-[10px] text-primary font-bold bg-primary-container px-2 py-0.5 border border-primary/20 rounded-lg">Kích hoạt</span>
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm flex flex-col justify-between transition-all hover:border-zinc-300 hover:shadow-md">
           <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">TỔNG SỐ LƯỢNG THIẾT LẬP</p>
           <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold text-secondary">{overallStats.totalCount}</h3>
-            <span className="text-[10px] text-zinc-500 font-bold bg-zinc-100 px-2 py-0.5 border border-zinc-200 rounded-lg">Gói</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm flex flex-col justify-between transition-all hover:border-zinc-300 hover:shadow-md">
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">GÓI HẠN NGẮN (≤3T)</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold text-amber-500">{overallStats.shortExpiryCount}</h3>
-            <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 border border-amber-200 rounded-lg">Hạn ngắn</span>
+            <h3 className="text-2xl font-bold text-secondary">{totalCount}</h3>
+            <span className="text-[10px] text-zinc-500 font-bold bg-zinc-100 px-2 py-0.5 border border-zinc-200 rounded-lg">Hệ thống</span>
           </div>
         </div>
       </div>
 
-      {/* Main Workspace: Split-Pane HUD */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      {/* Table Header Toolbar (Floating SaaS Control Card) */}
+      <div className="p-5 bg-white border border-zinc-200 rounded-2xl shadow-sm flex flex-col sm:flex-row gap-4 items-center justify-between transition-all hover:shadow-md duration-300">
+        <h3 className="font-extrabold text-xs uppercase tracking-wider text-secondary font-heading flex-shrink-0">Danh sách gói dịch vụ y khoa ({filteredPackages.length})</h3>
+        
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          {/* Bộ lọc Danh mục Chuyên khoa */}
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-3.5 py-2 border border-zinc-200 rounded-xl bg-white text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-secondary font-bold shadow-sm transition-all cursor-pointer hover:border-zinc-300"
+          >
+            <option value="all">📂 TẤT CẢ CHUYÊN KHOA</option>
+            {categories.map((cat: any) => (
+              <option key={cat.id} value={cat.id}>
+                🏷️ {cat.ten_danh_muc.toUpperCase()}
+              </option>
+            ))}
+          </select>
 
-        {/* Left Pane: Packages Directory */}
-        <div className="lg:col-span-5 flex flex-col bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm min-h-[500px]">
-
-          {/* Search Header */}
-          <div className="p-4 border-b border-zinc-200 bg-zinc-50/50 flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-secondary font-heading flex-shrink-0">Danh mục Gói</h3>
-            <div className="relative w-full sm:w-60">
-              <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Mã gói, tên gói dịch vụ..."
-                value={searchQuery}
-                onChange={(e) => setSearchParams(e.target.value ? { q: e.target.value } : {})}
-                className="pl-9 pr-4 py-1.5 w-full border border-zinc-200 rounded-xl bg-white text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-secondary placeholder-zinc-350 shadow-inner transition-all"
-              />
-            </div>
+          {/* Ô tìm kiếm */}
+          <div className="relative w-full sm:w-64">
+            <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo mã gói, tên gói..."
+              value={searchQuery}
+              onChange={(e) => setSearchParams(e.target.value ? { q: e.target.value } : {})}
+              className="pl-9 pr-4 py-2 w-full border border-zinc-200 rounded-xl bg-white text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-secondary placeholder-zinc-350 shadow-inner transition-all font-semibold animate-fade-in"
+            />
           </div>
+        </div>
+      </div>
 
-          {/* Scrollable list */}
-          <div className="flex-1 overflow-y-auto max-h-[600px] divide-y divide-zinc-150 pr-0.5 custom-scrollbar bg-white">
-            {loading ? (
-              <div className="p-8 text-center text-zinc-400 font-sans text-xs">CƠ SỞ DỮ LIỆU ĐANG TẢI...</div>
-            ) : filteredPackages.length === 0 ? (
-              <div className="p-12 text-center text-zinc-400 font-sans text-xs">KHÔNG TÌM THẤY KẾT QUẢ PHÙ HỢP</div>
-            ) : (
-              filteredPackages.map((pkg) => {
-                const isActive = selectedPackage && selectedPackage.id === pkg.id;
-                const isInactive = pkg.trang_thai !== 'hoat_dong';
+      {/* Float Card list wrapper */}
+      <div className="space-y-5">
+        {loading ? (
+          <div className="px-6 py-16 text-center text-zinc-450 bg-white border border-zinc-200 rounded-2xl shadow-sm">
+            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
+            <span className="font-heading text-xs font-bold uppercase tracking-wider">Đang tải danh sách gói dịch vụ...</span>
+          </div>
+        ) : filteredPackages.length === 0 ? (
+          <div className="px-6 py-16 text-center text-zinc-400 bg-white border border-zinc-200 rounded-2xl shadow-sm animate-fade-in">
+            <svg className="w-12 h-12 text-zinc-300 mx-auto mb-3 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-heading font-bold text-xs uppercase tracking-wider text-secondary">Không tìm thấy gói dịch vụ nào phù hợp</span>
+            <p className="text-[10px] text-zinc-450 mt-1 font-semibold">Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc.</p>
+          </div>
+        ) : (
+          <>
+            {/* Header Column Labels Bar (Floating Glass SaaS Bar) */}
+            <div className="hidden lg:grid lg:grid-cols-12 gap-4 px-6 py-3.5 bg-zinc-50/50 border border-zinc-200/80 rounded-2xl text-zinc-500 font-bold uppercase tracking-wider text-[10px] select-none mb-3 shadow-2xs backdrop-blur-md">
+              <div className="col-span-3 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
+                <span>Thông tin gói y khoa</span>
+              </div>
+              <div className="col-span-1 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
+                <span>Phân loại gói</span>
+              </div>
+              <div className="col-span-3 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
+                <span>Bảng giá theo lộ trình</span>
+              </div>
+              <div className="col-span-1 text-center flex items-center justify-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
+                <span>Hạn mức</span>
+              </div>
+              <div className="col-span-1 text-center flex items-center justify-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
+                <span>Trạng thái</span>
+              </div>
+              <div className="col-span-3 text-right flex items-center justify-end gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
+                <span>Thao tác quản trị</span>
+              </div>
+            </div>
 
-                return (
-                  <div
-                    key={pkg.id}
-                    onClick={() => setSelectedPackageId(pkg.id)}
-                    className={`p-4 transition-all duration-150 cursor-pointer flex justify-between items-start gap-4 border-l-4 ${isActive
-                        ? 'border-l-primary bg-primary/5 border-r border-r-primary/5 border-y border-y-zinc-100 shadow-sm'
-                        : 'border-l-transparent hover:bg-zinc-50/60'
-                      } ${isInactive ? 'opacity-50' : ''}`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="font-heading text-[9px] font-bold text-zinc-400 uppercase">
-                          {pkg.ma_goi || 'CHƯA CÓ MÃ'}
+            {filteredPackages.map((pkg) => {
+              const isInactive = pkg.trang_thai !== 'hoat_dong';
+
+              return (
+                <div 
+                  key={pkg.id} 
+                  className={`group relative bg-gradient-to-b from-white to-zinc-50/30 border border-zinc-200/90 rounded-2xl p-6 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-emerald-200/80 hover:shadow-[0_20px_50px_rgba(16,185,129,0.05)] hover:-translate-y-1.5 active:scale-[0.995] ${
+                    isInactive ? 'opacity-70' : ''
+                  }`}
+                >
+                  {/* Left accent bar on hover that glows beautifully and expands vertically */}
+                  <div className={`absolute left-0 top-4 bottom-4 w-1.5 rounded-r-2xl scale-y-50 group-hover:scale-y-100 opacity-0 group-hover:opacity-100 transition-all duration-300 origin-center shadow-sm ${
+                    pkg.loai_goi === 'linh_dong' ? 'bg-amber-500 shadow-amber-300/50' : 'bg-primary shadow-emerald-400/50'
+                  }`}></div>
+
+                  {/* 12-Column CSS Grid Layout for Flawless Desktop Spatial Spacing */}
+                  <div className="flex flex-col lg:grid lg:grid-cols-12 lg:items-center gap-6 lg:gap-4">
+                    
+                    {/* 1. THÔNG TIN GÓI (col-span-3) */}
+                    <div className="col-span-12 lg:col-span-3 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="font-mono text-[9px] font-black text-zinc-500 bg-zinc-50 border border-zinc-200/70 px-2 py-0.5 rounded uppercase tracking-wider shadow-2xs flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+                          <span>{pkg.ma_goi || 'CHƯA CÓ MÃ'}</span>
                         </span>
-                        <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded border shrink-0 ${pkg.loai_goi === 'linh_dong'
-                            ? 'bg-amber-50 border-amber-250 text-amber-600'
-                            : 'bg-teal-50 border-teal-250 text-teal-650'
-                          }`}>
-                          {pkg.loai_goi === 'linh_dong' ? 'GÓI LINH ĐỘNG' : 'LIỆU TRÌNH CỐ ĐỊNH'}
+                        
+                        <span className="text-[9px] text-teal-850 font-black bg-gradient-to-r from-teal-500/5 to-emerald-500/5 border border-teal-150/60 px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 flex items-center gap-1 shadow-2xs">
+                          <svg className="w-3.5 h-3.5 text-teal-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2 2v12m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          <span>{pkg.ten_danh_muc || 'Không phân loại'}</span>
                         </span>
+
+                        {pkg.isGrouped && (
+                          <span className="text-[8px] font-black bg-zinc-50 border border-zinc-200 text-zinc-500 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 shadow-2xs">
+                            3 phân đoạn
+                          </span>
+                        )}
                       </div>
-                      <h4 className="font-bold text-sm text-secondary leading-snug truncate">
+                      
+                      <h4 
+                        className="font-heading font-black text-[15px] text-secondary tracking-tight hover:text-primary transition-colors cursor-pointer mt-1 duration-200 leading-snug"
+                        onClick={() => {
+                          setEditingPackage(pkg);
+                          setIsModalOpen(true);
+                        }}
+                      >
                         {pkg.ten_goi}
                       </h4>
-                      <p className="text-xs text-zinc-500 mt-1 font-semibold">
-                        {pkg.tong_so_buoi} BUỔI • {pkg.chi_tiet_dich_vu ? pkg.chi_tiet_dich_vu.length : 0} DỊCH VỤ • TỐI ĐA {pkg.so_dv_toi_da_moi_buoi || 5} DV/BUỔI
-                      </p>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <span className="text-sm font-bold text-primary block">
-                        {currencyFormatter.format(pkg.gia_tien)}đ
-                      </span>
-                      <span className={`inline-block mt-2 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-lg border ${pkg.trang_thai === 'hoat_dong'
-                          ? 'bg-primary-container text-primary border-primary/20'
-                          : 'bg-zinc-100 text-zinc-400 border-zinc-200'
-                        }`}>
-                        {pkg.trang_thai === 'hoat_dong' ? 'HOẠT ĐỘNG' : 'TẠM NGƯNG'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
 
-        {/* Right Pane: Interactive Detail Console */}
-        <div className="lg:col-span-7 flex flex-col bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm min-h-[500px]">
-          {selectedPackage ? (
-            <div className="flex-1 flex flex-col bg-white">
-
-              {/* Detail Header & Actions */}
-              <div className="p-5 border-b border-zinc-200 bg-zinc-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="text-[10px] font-bold text-primary uppercase bg-primary-container border border-primary/20 px-2.5 py-0.5 rounded-lg">
-                      {selectedPackage.ma_goi || 'CHƯA CÓ MÃ'}
-                    </span>
-                    <span className={`text-[9px] font-bold uppercase px-2.5 py-0.5 rounded-lg border ${selectedPackage.loai_goi === 'linh_dong'
-                        ? 'bg-amber-50 border-amber-250 text-amber-600'
-                        : 'bg-teal-50 border-teal-250 text-teal-650'
-                      }`}>
-                      {selectedPackage.loai_goi === 'linh_dong' ? 'GÓI LINH ĐỘNG' : 'LIỆU TRÌNH CỐ ĐỊNH'}
-                    </span>
-                    <span className={`text-[9px] font-bold uppercase px-2.5 py-0.5 rounded-lg border ${selectedPackage.trang_thai === 'hoat_dong'
-                        ? 'bg-primary-container text-primary border-primary/20'
-                        : 'bg-zinc-50 text-zinc-400 border-zinc-200'
-                      }`}>
-                      {selectedPackage.trang_thai === 'hoat_dong' ? 'ĐANG HOẠT ĐỘNG' : 'TẠM VÔ HIỆU'}
-                    </span>
-                  </div>
-                  <h3 className="text-md font-bold text-secondary truncate uppercase font-heading tracking-wide">
-                    {selectedPackage.ten_goi}
-                  </h3>
-                </div>
-
-                {/* Operations Toolbar */}
-                <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0 text-[11px] font-bold">
-                  <button
-                    onClick={() => handleDuplicate(selectedPackage)}
-                    className="px-3.5 py-2 border border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 text-zinc-600 rounded-xl transition-all active:scale-95 bg-white shadow-sm flex items-center gap-1.5"
-                  >
-                    <span>NHÂN BẢN</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingPackage(selectedPackage);
-                      setIsModalOpen(true);
-                    }}
-                    className="px-3.5 py-2 border border-zinc-200 hover:border-primary/30 hover:bg-primary-container text-zinc-600 hover:text-primary rounded-xl transition-all active:scale-95 bg-white shadow-sm flex items-center gap-1.5"
-                  >
-                    <span>SỬA ĐỔI</span>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(selectedPackage)}
-                    className="p-2 border border-zinc-200 hover:border-rose-200 hover:bg-rose-50 text-zinc-400 hover:text-rose-500 rounded-xl transition-all active:scale-95 bg-white shadow-sm"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Console Body */}
-              <div className="p-6 space-y-6 flex-1 overflow-y-auto max-h-[520px] custom-scrollbar bg-white">
-
-                {/* Stats Matrix Grid */}
-                <div>
-                  <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">HỘP I: THÔNG SỐ VẬN HÀNH LÂM SÀNG</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 bg-zinc-50/50 p-4 border border-zinc-200 rounded-2xl shadow-inner">
-                    <div>
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase">Thời hạn dùng</p>
-                      <p className="text-sm font-bold text-secondary mt-0.5">{selectedPackage.han_dung_thang} tháng</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase">Tổng số buổi</p>
-                      <p className="text-sm font-bold text-secondary mt-0.5">{selectedPackage.tong_so_buoi} buổi</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase">Hạn mức buổi</p>
-                      <p className="text-sm font-bold text-primary mt-0.5">Tối đa {selectedPackage.so_dv_toi_da_moi_buoi || 5} DV</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase">Website</p>
-                      <p className="text-sm font-bold text-secondary mt-0.5">
-                        {selectedPackage.hien_thi_website ? 'HIỂN THỊ' : 'ẨN BỎ'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase">Danh mục</p>
-                      <p className="text-sm font-bold text-secondary mt-0.5 truncate" title={selectedPackage.ten_danh_muc || 'Mặc định'}>
-                        {selectedPackage.ten_danh_muc || 'Không phân loại'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Description */}
-                {selectedPackage.mo_ta && (
-                  <div>
-                    <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">HỘP II: ĐỊNH HƯỚNG LIỆU TRÌNH</h4>
-                    <p className="text-xs text-zinc-600 bg-primary-container/20 border-l-4 border-primary p-4 rounded-r-xl italic leading-relaxed">
-                      "{selectedPackage.mo_ta}"
-                    </p>
-                  </div>
-                )}
-
-                {/* Technical Service breakdown */}
-                <div>
-                  <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">HỘP III: CƠ CẤU DỊCH VỤ KỸ THUẬT CHI TIẾT</h4>
-                  <div className="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">
-                    <table className="w-full text-left border-collapse text-[11px]">
-                      <thead>
-                        <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 uppercase tracking-wider font-heading">
-                          <th className="p-3 font-bold">Tên dịch vụ kỹ thuật</th>
-                          <th className="p-3 font-bold text-center">Bắt buộc</th>
-                          <th className="p-3 font-bold text-center">Hạn mức</th>
-                          <th className="p-3 font-bold text-center">Thứ tự</th>
-                          <th className="p-3 font-bold text-right">Đơn giá lẻ</th>
-                          <th className="p-3 font-bold text-right">Thành tiền lẻ</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-200">
-                        {selectedPackage.chi_tiet_dich_vu && selectedPackage.chi_tiet_dich_vu.length > 0 ? (
-                          selectedPackage.chi_tiet_dich_vu.map((item: any, idx: number) => {
-                            const svc = services.find(s => s.id === item.dich_vu_id);
-                            const unitPrice = svc ? (typeof svc.don_gia === 'string' ? parseInt(svc.don_gia) : (svc.don_gia || 0)) : 0;
-                            const qty = item.so_lan_toi_da_trong_goi || item.so_buoi || item.so_buoi_trong_goi || selectedPackage.tong_so_buoi || 10;
-                            const subtotal = unitPrice * qty;
-
-                            return (
-                              <tr key={idx} className="hover:bg-zinc-50/50">
-                                <td className="p-3">
-                                  <p className="font-bold text-secondary">{svc ? svc.ten_dich_vu : 'Dịch vụ đã dừng hoạt động'}</p>
-                                  <p className="text-[9px] text-zinc-400 mt-0.5">{svc ? svc.ten_danh_muc : 'Không xác định'}</p>
-                                </td>
-                                <td className="p-3 text-center">
-                                  {item.bat_buoc !== false ? (
-                                    <span className="px-1.5 py-0.5 text-[8px] font-bold bg-primary-container border border-primary/20 text-primary rounded-lg">CÓ</span>
-                                  ) : (
-                                    <span className="px-1.5 py-0.5 text-[8px] font-bold bg-zinc-100 text-zinc-400 border border-zinc-200 rounded-lg">KHÔNG</span>
-                                  )}
-                                </td>
-                                <td className="p-3 text-center font-bold text-zinc-650">{qty} LẦN</td>
-                                <td className="p-3 text-center font-bold text-zinc-500 bg-zinc-50/30">{item.thu_tu_thuc_hien || 0}</td>
-                                <td className="p-3 text-right text-zinc-500">{currencyFormatter.format(unitPrice)}đ</td>
-                                <td className="p-3 text-right font-bold text-primary">{currencyFormatter.format(subtotal)}đ</td>
-                              </tr>
-                            );
-                          })
-                        ) : (
-                          <tr>
-                            <td colSpan={6} className="p-6 text-center text-zinc-400">KHÔNG CÓ DỊCH VỤ ĐƯỢC CHỈ ĐỊNH TRONG GÓI</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Dynamic Financial Diagnostics report */}
-                {selectedStats && selectedStats.totalRetailPrice > 0 && (
-                  <div>
-                    <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">
-                      📦 GÓI: {selectedPackage.ten_goi}
-                    </h4>
-                    <div className="bg-primary-container/30 text-secondary p-5 border border-primary/20 rounded-2xl text-xs space-y-3 relative overflow-hidden shadow-sm">
-
-                      {/* Retail Price */}
-                      <div className="flex justify-between items-center pb-2.5 border-b border-zinc-200/50">
-                        <span className="font-bold text-zinc-500 uppercase tracking-wide">Tổng giá đơn lẻ:</span>
-                        <span className="font-bold text-base text-zinc-500 line-through">
-                          {currencyFormatter.format(selectedStats.totalRetailPrice)}đ
+                    {/* 2. PHÂN LOẠI GÓI (col-span-1) */}
+                    <div className="col-span-12 lg:col-span-1 shrink-0 flex lg:justify-start">
+                      {pkg.loai_goi === 'linh_dong' ? (
+                        <span className="inline-flex items-center gap-1.5 text-[9px] font-black px-3 py-1.5 rounded-xl border tracking-wider uppercase shadow-2xs bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20 text-amber-700">
+                          <svg className="w-3 h-3 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.11L12 15.202l-3.896 2.83c-.783.57-1.838-.197-1.538-1.11l1.518-4.674a1 1 0 00-.363-1.118L3.89 10.101c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                          </svg>
+                          <span>Gói Tự Chọn</span>
                         </span>
-                      </div>
-
-                      {/* Package Listed Price */}
-                      <div className="flex justify-between items-center pb-2.5 border-b border-zinc-200/50 bg-zinc-50/50 p-2 rounded-xl">
-                        <span className="font-bold text-primary uppercase tracking-wide">Giá trọn gói niêm yết:</span>
-                        <span className="font-bold text-base text-primary">
-                          {currencyFormatter.format(typeof selectedPackage.gia_tien === 'string' ? parseInt(selectedPackage.gia_tien) : (selectedPackage.gia_tien || 0))}đ
-                        </span>
-                      </div>
-
-                      {activePromo ? (
-                        <>
-                          {/* Straight payment (100%) */}
-                          {activePromo.straightPromo && (
-                            <div className="flex justify-between items-center text-secondary py-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                <span className="font-semibold text-zinc-650">{activePromo.straightPromo.ten_chien_dich}:</span>
-                              </div>
-                              <div className="flex items-baseline gap-2">
-                                <span className="font-bold text-sm text-emerald-600">
-                                  {activePromo.straightPromo.loai_giam === 'phan_tram' ? (
-                                    `${currencyFormatter.format(Math.round((typeof selectedPackage.gia_tien === 'string' ? parseInt(selectedPackage.gia_tien) : (selectedPackage.gia_tien || 0)) * (1 - Number(activePromo.straightPromo.gia_tri_giam) / 100)))}đ`
-                                  ) : (
-                                    `${currencyFormatter.format(Math.max(0, (typeof selectedPackage.gia_tien === 'string' ? parseInt(selectedPackage.gia_tien) : (selectedPackage.gia_tien || 0)) - Number(activePromo.straightPromo.gia_tri_giam)))}đ`
-                                  )}
-                                </span>
-                                <span className="text-[9px] font-bold bg-emerald-50 text-emerald-600 px-1.5 py-0.2 rounded border border-emerald-250">
-                                  {activePromo.straightPromo.loai_giam === 'phan_tram' 
-                                    ? `-${activePromo.straightPromo.gia_tri_giam}%` 
-                                    : `-${formatCurrencyShort(activePromo.straightPromo.gia_tri_giam)}`}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Installment payment */}
-                          {activePromo.installmentPromo && (
-                            <div className="flex justify-between items-center text-secondary py-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                <span className="font-semibold text-zinc-650">{activePromo.installmentPromo.ten_chien_dich}:</span>
-                              </div>
-                              <div className="flex items-baseline gap-2">
-                                <span className="font-bold text-sm text-amber-600">
-                                  {activePromo.installmentPromo.loai_giam === 'phan_tram' ? (
-                                    `${currencyFormatter.format(Math.round((typeof selectedPackage.gia_tien === 'string' ? parseInt(selectedPackage.gia_tien) : (selectedPackage.gia_tien || 0)) * (1 - Number(activePromo.installmentPromo.gia_tri_giam) / 100)))}đ`
-                                  ) : (
-                                    `${currencyFormatter.format(Math.max(0, (typeof selectedPackage.gia_tien === 'string' ? parseInt(selectedPackage.gia_tien) : (selectedPackage.gia_tien || 0)) - Number(activePromo.installmentPromo.gia_tri_giam)))}đ`
-                                  )}
-                                </span>
-                                <span className="text-[9px] font-bold bg-amber-50 text-amber-600 px-1.5 py-0.2 rounded border border-amber-255">
-                                  {activePromo.installmentPromo.loai_giam === 'phan_tram' 
-                                    ? `-${activePromo.installmentPromo.gia_tri_giam}%` 
-                                    : `-${formatCurrencyShort(activePromo.installmentPromo.gia_tri_giam)}`}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Promotion campaign badge */}
-                          <div className="border-t border-zinc-200/50 mt-3 pt-3 flex flex-wrap gap-2 items-center justify-between text-[10px] text-zinc-500 font-semibold">
-                            <span>Chiến dịch áp dụng:</span>
-                            <div className="flex gap-1.5 flex-wrap">
-                              {activePromo.straightPromo && (
-                                <span className="text-primary font-bold bg-primary-container px-2 py-0.5 border border-primary/20 rounded-lg">
-                                  ✨ {activePromo.straightPromo.ten_chien_dich}
-                                </span>
-                              )}
-                              {activePromo.installmentPromo && activePromo.installmentPromo.id !== activePromo.straightPromo?.id && (
-                                <span className="text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 border border-indigo-150 rounded-lg">
-                                  ✨ {activePromo.installmentPromo.ten_chien_dich}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </>
                       ) : (
-                        <>
-                          <div className="flex justify-between items-center text-secondary py-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
-                              <span className="font-semibold text-zinc-500">Giá trọn gói niêm yết:</span>
+                        <span className="inline-flex items-center gap-1.5 text-[9px] font-black px-3 py-1.5 rounded-xl border tracking-wider uppercase shadow-2xs bg-gradient-to-r from-emerald-500/5 to-teal-500/5 border-emerald-500/20 text-emerald-700">
+                          <svg className="w-3 h-3 text-emerald-600 shrink-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          <span>Gói Cố Định</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 3. BẢNG GIÁ THEO LỘ TRÌNH (col-span-3) */}
+                    <div className="col-span-12 lg:col-span-3 shrink-0">
+                      {pkg.isGrouped ? (
+                        <div className="flex flex-col gap-1.5 w-full max-w-[280px]">
+                          {/* Mức Basic */}
+                          <div className="flex items-center justify-between gap-4 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/10 hover:border-emerald-500/30 rounded-xl px-3 py-1.5 shadow-2xs transition-all hover:scale-[1.03] hover:shadow-xs duration-200">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[8px] font-black text-emerald-800 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shadow-2xs">BSC</span>
+                              <span className="font-extrabold text-secondary text-[10px]">6 buổi (2 tuần)</span>
                             </div>
-                            <span className="font-bold text-sm text-primary">
-                              {currencyFormatter.format(selectedPackage.gia_tien)}đ
+                            <span className="font-black text-emerald-700 text-[11px] font-heading select-all">
+                              {currencyFormatter.format(pkg.basicPkg?.gia_tien || 3594000)}đ
                             </span>
                           </div>
-                          <div className="border-t border-zinc-200/50 mt-3 pt-3 text-[10px] text-zinc-400 leading-relaxed italic">
-                            * Gói này hiện không nằm trong chiến dịch Ưu đãi Thanh toán tự động nào. Bạn có thể cấu hình kích hoạt ưu đãi cho gói này tại mục Marketing.
+                          
+                          {/* Mức Standard */}
+                          <div className="flex items-center justify-between gap-4 bg-teal-500/5 hover:bg-teal-500/10 border border-teal-500/10 hover:border-teal-500/30 rounded-xl px-3 py-1.5 shadow-2xs transition-all hover:scale-[1.03] hover:shadow-xs duration-200">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[8px] font-black text-teal-800 bg-teal-500/10 px-1.5 py-0.5 rounded border border-teal-500/20 shadow-2xs">STD</span>
+                              <span className="font-extrabold text-secondary text-[10px]">12 buổi (4 tuần)</span>
+                            </div>
+                            <span className="font-black text-teal-700 text-[11px] font-heading select-all">
+                              {currencyFormatter.format(pkg.standardPkg?.gia_tien || 6588000)}đ
+                            </span>
                           </div>
-                        </>
-                      )}
 
+                          {/* Mức Intensive */}
+                          <div className="flex items-center justify-between gap-4 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/10 hover:border-amber-500/30 rounded-xl px-3 py-1.5 shadow-2xs transition-all hover:scale-[1.03] hover:shadow-xs duration-200">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[8px] font-black text-amber-800 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-250 shadow-2xs">ITS</span>
+                              <span className="font-extrabold text-secondary text-[10px]">18 buổi (6 tuần)</span>
+                            </div>
+                            <span className="font-black text-amber-700 text-[11px] font-heading select-all">
+                              {currencyFormatter.format(pkg.intensivePkg?.gia_tien || 8982000)}đ
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-4 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/15 hover:border-amber-300 rounded-xl px-3.5 py-2 shadow-2xs max-w-[280px] transition-all hover:scale-[1.03] duration-200">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[8px] font-black text-amber-800 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shadow-2xs">FLEX</span>
+                            <span className="font-extrabold text-secondary text-[10px]">{pkg.tong_so_buoi} buổi tự chọn</span>
+                          </div>
+                          <span className="font-black text-primary text-xs select-all">
+                            {currencyFormatter.format(pkg.gia_tien)}đ
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 4. HẠN MỨC BUỔI TRỊ LIỆU (col-span-1) */}
+                    <div className="col-span-12 lg:col-span-1 shrink-0 flex lg:justify-center">
+                      <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-slate-500/5 to-zinc-500/5 border border-slate-200/80 rounded-xl px-3.5 py-2 text-[10px] text-slate-700 font-semibold shadow-2xs">
+                        <svg className="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <span>Tối đa <strong className="text-primary font-black">{pkg.so_dv_toi_da_moi_buoi || 5}</strong> KT</span>
+                      </div>
+                    </div>
+
+                    {/* 5. TRẠNG THÁI (col-span-1) */}
+                    <div className="col-span-12 lg:col-span-1 shrink-0 flex lg:justify-center">
+                      <span className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase px-2.5 py-1.5 rounded-xl border shadow-2xs ${
+                        pkg.trang_thai === 'hoat_dong'
+                          ? 'bg-emerald-500/5 text-emerald-700 border-emerald-500/20 shadow-inner'
+                          : 'bg-zinc-100 text-zinc-400 border-zinc-200 shadow-inner'
+                      }`}>
+                        <span className="relative flex h-2 w-2">
+                          {pkg.trang_thai === 'hoat_dong' && (
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          )}
+                          <span className={`relative inline-flex rounded-full h-2 w-2 ${pkg.trang_thai === 'hoat_dong' ? 'bg-emerald-500' : 'bg-zinc-400'}`}></span>
+                        </span>
+                        <span>{pkg.trang_thai === 'hoat_dong' ? 'HOẠT ĐỘNG' : 'TẠM NGƯNG'}</span>
+                      </span>
+                    </div>
+
+                    {/* 6. THAO TÁC QUẢN TRỊ (col-span-3) */}
+                    <div className="col-span-12 lg:col-span-3 shrink-0 flex items-center lg:justify-end gap-2 flex-wrap">
+                      <button
+                        onClick={() => navigate(`/admin/packages/${pkg.id}/services`)}
+                        className="px-3.5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 hover:shadow-[0_4px_12px_rgba(16,185,129,0.15)] active:scale-95 text-white rounded-xl transition-all duration-200 shadow-sm flex items-center gap-1.5 font-bold text-[10px] tracking-wide whitespace-nowrap"
+                        title="Chi tiết gói dịch vụ"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                        <span>CHI TIẾT GÓI</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDuplicate(pkg)}
+                        className="px-3 py-2.5 border border-zinc-200/80 hover:border-zinc-350 hover:bg-zinc-50 text-zinc-655 hover:text-zinc-800 rounded-xl transition-all duration-200 active:scale-95 bg-white shadow-2xs font-bold text-[9.5px]"
+                        title="Nhân bản gói"
+                      >
+                        NHÂN BẢN
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setEditingPackage(pkg);
+                          setIsModalOpen(true);
+                        }}
+                        className="px-3 py-2.5 border border-zinc-200/80 hover:border-primary/30 hover:bg-primary-container text-zinc-655 hover:text-primary rounded-xl transition-all duration-200 active:scale-95 bg-white shadow-2xs font-bold text-[9.5px]"
+                        title="Chỉnh sửa cấu hình"
+                      >
+                        SỬA ĐỔI
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(pkg)}
+                        className="p-2.5 border border-zinc-200/80 hover:border-rose-300 hover:bg-rose-50/50 text-zinc-400 hover:text-rose-500 rounded-xl transition-all duration-200 active:scale-95 bg-white shadow-2xs"
+                        title="Xóa gói dịch vụ"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
-                )}
 
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 bg-zinc-50/30 text-zinc-400 text-xs">
-              <svg className="w-12 h-12 text-zinc-300 mb-3 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-              </svg>
-              <span className="font-semibold text-center uppercase tracking-wider">VUI LÒNG CHỌN GÓI TRÊN DANH MỤC ĐỂ HIỂN THỊ PHÂN TÍCH LÂM SÀNG</span>
-            </div>
-          )}
-        </div>
-
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
 
       {/* Render Component Modal */}
       {isModalOpen && (
         <PackageModal
-          services={services}
+          services={[]}
           editingPackage={editingPackage}
           existingPackages={packages}
           onClose={() => {

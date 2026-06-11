@@ -50,7 +50,6 @@ export default function AdminLayout() {
     logout();
     navigate('/login');
   };
-
   const isDoctor = user?.vai_tro_id === 4;
 
   const rawNavItems = [

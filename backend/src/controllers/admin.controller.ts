@@ -78,6 +78,32 @@ export const createCategory = async (req: Request, res: Response): Promise<any> 
   }
 };
 
+export const updateCategory = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params as { id: string };
+    const { body } = categorySchema.parse({ body: req.body });
+    const category = await adminService.updateCategory(id, body);
+
+    await logAudit(req, 'UPDATE_CATEGORY', 'CATEGORY', id, body);
+    res.json(category);
+  } catch (error) {
+    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
+    res.status(500).json({ message: 'Lỗi server khi cập nhật danh mục' });
+  }
+};
+
+export const deleteCategory = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params as { id: string };
+    await adminService.deleteCategory(id);
+
+    await logAudit(req, 'DELETE_CATEGORY', 'CATEGORY', id, { id });
+    res.json({ message: 'Xóa danh mục thành công' });
+  } catch (error) {
+    res.status(500).json({ message: 'Lỗi server khi xóa danh mục' });
+  }
+};
+
 export const getServices = async (req: Request, res: Response) => {
   try {
     const services = await adminService.getServices();

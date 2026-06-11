@@ -3,6 +3,8 @@ import api from './axios';
 // Categories & Services
 export const getCategories = () => api.get('/admin/categories');
 export const createCategory = (data: any) => api.post('/admin/categories', data);
+export const updateCategory = (id: string, data: any) => api.put(`/admin/categories/${id}`, data);
+export const deleteCategory = (id: string) => api.delete(`/admin/categories/${id}`);
 export const getServices = () => api.get('/admin/services');
 export const createService = (data: any) => api.post('/admin/services', data);
 export const updateService = (id: string, data: any) => api.put(`/admin/services/${id}`, data);

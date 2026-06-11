@@ -4,8 +4,10 @@ import { z } from 'zod';
 export const categorySchema = z.object({
   body: z.object({
     ten_danh_muc: z.string().min(1, 'Tên danh mục là bắt buộc'),
-    mo_ta: z.string().optional(),
-    trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong')
+    mo_ta: z.string().optional().nullable(),
+    trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong'),
+    loai_danh_muc: z.enum(['dich_vu', 'goi']).default('dich_vu'),
+    thu_tu_hien_thi: z.number().int().optional().default(0)
   })
 });
 
