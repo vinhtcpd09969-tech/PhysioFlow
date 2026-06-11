@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: 'http://localhost:5001/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -66,7 +66,7 @@ api.interceptors.response.use(
       try {
         // Request a new access token using the refresh token
         // Use a clean axios instance to avoid infinite loops
-        const response = await axios.post('http://localhost:5000/api/auth/refresh-token', {
+        const response = await axios.post('http://localhost:5001/api/auth/refresh-token', {
           refreshToken,
         });
 

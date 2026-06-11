@@ -5,8 +5,8 @@
 - **Infrastructure:** Backend & Frontend running stable.
 
 ## Stack đang chạy
-- Backend: `http://localhost:5000` (Express + TypeScript + PostgreSQL, mô hình 3 Lớp)
-- Frontend: `http://localhost:5173` (Vite + React TSX + Tailwind, mô hình Feature-Based)
+- Backend: `http://localhost:5001` (Express + TypeScript + PostgreSQL, mô hình 3 Lớp)
+- Frontend: `http://localhost:3000` (Vite + React TSX + Tailwind, mô hình Feature-Based)
 - Database: Docker PostgreSQL (`physioflow_db` - port 5432)
 
 ## Những gì đã hoàn thành

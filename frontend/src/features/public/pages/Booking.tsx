@@ -154,7 +154,7 @@ export default function Booking() {
     const ngay_gio_bat_dau = `${state.selectedDate}T${state.selectedTime}:00.000Z`;
 
     try {
-      const response = await fetch('http://localhost:5000/api/client/appointments/public', {
+      const response = await fetch('http://localhost:5001/api/client/appointments/public', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
