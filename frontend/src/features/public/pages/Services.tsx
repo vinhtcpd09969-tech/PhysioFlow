@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Clock, Award, ShieldCheck, Layers, BookOpen, Sparkles } from 'lucide-react';
+import { ArrowRight, Clock, Award, ShieldCheck, Layers, BookOpen, Sparkles, Calendar, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '../../../stores/authStore';
 import { getPublicServices, getPublicPackages, getPublicCategories } from '../../../api/client.api';
 import toast from 'react-hot-toast';
+import ClinicBannerSlider from '../../../components/ClinicBannerSlider';
 
 interface Service {
   id: string;
@@ -400,7 +401,7 @@ export default function ServicesPage() {
   const groupedPackagesList = Object.values(groupedPackages);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pt-32 pb-24 font-body relative">
+    <div className="min-h-screen bg-slate-50/50 pb-24 font-body relative overflow-x-hidden">
       {/* Scroll Reveal Styles */}
       <style>{`
         .reveal-on-scroll {
@@ -421,10 +422,10 @@ export default function ServicesPage() {
         }
       `}</style>
 
-      {/* Background decoration elements */}
-      <div className="absolute top-0 left-0 right-0 h-[400px] bg-gradient-to-b from-teal-50/20 via-transparent to-transparent pointer-events-none z-0"></div>
+      {/* Cinematic Banner Slider */}
+      <ClinicBannerSlider page="services" />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 relative z-10">
         {/* Page Header */}
         <div className="text-center max-w-3xl mx-auto mb-16 animate-slide-up">
           <p className="text-primary font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 mb-3">
@@ -650,6 +651,37 @@ export default function ServicesPage() {
             )}
           </div>
         )}
+
+        {/* Direct Booking Bottom CTA Banner */}
+        <div className="reveal-on-scroll mt-20 bg-secondary rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-soft-ui border border-slate-800">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8 max-w-5xl mx-auto">
+            <div className="max-w-2xl">
+              <span className="text-primary text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 mb-3">
+                <CheckCircle2 size={13} /> Tư vấn chuyên sâu chuẩn y khoa
+              </span>
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-heading font-black text-white leading-tight uppercase tracking-tight mb-4">
+                Khởi đầu hành trình phục hồi ngay hôm nay
+              </h2>
+              <p className="text-slate-400 text-xs md:text-sm font-semibold leading-relaxed">
+                Hệ thống tự động điều phối lịch khám cho chuyên gia phù hợp nhất dựa trên mức độ chấn thương và triệu chứng đau mỏi của bạn.
+              </p>
+            </div>
+            
+            <Link
+              to="/booking"
+              onClick={handleBookingClick}
+              className="bg-primary hover:bg-[#25A89C] text-white font-extrabold text-xs uppercase tracking-widest px-8 py-4 rounded-full shadow-soft-button hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 shrink-0"
+            >
+              <Calendar size={15} />
+              Đặt lịch tư vấn ngay
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+
       </div>
     </div>
   );

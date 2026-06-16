@@ -265,7 +265,7 @@ export default function DashboardLayout() {
                     {/* Dropdown Container */}
                     <div className="absolute right-0 mt-3.5 w-80 bg-white/95 backdrop-blur-md border border-zinc-150 rounded-[24px] shadow-lg py-4 z-30 animate-in fade-in slide-in-from-top-3 duration-200">
                       {/* Header */}
-                      <div className="px-4.5 pb-3 border-b border-zinc-100 flex items-center justify-between">
+                      <div className="px-5 pb-3 border-b border-zinc-100 flex items-center justify-between">
                         <h3 className="text-[10px] font-black text-secondary uppercase tracking-wider">Thông báo ({unreadCount})</h3>
                         {unreadCount > 0 && (
                           <button 
@@ -288,7 +288,7 @@ export default function DashboardLayout() {
                             <button 
                               key={notif.id}
                               onClick={() => handleMarkAsRead(notif.id)}
-                              className={`w-full px-4.5 py-3.5 text-left flex gap-3 transition-colors ${notif.da_doc ? 'hover:bg-zinc-50/50' : 'bg-primary/5 hover:bg-primary/10'}`}
+                              className={`w-full px-5 py-3.5 text-left flex gap-3 transition-colors ${notif.da_doc ? 'hover:bg-zinc-50/50' : 'bg-primary/5 hover:bg-primary/10'}`}
                             >
                               <div className="size-2 bg-primary rounded-full mt-1.5 flex-shrink-0" style={{ visibility: notif.da_doc ? 'hidden' : 'visible' }} />
                               <div className="flex-1 space-y-0.5">
@@ -302,7 +302,7 @@ export default function DashboardLayout() {
                       </div>
 
                       {/* Footer */}
-                      <div className="px-4.5 pt-3 border-t border-zinc-100 text-center">
+                      <div className="px-5 pt-3 border-t border-zinc-100 text-center">
                         <button 
                           onClick={() => {
                             setIsNotifDropdownOpen(false);

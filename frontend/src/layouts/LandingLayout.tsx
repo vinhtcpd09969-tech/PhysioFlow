@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { LogOut, LayoutDashboard, ChevronDown, Menu, X, Calendar } from 'lucide-react';
 import GlobalAuthModal from '../components/GlobalAuthModal';
@@ -76,13 +76,71 @@ export default function LandingLayout() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-sm font-bold text-secondary hover:text-primary transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary hover:after:w-full after:transition-all">Trang chủ</Link>
-            <Link to="/services" state={{ activeTab: 'services' }} className="text-sm font-bold text-secondary hover:text-primary transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary hover:after:w-full after:transition-all">Dịch vụ</Link>
-            <Link to="/services" state={{ activeTab: 'packages' }} className="text-sm font-bold text-secondary hover:text-primary transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-primary hover:after:w-full after:transition-all">Bảng giá</Link>
+            <NavLink 
+              to="/" 
+              end
+              className={({ isActive }) => `text-sm font-bold transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:bg-primary after:transition-all ${
+                isActive 
+                  ? 'text-primary after:w-full' 
+                  : 'text-secondary hover:text-primary after:w-0 hover:after:w-full'
+              }`}
+            >
+              Trang chủ
+            </NavLink>
+            <NavLink 
+              to="/about" 
+              className={({ isActive }) => `text-sm font-bold transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:bg-primary after:transition-all ${
+                isActive 
+                  ? 'text-primary after:w-full' 
+                  : 'text-secondary hover:text-primary after:w-0 hover:after:w-full'
+              }`}
+            >
+              Giới thiệu
+            </NavLink>
+            <NavLink 
+              to="/services" 
+              state={{ activeTab: 'services' }} 
+              className={({ isActive }) => `text-sm font-bold transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:bg-primary after:transition-all ${
+                isActive 
+                  ? 'text-primary after:w-full' 
+                  : 'text-secondary hover:text-primary after:w-0 hover:after:w-full'
+              }`}
+            >
+              Dịch vụ
+            </NavLink>
+            <NavLink 
+              to="/specialists" 
+              className={({ isActive }) => `text-sm font-bold transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:bg-primary after:transition-all ${
+                isActive 
+                  ? 'text-primary after:w-full' 
+                  : 'text-secondary hover:text-primary after:w-0 hover:after:w-full'
+              }`}
+            >
+              Chuyên viên
+            </NavLink>
+            <NavLink 
+              to="/articles" 
+              className={({ isActive }) => `text-sm font-bold transition-colors relative py-1 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:bg-primary after:transition-all ${
+                isActive 
+                  ? 'text-primary after:w-full' 
+                  : 'text-secondary hover:text-primary after:w-0 hover:after:w-full'
+              }`}
+            >
+              Bài viết
+            </NavLink>
           </nav>
 
           {/* Auth Actions (Desktop) */}
           <div className="hidden md:flex items-center gap-4">
+            <Link 
+              to="/booking" 
+              onClick={handleBookingClick}
+              className="bg-[#2EC4B6] hover:bg-[#25A89C] text-white text-xs font-extrabold px-5 py-3 rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-1.5"
+            >
+              <Calendar size={14} />
+              Đặt lịch ngay
+            </Link>
+
             {isAuthenticated() && user ? (
               <div className="relative">
                 <button 
@@ -126,19 +184,9 @@ export default function LandingLayout() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <Link to="/login" className="text-sm font-bold text-secondary hover:text-primary transition-colors px-4 py-2">
-                  Đăng nhập
-                </Link>
-                <Link 
-                  to="/booking" 
-                  onClick={handleBookingClick}
-                  className="bg-[#2EC4B6] hover:bg-[#25A89C] text-white text-xs font-extrabold px-5 py-3 rounded-full shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-1.5"
-                >
-                  <Calendar size={14} />
-                  Đặt lịch tư vấn chuyên sâu
-                </Link>
-              </div>
+              <Link to="/login" className="text-sm font-bold text-secondary hover:text-primary transition-colors px-4 py-2">
+                Đăng nhập
+              </Link>
             )}
           </div>
 
@@ -154,11 +202,63 @@ export default function LandingLayout() {
         {/* Mobile Menu Drawer */}
         {isMobileMenuOpen && (
           <div className="md:hidden w-full mt-2 bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100 shadow-lg px-6 py-6 flex flex-col gap-3 animate-slide-up">
-            <Link to="/" className="text-sm font-bold text-secondary py-2.5 border-b border-slate-50" onClick={() => setIsMobileMenuOpen(false)}>Trang chủ</Link>
-            <Link to="/services" state={{ activeTab: 'services' }} className="text-sm font-bold text-secondary py-2.5 border-b border-slate-50" onClick={() => setIsMobileMenuOpen(false)}>Dịch vụ</Link>
-            <Link to="/services" state={{ activeTab: 'packages' }} className="text-sm font-bold text-secondary py-2.5 border-b border-slate-50" onClick={() => setIsMobileMenuOpen(false)}>Bảng giá</Link>
+            <NavLink 
+              to="/" 
+              end
+              className={({ isActive }) => `text-sm font-bold py-2.5 border-b border-slate-50 transition-colors ${
+                isActive ? 'text-primary' : 'text-secondary'
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Trang chủ
+            </NavLink>
+            <NavLink 
+              to="/about" 
+              className={({ isActive }) => `text-sm font-bold py-2.5 border-b border-slate-50 transition-colors ${
+                isActive ? 'text-primary' : 'text-secondary'
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Giới thiệu
+            </NavLink>
+            <NavLink 
+              to="/services" 
+              state={{ activeTab: 'services' }} 
+              className={({ isActive }) => `text-sm font-bold py-2.5 border-b border-slate-50 transition-colors ${
+                isActive ? 'text-primary' : 'text-secondary'
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Dịch vụ
+            </NavLink>
+            <NavLink 
+              to="/specialists" 
+              className={({ isActive }) => `text-sm font-bold py-2.5 border-b border-slate-50 transition-colors ${
+                isActive ? 'text-primary' : 'text-secondary'
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Chuyên viên
+            </NavLink>
+            <NavLink 
+              to="/articles" 
+              className={({ isActive }) => `text-sm font-bold py-2.5 border-b border-slate-50 transition-colors ${
+                isActive ? 'text-primary' : 'text-secondary'
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Bài viết
+            </NavLink>
             
             <div className="mt-4 flex flex-col gap-2.5">
+              <Link 
+                to="/booking" 
+                onClick={handleBookingClick}
+                className="flex items-center justify-center bg-primary hover:bg-[#25A89C] text-white text-sm font-bold px-6 py-3 rounded-[16px] shadow-soft-button transition-all"
+              >
+                Đặt lịch tư vấn chuyên sâu
+              </Link>
+
               {isAuthenticated() && user ? (
                 <>
                   <Link to="/dashboard" className="flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 text-secondary text-sm font-bold px-6 py-3 rounded-[16px] transition-all" onClick={() => setIsMobileMenuOpen(false)}>
@@ -169,18 +269,9 @@ export default function LandingLayout() {
                   </button>
                 </>
               ) : (
-                <>
-                  <Link to="/login" className="flex items-center justify-center text-secondary bg-slate-50 hover:bg-slate-100 text-sm font-bold px-6 py-3 rounded-[16px] transition-all" onClick={() => setIsMobileMenuOpen(false)}>
-                    Đăng nhập
-                  </Link>
-                  <Link 
-                    to="/booking" 
-                    onClick={handleBookingClick}
-                    className="flex items-center justify-center bg-primary hover:bg-[#25A89C] text-white text-sm font-bold px-6 py-3 rounded-[16px] shadow-soft-button transition-all"
-                  >
-                    Đặt lịch tư vấn chuyên sâu
-                  </Link>
-                </>
+                <Link to="/login" className="flex items-center justify-center text-secondary bg-slate-50 hover:bg-slate-100 text-sm font-bold px-6 py-3 rounded-[16px] transition-all" onClick={() => setIsMobileMenuOpen(false)}>
+                  Đăng nhập
+                </Link>
               )}
             </div>
           </div>

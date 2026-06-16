@@ -247,7 +247,7 @@ export default function ServiceDetailPage() {
 
           <Link
             to="/services"
-            className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-500 hover:text-slate-800 tracking-wider transition-colors bg-white border border-slate-200/60 px-4.5 py-2.5 rounded-xl shadow-xs"
+            className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-500 hover:text-slate-800 tracking-wider transition-colors bg-white border border-slate-200/60 px-5 py-2.5 rounded-xl shadow-xs"
           >
             ← Danh mục dịch vụ
           </Link>

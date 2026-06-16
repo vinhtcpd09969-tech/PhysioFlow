@@ -18,6 +18,11 @@ const ServiceDetailPage = lazy(() => import('../features/public/pages/ServiceDet
 const PackageDetailPage = lazy(() => import('../features/public/pages/PackageDetailPage'));
 const Booking = lazy(() => import('../features/public/pages/Booking'));
 const BookingSuccess = lazy(() => import('../features/public/pages/BookingSuccess'));
+const Specialists = lazy(() => import('../features/public/pages/Specialists'));
+const SpecialistDetailPage = lazy(() => import('../features/public/pages/SpecialistDetailPage'));
+const ArticleDetailPage = lazy(() => import('../features/public/pages/ArticleDetailPage'));
+const Articles = lazy(() => import('../features/public/pages/Articles'));
+const AboutUs = lazy(() => import('../features/public/pages/AboutUs'));
 
 // Auth Feature
 const Login = lazy(() => import('../features/auth/pages/Login'));
@@ -64,11 +69,16 @@ export default function AppRoutes() {
       <Routes>
         <Route element={<LandingLayout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/about" element={<AboutUs />} />
           <Route path="/services" element={<Services />} />
           <Route path="/services/:id" element={<ServiceDetailPage />} />
           <Route path="/packages/:id" element={<PackageDetailPage />} />
           <Route path="/booking" element={<Booking />} />
           <Route path="/booking/success/:id" element={<BookingSuccess />} />
+          <Route path="/specialists" element={<Specialists />} />
+          <Route path="/specialists/:id" element={<SpecialistDetailPage />} />
+          <Route path="/articles" element={<Articles />} />
+          <Route path="/articles/:id" element={<ArticleDetailPage />} />
         </Route>
         
         <Route path="/login" element={<Login />} />

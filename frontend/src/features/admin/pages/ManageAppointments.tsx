@@ -1470,7 +1470,7 @@ export default function ManageAppointments() {
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setIsCancelModalOpen(false)}
-                className="px-4.5 py-2.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-zinc-650 text-xs font-bold rounded-xl transition-all"
+                className="px-5 py-2.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-zinc-650 text-xs font-bold rounded-xl transition-all"
               >
                 Đóng
               </button>
