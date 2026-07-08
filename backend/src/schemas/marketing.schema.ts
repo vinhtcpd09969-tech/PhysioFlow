@@ -17,7 +17,8 @@ export const voucherSchema = z.object({
       'goi_dich_vu',
       'goi_dieu_tri',
       'goi_cu_the',
-      'danh_gia'
+      'danh_gia',
+      'dich_vu_va_goi'
     ]).default('tat_ca'),
     so_luong_toi_da: z.number().int().optional().nullable(),
     ngay_bat_dau: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày bắt đầu không hợp lệ (YYYY-MM-DD)'),

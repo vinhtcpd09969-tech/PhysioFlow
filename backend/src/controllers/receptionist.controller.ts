@@ -27,8 +27,8 @@ export const getDashboardData = async (req: Request, res: Response) => {
 export const updateAppointmentStatus = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params as { id: string };
-    const { trang_thai } = req.body;
-    const appointment = await receptionistService.updateAppointmentStatus(id, trang_thai);
+    const { trang_thai, ly_do_huy } = req.body;
+    const appointment = await receptionistService.updateAppointmentStatus(id, trang_thai, ly_do_huy);
     res.json(appointment);
   } catch (error: any) {
     console.error('Lỗi cập nhật trạng thái:', error);
@@ -121,6 +121,17 @@ export const createBillingDirect = async (req: Request, res: Response): Promise<
   }
 };
 
+// POST /api/receptionist/treatment-plans/confirm
+export const confirmTreatmentPlan = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const result = await receptionistService.confirmTreatmentPlan(req.body);
+    res.json({ message: 'Chốt gói trị liệu thành công', lich_dieu_tri: result });
+  } catch (error: any) {
+    console.error('Lỗi chốt gói trị liệu:', error);
+    res.status(400).json({ message: error.message || 'Lỗi server' });
+  }
+};
+
 // POST /api/receptionist/sessions/:id/services
 export const updateSessionServices = async (req: Request, res: Response): Promise<any> => {
   try {
@@ -175,6 +186,45 @@ export const getAutoVouchers = async (req: Request, res: Response): Promise<any>
     res.json(result);
   } catch (error: any) {
     console.error('Lỗi lấy danh sách voucher tự động:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// GET /api/receptionist/customers/search
+export const searchCustomers = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const q = req.query.q ? String(req.query.q) : '';
+    const result = await receptionistService.searchCustomers(q);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Lỗi tìm kiếm khách hàng:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// GET /api/receptionist/customers/:id/treatment-plans
+export const getCustomerTreatmentPlans = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = String(req.params.id);
+    const result = await receptionistService.getCustomerTreatmentPlans(id);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Lỗi lấy danh sách phác đồ:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// GET /api/receptionist/appointments/:id/billing-info
+export const getAppointmentBillingInfo = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = String(req.params.id);
+    const result = await receptionistService.getAppointmentBillingInfo(id);
+    if (!result) {
+      return res.status(444).json({ message: 'Không tìm thấy lịch hẹn hoặc hóa đơn liên quan' });
+    }
+    res.json(result);
+  } catch (error: any) {
+    console.error('Lỗi lấy thông tin thanh toán lịch hẹn:', error);
     res.status(500).json({ message: 'Lỗi server' });
   }
 };

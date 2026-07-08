@@ -30,3 +30,30 @@ export const refreshTokenSchema = z.object({
     })
   })
 });
+
+export const resendOTPSchema = z.object({
+  body: z.object({
+    email: z.string({ required_error: 'Email là bắt buộc' }).email('Email không hợp lệ'),
+  })
+});
+
+export const checkEmailSchema = z.object({
+  body: z.object({
+    email: z.string({ required_error: 'Email là bắt buộc' }).email('Email không hợp lệ'),
+  })
+});
+
+export const forgotPasswordSchema = z.object({
+  body: z.object({
+    email: z.string({ required_error: 'Email là bắt buộc' }).email('Email không hợp lệ'),
+  })
+});
+
+export const resetPasswordSchema = z.object({
+  body: z.object({
+    email: z.string({ required_error: 'Email là bắt buộc' }).email('Email không hợp lệ'),
+    otp: z.string({ required_error: 'Mã OTP là bắt buộc' }).length(6, 'Mã OTP phải có đúng 6 ký số'),
+    newPassword: z.string({ required_error: 'Mật khẩu mới là bắt buộc' }).min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
+  })
+});
+

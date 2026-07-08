@@ -20,7 +20,7 @@ async function run() {
 
     await pool.query(`
       INSERT INTO nguoi_dung (id, ho_ten, email, mat_khau_hash, vai_tro_id, trang_thai)
-      VALUES (gen_random_uuid(), 'Admin User', 'admin@physioflow.com', $1, 4, 'hoat_dong')
+      VALUES (gen_random_uuid(), 'Admin User', 'admin@officecare.com', $1, 4, 'hoat_dong')
       ON CONFLICT (email) DO NOTHING;
     `, [hash]);
 

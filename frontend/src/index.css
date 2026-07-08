@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,12 +6,31 @@
 
 @layer base {
   body {
-    @apply bg-background text-secondary antialiased font-sans;
+    @apply bg-background text-secondary dark:bg-zinc-950 dark:text-zinc-100 antialiased font-sans transition-colors duration-300;
   }
 
   /* Global Button Click Physics - Premium SaaS Feel */
   button {
     @apply active:scale-95 transition-all duration-200;
+  }
+
+  /* Custom WebKit Scrollbar matching Teal primary theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #F0FDFB;
+  }
+  .dark ::-webkit-scrollbar-track {
+    background: #18181b;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2EC4B6;
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #25A89C;
   }
 }
 
@@ -25,6 +44,58 @@
     50% { transform: translateY(-10px); }
   }
 
+  /* Glass Card utility */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+  }
+  .dark .glass-card {
+    background: rgba(9, 9, 11, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(39, 39, 42, 0.8);
+  }
+
+  /* Wave animation styling */
+  .wave-container {
+    position: relative;
+    min-height: 140px;
+    width: 100%;
+    background: #2EC4B6; /* Primary Teal */
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+
+  .wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 100%;
+    background: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTIwMCAxMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PHBhdGggZD0iTTAsMFY0Ni4yOWM0Ny43OSwyMi4yLDEwMy41OSwzMi4xNywxNTgsMjgsNzAuMzYtNS4zNywxMzYuMzMtMzMuMzEsMjA2LjgtMzcuNUM0MzguNjQsMzIuNDMsNTEyLjM0LDUzLjY3LDU4Myw3Mi4wNWM2OS4yNywxOCwxMzguMywyNC44OCwyMDkuNCwxMy4wOCwzNi4xNS02LDY5Ljg1LTE3Ljg0LDEwNC40NS0yOS4zNEM5ODkuNDksMjUsMTExMy0xNC4yOSwxMjAwLDUyLjQ3VjBaIiBmaWxsPSIjRTZGRkZBJyBvcGFjaXR5PSIuMjUiPjwvcGF0aD48cGF0aCBkPSJNMCwwVjE1LjgxQzEzLDM2LjkyLDI3LjY0LDU2Ljg2LDQ3LjY5LDcyLjA1LDk5LjQxLDExMS4yNywxNjUsMTExLDIyNC41OCw5MS41OGMzMS4xNS0xMC4xNSw2MC4wOS0yNi4wNyw4OS42Ny0zOS44LDQwLjkyLTE5LDg0LjczLTQ2LDEzMC44My00OS42NywzNi4yNi0yLjg1LDcwLjksOS40Miw5OC42LDMxLjU2LDMxLjc3LDI1LjM5LDYyLjMyLDYyLDEwMy42Myw3Myw0MC40NCwxMC43OSw4MS4zNS02LjY5LDExOS4xMy0yNC4yOHM3NS4xNi0zOSwxMTYuOTItNDMuMDVjNTkuNzMtNS44NSwxMTMuMjgsMjIuODgsMTY4LjksMzguODQsMzAuMiw4LjY2LDU5LDYuMTcsODcuMDktNy41VjBaIiBmaWxsPSIjRTZGRkZBJyBvcGFjaXR5PSIuNSI+PC9wYXRoPjwvc3ZnPg==');
+    background-size: 50% 120px;
+    animation: wave-move 10s linear infinite;
+  }
+
+  /* Testimonials Marquee utility */
+  .marquee {
+    display: flex;
+    width: fit-content;
+    animation: marquee 30s linear infinite;
+  }
+
+  /* Custom scrollbar hider */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   /* Custom stagger delays */
   .stagger-delay-1 { animation-delay: 100ms; }
   .stagger-delay-2 { animation-delay: 200ms; }
@@ -34,4 +105,104 @@
   .stagger-delay-6 { animation-delay: 600ms; }
   .stagger-delay-7 { animation-delay: 700ms; }
   .stagger-delay-8 { animation-delay: 800ms; }
+
+  /* Premium 3D Perspective Card Entrance */
+  @keyframes card-3d-reveal {
+    0% {
+      opacity: 0;
+      transform: perspective(1000px) rotateX(12deg) translateY(15px) scale(0.96);
+    }
+    100% {
+      opacity: 1;
+      transform: perspective(1000px) rotateX(0deg) translateY(0) scale(1);
+    }
+  }
+
+  .animate-card-reveal {
+    opacity: 0;
+    animation: card-3d-reveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Staggered Row Slide In */
+  @keyframes row-slide-in {
+    0% {
+      opacity: 0;
+      transform: translateX(-12px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-row-reveal {
+    opacity: 0;
+    animation: row-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
 }
+
+/* ==========================================
+   🚨 ROBUST DARK MODE FALLBACK OVERRIDES 🚨
+   Ensures deep dark theme elements apply properly
+   even if Tailwind v3 dynamic class compiling is cached.
+   ========================================== */
+html.dark,
+body.dark {
+  background-color: #09090b !important;
+  color: #f4f4f5 !important;
+}
+
+.dark .bg-background,
+.dark main {
+  background-color: #09090b !important;
+}
+
+.dark aside,
+.dark header,
+.dark .bg-white {
+  background-color: #18181b !important;
+  border-color: #27272a !important;
+  color: #e4e4e7 !important;
+}
+
+.dark select,
+.dark input {
+  background-color: #27272a !important;
+  border-color: #3f3f46 !important;
+  color: #f4f4f5 !important;
+}
+
+.dark select option {
+  background-color: #18181b !important;
+  color: #f4f4f5 !important;
+}
+
+.dark .text-slate-800,
+.dark .text-slate-750,
+.dark .text-slate-700,
+.dark h1,
+.dark h2,
+.dark h3 {
+  color: #f4f4f5 !important;
+}
+
+.dark .text-slate-550,
+.dark .text-slate-500,
+.dark .text-slate-600,
+.dark .text-slate-400 {
+  color: #a1a1aa !important;
+}
+
+.dark .bg-slate-50,
+.dark .bg-slate-100 {
+  background-color: #27272a !important;
+  border-color: #3f3f46 !important;
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-zinc-100,
+.dark .border-zinc-200 {
+  border-color: #27272a !important;
+}
+

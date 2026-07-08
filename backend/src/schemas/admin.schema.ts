@@ -1,51 +1,19 @@
 import { z } from 'zod';
 
-// --- Dịch vụ & Danh mục ---
-export const categorySchema = z.object({
-  body: z.object({
-    ten_danh_muc: z.string().min(1, 'Tên danh mục là bắt buộc'),
-    mo_ta: z.string().optional(),
-    trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong')
-  })
-});
-
-export const serviceSchema = z.object({
-  body: z.object({
-    danh_muc_id: z.number().int().positive('Danh mục không hợp lệ'),
-    ten_dich_vu: z.string().min(1, 'Tên dịch vụ là bắt buộc'),
-    mo_ta: z.string().optional().nullable(),
-    thoi_gian_uoc_tinh: z.number().int().positive('Thời gian ước tính phải lớn hơn 0'),
-    don_gia: z.number().min(0, 'Đơn giá không hợp lệ').optional().default(0),
-    thiet_bi_yeu_cau: z.string().optional().nullable(),
-    trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong'),
-    loai_dich_vu: z.enum(['chinh', 'bo_sung']).default('chinh'),
-    hien_thi_website: z.boolean().optional().default(true),
-    mo_ta_chi_tiet: z.string().optional().nullable(),
-    loai_dich_vu_ho_tro: z.any().optional().nullable()
-  })
-});
-
-// --- Gói điều trị ---
+// --- Gói dịch vụ ---
 export const packageSchema = z.object({
   body: z.object({
-    danh_muc_id: z.number().int().positive('Danh mục không hợp lệ').optional().nullable(),
-    ten_goi: z.string().min(1, 'Tên gói là bắt buộc'),
-    ma_goi: z.string().optional(),
-    mo_ta: z.string().optional(),
-    tong_so_buoi: z.number().int().positive('Số buổi phải lớn hơn 0'),
-    gia_tien: z.number().min(0, 'Giá tiền không hợp lệ'),
-    han_dung_thang: z.number().int().positive('Hạn dùng phải lớn hơn 0').default(6),
-    so_dv_toi_da_moi_buoi: z.number().int().positive().default(5),
-    chi_tiet_dich_vu: z.array(z.object({
-      dich_vu_id: z.union([z.string(), z.number()]),
-      so_buoi: z.number().int().positive('Số buổi dịch vụ phải lớn hơn 0').optional(),
-      so_lan_toi_da_trong_goi: z.number().int().positive('Số lần tối đa trong gói phải lớn hơn 0').optional(),
-      bat_buoc: z.boolean().default(false),
-      thu_tu_thuc_hien: z.number().int().nonnegative().default(0)
-    })).default([]),
-    hien_thi_website: z.boolean().default(true),
-    trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong'),
-    loai_goi: z.enum(['linh_dong', 'lieu_trinh']).default('lieu_trinh')
+    ten_goi: z.string().min(1, 'Tên gói/dịch vụ là bắt buộc'),
+    loai_goi: z.enum(['KHAM', 'LE', 'LIEU_TRINH'], { required_error: 'Loại gói không hợp lệ (KHAM, LE, LIEU_TRINH)' }),
+    danh_muc_goi_id: z.string().uuid('ID danh mục không hợp lệ').optional().nullable(),
+    tong_so_buoi: z.number().int().min(1, 'Số buổi tối thiểu là 1').default(1),
+    thoi_luong_phut: z.number().int().min(1, 'Thời lượng tối thiểu là 1').default(30),
+    don_gia: z.number().min(0, 'Đơn giá không hợp lệ'),
+    don_gia_theo_buoi: z.number().min(0, 'Đơn giá theo buổi không hợp lệ'),
+    quy_trinh: z.string().min(1, 'Quy trình trị liệu là bắt buộc'),
+    muc_tieu: z.string().min(1, 'Mục tiêu trị liệu là bắt buộc'),
+    trang_thai: z.enum(['hoat_dong', 'tam_ngung']).default('hoat_dong'),
+    anh_goi: z.string().optional().nullable()
   })
 });
 
@@ -55,7 +23,7 @@ export const staffSchema = z.object({
     ho_ten: z.string().min(1, 'Họ tên là bắt buộc'),
     email: z.string().email('Email không hợp lệ'),
     mat_khau: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
-    vai_tro_id: z.number().int().positive('Vai trò không hợp lệ (2=Lễ tân, 3=KTV, 4=Bác sĩ, 5=Admin)'),
+    vai_tro_id: z.number().int().positive('Vai trò không hợp lệ (2=Lễ tân, 3=KTV, 4=Bác sĩ, 5=Admin, 6=Quản lý)'),
     so_dien_thoai: z.string().optional(),
     trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong')
   })
@@ -64,24 +32,23 @@ export const staffSchema = z.object({
 // --- Quản lý Thiết bị y tế ---
 export const equipmentSchema = z.object({
   body: z.object({
+    ma_thiet_bi: z.string().min(1, 'Mã thiết bị là bắt buộc'),
     ten_thiet_bi: z.string().min(1, 'Tên thiết bị là bắt buộc'),
-    loai_thiet_bi: z.string().optional(),
-    ngay_mua: z.string().optional(),
-    ngay_bao_tri_tiep_theo: z.string().optional(),
+    ngay_mua: z.string().optional().nullable(),
     trang_thai: z.enum(['san_sang', 'dang_su_dung', 'dang_bao_tri', 'hong']).default('san_sang'),
-    phong_id_hien_tai: z.number().int().positive().nullable().optional(),
-    ghi_chu: z.string().optional()
+    ghi_chu: z.string().optional().nullable()
   })
 });
 
 // --- Quản lý Lịch làm việc ---
 export const scheduleSchema = z.object({
   body: z.object({
-    nguoi_dung_id: z.string().uuid('ID nhân viên không hợp lệ'),
+    nguoi_dung_id: z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)], { required_error: 'ID nhân viên là bắt buộc' }),
     ngay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày không hợp lệ (YYYY-MM-DD)'),
     gio_bat_dau: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Giờ bắt đầu không hợp lệ (HH:mm)'),
     gio_ket_thuc: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Giờ kết thúc không hợp lệ (HH:mm)'),
-    trang_thai: z.enum(['hoat_dong', 'tam_nghi']).default('hoat_dong')
+    trang_thai: z.enum(['hoat_dong', 'tam_nghi']).default('hoat_dong'),
+    phong_id: z.union([z.string(), z.number()], { required_error: 'Phòng làm việc là bắt buộc' })
   })
 });
 
@@ -95,5 +62,17 @@ export const paymentPromotionSchema = z.object({
     ngay_het_han: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày hết hạn không hợp lệ (YYYY-MM-DD)').optional().nullable(),
     trang_thai: z.enum(['hoat_dong', 'vo_hieu']).default('hoat_dong'),
     goi_dich_vu_ids: z.any().optional()
+  })
+});
+
+export const roomSchema = z.object({
+  body: z.object({
+    ten_phong: z.string().min(1, 'Tên phòng là bắt buộc'),
+    ma_phong: z.string().optional().nullable(),
+    loai_phong: z.string().optional().nullable(),
+    loai_dich_vu_ho_tro: z.any().optional().nullable(),
+    mo_ta: z.string().optional().nullable(),
+    trang_thai: z.string().default('san_sang'),
+    suc_chua: z.number().int().min(1).optional().default(1)
   })
 });

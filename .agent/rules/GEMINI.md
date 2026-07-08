@@ -111,6 +111,7 @@ When user's prompt is NOT in English:
 - **Testing**: Mandatory. Pyramid (Unit > Int > E2E) + AAA Pattern.
 - **Performance**: Measure first. Adhere to 2025 standards (Core Web Vitals).
 - **Infra/Safety**: 5-Phase Deployment. Verify secrets security.
+- **Project Code Standards**: You MUST read and follow the workspace coding standards in [CODE_STANDARDS.md](file:///d:/VLTT/VLTT/.agent/rules/CODE_STANDARDS.md) before writing any code in this project.
 
 ### 📁 File Dependency Awareness
 
@@ -271,3 +272,12 @@ When user's prompt is NOT in English:
 - **Test**: `playwright_runner.py`, `test_runner.py`
 
 ---
+
+## 🚫 TUÂN THỦ NGHIÊM NGẶT: CẤM HARDCODE / MOCK DỮ LIỆU TĨNH
+
+1. **CẤM TUYỆT ĐỐI MOCK/HARDCODE DỮ LIỆU TĨNH**: Không bao giờ trả về dữ liệu tĩnh cứng (hardcoded/static data) trong controller/repository để giả lập các tính năng đã bị lược bỏ.
+2. **DỌN DẸP ĐỒNG BỘ (FRONTEND & BACKEND)**: Khi người dùng yêu cầu lược bỏ một bảng dữ liệu hoặc một tính năng (ví dụ: danh mục thiết bị, giường số):
+   - Phải tiến hành xóa bỏ hoàn toàn các API/route/controller/repository liên quan trên Backend.
+   - Đồng thời, phải cập nhật và dọn dẹp các component, form, API call tương ứng ở Frontend.
+   - Không được phép giữ giao diện cũ rồi mock dữ liệu ở Backend để đối phó.
+

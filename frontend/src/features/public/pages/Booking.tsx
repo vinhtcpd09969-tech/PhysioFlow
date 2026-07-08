@@ -1,164 +1,256 @@
-import { useReducer, useState, useEffect } from 'react';
-import { 
-  Calendar as CalendarIcon, 
-  MapPin, 
-  User, 
-  Info, 
-  CheckCircle2, 
-  Activity, 
-  ShieldCheck, 
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
+import { useState, useEffect, useCallback } from 'react';
+import {
+  ShieldCheck,
   Clock,
   Stethoscope,
-  Award
+  Star,
+  User
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/authStore';
 import { toast } from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
+import { convertToVietnamUtcIso } from '../../../utils/date';
+import { useBookingState } from '../components/booking/hooks/useBookingState';
+import {
+  formatFullDate
+} from '../components/booking/constants';
+import { BookingHeader } from '../components/booking/ui/BookingHeader';
+import { BookingWizard } from '../components/booking/ui/BookingWizard';
+import { BookingStepCard } from '../components/booking/ui/BookingStepCard';
 
-const timeSlots = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00',
-  '17:30', '18:00', '18:30', '19:00'
-];
-
-interface BookingState {
-  selectedDate: string;
-  selectedTime: string;
-  isSubmitting: boolean;
-  isSuccess: boolean;
-  formData: {
-    ho_ten_khach: string;
-    so_dien_thoai: string;
-    gioi_tinh_khach: string;
-    trieu_chung: string;
-    ly_do_kham: string;
-    anh_dinh_kem_url: string;
-  };
-}
-
-type BookingAction = 
-  | { type: 'SET_DATE', date: string }
-  | { type: 'SET_TIME', time: string }
-  | { type: 'SET_FORM_FIELD', field: string, value: string }
-  | { type: 'SET_SUBMITTING', isSubmitting: boolean }
-  | { type: 'SET_SUCCESS', isSuccess: boolean };
-
-function bookingReducer(state: BookingState, action: BookingAction): BookingState {
-  switch (action.type) {
-    case 'SET_DATE':
-      return { ...state, selectedDate: action.date, selectedTime: '' };
-    case 'SET_TIME':
-      return { ...state, selectedTime: action.time };
-    case 'SET_FORM_FIELD':
-      return { ...state, formData: { ...state.formData, [action.field]: action.value } };
-    case 'SET_SUBMITTING':
-      return { ...state, isSubmitting: action.isSubmitting };
-    case 'SET_SUCCESS':
-      return { ...state, isSuccess: action.isSuccess };
-    default:
-      return state;
-  }
-}
-
-const fullDateFormatter = new Intl.DateTimeFormat('vi-VN', {
-  weekday: 'long',
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 export default function Booking() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isClient, setIsClient] = useState(false);
-  const { user, isAuthenticated } = useAuthStore();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  
-  // Custom Datepicker state
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  
-  const [state, dispatch] = useReducer(bookingReducer, {
-    selectedDate: new Date().toISOString().split('T')[0],
-    selectedTime: '',
-    isSubmitting: false,
-    isSuccess: false,
-    formData: {
-      ho_ten_khach: user?.ho_ten || '',
-      so_dien_thoai: (user as any)?.so_dien_thoai || '',
-      gioi_tinh_khach: 'nam',
-      trieu_chung: '',
-      ly_do_kham: '',
-      anh_dinh_kem_url: ''
-    }
-  });
+  const { user, isAuthenticated, setShowAuthModal } = useAuthStore();
+  const [activeStep, setActiveStep] = useState(1);
 
+  // Initialize from location state if passed
+  const initialType = location.state?.isKtv ? 'dich_vu' : (location.state?.bookingType || 'kham');
+  const initialServiceId = location.state?.selectedServiceId || location.state?.serviceId || '';
+
+  const [bookingType, setBookingType] = useState<'kham' | 'dich_vu'>(initialType);
+  const [selectedServiceId, setSelectedServiceId] = useState<string>(initialServiceId);
+
+  // Auto-scroll to booking interface if redirected from any specialist
+  useEffect(() => {
+    if (location.state?.selectedDoctorId) {
+      setTimeout(() => {
+        const el = document.getElementById('booking-experience-card');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300);
+    }
+  }, [location.state]);
+  const [services, setServices] = useState<any[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [createdApptId, setCreatedApptId] = useState<string | null>(null);
+  const [selectedStaffId, setSelectedStaffId] = useState<string>(
+    location.state?.selectedDoctorId ? String(location.state.selectedDoctorId) : ''
+  );
+
+  const selectedService = services.find(s => s.id === selectedServiceId);
+
+  const {
+    state,
+    bookedSlots,
+    specialists,
+    slotAvailability,
+    hasExistingClinicalExam,
+    setDateField,
+    setTimeField,
+    setFormField,
+    setSubmitting,
+    setSuccess,
+    tempHoldId,
+    refreshSlots
+  } = useBookingState(user, bookingType, selectedServiceId, services);
+
+  const { selectedDate, selectedTime, isSubmitting, isSuccess, formData } = state;
+
+  // Release hold on unmount if booking was not completed
+  useEffect(() => {
+    return () => {
+      const holdId = sessionStorage.getItem('booking_temp_hold_id');
+      if (holdId) {
+        fetch(`${BASE_URL}/client/appointments/hold/${holdId}`, {
+          method: 'DELETE',
+          keepalive: true
+        }).catch(err => console.error('Failed to release hold:', err));
+      }
+    };
+  }, []);
+
+  // Re-fetch booked slots when entering Step 3 (Date/Time/Specialist Selection)
+  useEffect(() => {
+    if (activeStep === 3) {
+      refreshSlots();
+    }
+  }, [activeStep, refreshSlots]);
+
+  if (createdApptId || typeof setCreatedApptId === 'function' || typeof setSuccess === 'function' || isSuccess) { /* noop */ }
+
+  // Reset selected time and staff when service or booking type changes
+  useEffect(() => {
+    setTimeField('');
+    setSelectedStaffId('');
+  }, [selectedServiceId, bookingType, setTimeField]);
+
+  const getDefaultRouteByRole = (roleId: number) => {
+    switch (roleId) {
+      case 5:
+      case 6: return '/admin';
+      case 2: return '/receptionist';
+      case 3: return '/technician/appointments';
+      case 4: return '/doctor';
+      default: return '/dashboard';
+    }
+  };
+
+  // Intercept Route: If unauthenticated, redirect back and show global modal immediately
   useEffect(() => {
     setIsClient(true);
-    
-    // Khôi phục dữ liệu đặt lịch tạm thời (nếu có) sau khi đăng nhập thành công
-    const saved = localStorage.getItem('temp_booking');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.selectedDate) dispatch({ type: 'SET_DATE', date: parsed.selectedDate });
-        if (parsed.selectedTime) dispatch({ type: 'SET_TIME', time: parsed.selectedTime });
-        if (parsed.formData) {
-          Object.keys(parsed.formData).forEach(key => {
-            if (key === 'ho_ten_khach' && user?.ho_ten) return;
-            dispatch({ type: 'SET_FORM_FIELD', field: key, value: parsed.formData[key] });
-          });
-        }
-        toast.success('Đã khôi phục dữ liệu đăng ký lịch hẹn của bạn!');
-      } catch (e) {
-        console.error('Lỗi khôi phục lịch đặt tạm thời:', e);
+    if (!isAuthenticated()) {
+      // Go back to the page they came from, or home page if no history
+      navigate(-1);
+      setTimeout(() => {
+        setShowAuthModal(true);
+      }, 100);
+    } else if (user) {
+      const roleId = Number(user.vai_tro_id);
+      if (roleId !== 1 && roleId !== 0) {
+        toast.error('Tài khoản nhân sự không thể sử dụng chức năng đặt lịch của Khách hàng. Vui lòng đăng ký tài khoản khách hàng riêng.');
+        navigate(getDefaultRouteByRole(roleId), { replace: true });
       }
-      localStorage.removeItem('temp_booking');
     }
-  }, [user]);
+  }, [isAuthenticated, user, navigate, setShowAuthModal]);
+
+  // Fetch list of services for services step
+  useEffect(() => {
+    setServicesLoading(true);
+    fetch(`${BASE_URL}/client/services`)
+      .then(res => res.json())
+      .then(data => {
+        setServices(data || []);
+      })
+      .catch(err => {
+        console.error('Lỗi tải danh sách dịch vụ:', err);
+      })
+      .finally(() => {
+        setServicesLoading(false);
+      });
+  }, []);
+
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    dispatch({ type: 'SET_FORM_FIELD', field: e.target.name, value: e.target.value });
+    setFormField(e.target.name, e.target.value);
+  };
+
+  const handleGenderChange = (value: string) => {
+    setFormField('gioi_tinh_khach', value);
+  };
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Chỉ chấp nhận tệp tin hình ảnh (.jpg, .jpeg, .png, .webp)!');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Kích thước ảnh tối đa là 5MB!');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setFormField('anh_dinh_kem_url', base64String);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setFormField('anh_dinh_kem_url', '');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!state.selectedTime) {
-      toast.error('Vui lòng chọn khung giờ khám lâm sàng!');
+    if (!selectedDate) {
+      toast.error('Vui lòng chọn ngày khám!');
+      return;
+    }
+    if (!selectedTime) {
+      toast.error('Vui lòng chọn khung giờ khám!');
+      return;
+    }
+    const nameTrimmed = formData.ho_ten_khach.trim();
+    const phoneTrimmed = formData.so_dien_thoai.trim();
+    const symptomTrimmed = formData.trieu_chung.trim();
+
+    if (!nameTrimmed) {
+      toast.error('Vui lòng nhập Họ và tên!');
+      return;
+    }
+    const nameRegex = /^[\p{L}\s']{2,}$/u;
+    if (!nameRegex.test(nameTrimmed)) {
+      toast.error('Họ và tên phải có ít nhất 2 ký tự và chỉ chứa chữ cái!');
       return;
     }
 
-    // NẾU CHƯA ĐĂNG NHẬP -> Bật Modal Popup xin ý kiến chuyển hướng
-    if (!isAuthenticated()) {
-      setShowAuthModal(true);
+    if (!phoneTrimmed) {
+      toast.error('Vui lòng nhập Số điện thoại!');
+      return;
+    }
+    const phoneRegex = /^(03|05|07|08|09)[0-9]{8}$/;
+    if (!phoneRegex.test(phoneTrimmed)) {
+      toast.error('Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 03, 05, 07, 08 hoặc 09!');
       return;
     }
 
-    const toastId = toast.loading('Đang gửi đăng ký lịch hẹn y khoa...');
-    dispatch({ type: 'SET_SUBMITTING', isSubmitting: true });
-    
-    const [year, month, day] = state.selectedDate.split('-');
-    const [hours, minutes] = state.selectedTime.split(':');
-    const ngay_gio_bat_dau = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes)).toISOString();
+    if (!symptomTrimmed) {
+      toast.error('Vui lòng nhập Mô tả triệu chứng!');
+      return;
+    }
+    if (symptomTrimmed.length < 10) {
+      toast.error('Mô tả triệu chứng phải có ít nhất 10 ký tự để bác sĩ nắm rõ tình trạng!');
+      return;
+    }
+
+    const toastId = toast.loading(bookingType === 'dich_vu' ? 'Đang gửi đăng ký lịch dịch vụ lẻ...' : 'Đang gửi đăng ký lịch hẹn y khoa...');
+    setSubmitting(true);
+
+    const ngay_gio_bat_dau = convertToVietnamUtcIso(selectedDate, selectedTime);
 
     try {
-      const response = await fetch('http://localhost:5000/api/client/appointments/public', {
+      const examService = services.find(s => s.loai_goi === 'KHAM' || s.loai_dich_vu === 'KHAM');
+      const selectedService = services.find(s => s.id === selectedServiceId);
+      const targetDichVuId = bookingType === 'dich_vu' ? selectedServiceId : (examService?.id || null);
+
+      const response = await fetch(`${BASE_URL}/client/appointments/public`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...state.formData,
+          ...formData,
           ngay_gio_bat_dau,
-          nguoi_dung_id: user?.id,
+          khach_hang_id: user?.id,
+          nhan_su_id: selectedStaffId ? parseInt(selectedStaffId, 10) : null,
+          goi_dich_vu_id: targetDichVuId,
+          ly_do_kham: bookingType === 'dich_vu' ? `Trị liệu lẻ: ${selectedService?.ten_dich_vu || 'Không rõ'}` : (formData.ly_do_kham || 'Khám lượng giá ban đầu'),
+          temp_hold_id: tempHoldId
         }),
       });
 
       if (response.ok) {
-        toast.success('Đăng ký lịch khám thành công!', { id: toastId });
-        dispatch({ type: 'SET_SUCCESS', isSuccess: true });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const appt = await response.json();
+        sessionStorage.removeItem('booking_temp_hold_id'); // Prevent release on unmount since it is finalized
+        toast.success(bookingType === 'dich_vu' ? 'Đăng ký lịch dịch vụ lẻ thành công!' : 'Đăng ký lịch khám lượng giá thành công!', { id: toastId });
+        navigate(`/booking/success/${appt.id}`);
       } else {
         const error = await response.json();
         toast.error(error.message || 'Không thể tạo lịch hẹn. Hãy thử lại.', { id: toastId });
@@ -166,518 +258,344 @@ export default function Booking() {
     } catch (error) {
       toast.error('Lỗi kết nối máy chủ trị liệu!', { id: toastId });
     } finally {
-      dispatch({ type: 'SET_SUBMITTING', isSubmitting: false });
+      setSubmitting(false);
     }
   };
 
-  const handleRedirectToLogin = () => {
-    localStorage.setItem('temp_booking', JSON.stringify({
-      selectedDate,
-      selectedTime,
-      formData
-    }));
-    navigate('/login', { state: { from: '/booking' } });
-  };
-
-  const formatFullDate = (dateString: string) => {
-    if (!isClient) return '';
-    return fullDateFormatter.format(new Date(dateString));
-  };
-
-  const { selectedDate, selectedTime, isSubmitting, isSuccess, formData } = state;
-
-  // Custom Grid Calendar Generator
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1).getDay(); // 0 is Sunday
-    const totalDays = new Date(year, month + 1, 0).getDate();
-    
-    const days = [];
-    
-    // Pad previous month's days
-    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Align to Monday
-    for (let i = 0; i < adjustedFirstDay; i++) {
-      days.push(null);
+  const handleTimeout = useCallback(async () => {
+    const holdId = sessionStorage.getItem('booking_temp_hold_id');
+    if (holdId) {
+      try {
+        await fetch(`${BASE_URL}/client/appointments/hold/${holdId}`, {
+          method: 'DELETE'
+        });
+      } catch (err) {
+        console.error('Failed to release hold on timeout:', err);
+      }
     }
-    
-    for (let d = 1; d <= totalDays; d++) {
-      days.push(new Date(year, month, d));
-    }
-    
-    return days;
-  };
+    setTimeField('');
+    toast.error('Thời gian giữ chỗ đã hết hạn. Vui lòng chọn lại khung giờ.', { duration: 5000 });
+    setActiveStep(3);
+  }, [setTimeField, setActiveStep]);
 
-  const daysGrid = getDaysInMonth(currentMonth);
-  const weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  const handleMonthChange = (direction: 'prev' | 'next') => {
-    const newMonth = new Date(currentMonth);
-    if (direction === 'prev') {
-      newMonth.setMonth(newMonth.getMonth() - 1);
-    } else {
-      newMonth.setMonth(newMonth.getMonth() + 1);
-    }
-    
-    // Prevent moving before current month
-    const now = new Date();
-    if (direction === 'prev' && newMonth.getFullYear() === now.getFullYear() && newMonth.getMonth() < now.getMonth()) {
-      return;
-    }
-    setCurrentMonth(newMonth);
-  };
-
-  if (isSuccess) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-[32px] shadow-soft-ui-hover p-8 text-center space-y-6 border border-gray-150 animate-slide-up">
-          <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[24px] flex items-center justify-center mx-auto shadow-inner border border-emerald-100/50">
-            <CheckCircle2 size={40} />
-          </div>
-          <h2 className="text-2xl font-heading font-black text-secondary">Đăng ký thành công!</h2>
-          
-          <div className="text-sm font-medium text-gray-500 leading-relaxed bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-            Cảm ơn bạn đã lựa chọn <span className="text-primary font-bold">Office Care</span>. Yêu cầu của bạn đã được chuyển tới bộ phận tiếp đón. Chúng tôi sẽ gửi thông báo phê duyệt ngay sau khi Lễ tân xác thực thông tin.
-          </div>
-
-          <div className="bg-primary/5 text-primary p-5 rounded-[20px] text-left text-xs border border-primary/10">
-            <p className="font-extrabold mb-2 flex items-center gap-1">
-              <Info size={14} /> Lưu ý trước khi đến khám:
-            </p>
-            <ul className="list-disc list-inside space-y-1.5 font-medium text-gray-600">
-              <li>Mặc trang phục rộng rãi, co giãn tốt.</li>
-              <li>Mang theo chẩn đoán, phim chụp MRI/X-Quang cũ (nếu có).</li>
-              <li>Đến trước giờ khám 10 phút để làm hồ sơ y khoa.</li>
-            </ul>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="w-full bg-secondary hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition-all"
-            >
-              Vào Dashboard
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="w-full bg-primary hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-xs"
-            >
-              Quay lại Trang chủ
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  // Prevent flashing component structure if unauthenticated
+  if (!isAuthenticated()) {
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#F8FAFC] py-20 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-16">
         
-        {/* Upper quick controls */}
-        <div className="flex justify-between items-center mb-8 animate-fade-in">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="flex items-center gap-1.5 text-zinc-400 hover:text-primary transition-all text-xs font-bold uppercase tracking-wider"
-          >
-            <ArrowLeft size={16} /> Quay lại
-          </button>
-          <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded-full font-bold uppercase tracking-wide">
-            Cổng đặt lịch trực tuyến
-          </span>
-        </div>
+        {/* Navigation & Header */}
+        <BookingHeader onBack={() => navigate(-1)} />
 
-        {/* Hero Title */}
-        <div className="text-center mb-12 animate-slide-up">
-          <h1 className="text-3xl sm:text-5xl font-heading font-black text-secondary tracking-tight">
-            Đặt Lịch Khám Lượng Giá
-          </h1>
-          <p className="mt-3 text-base text-gray-500 font-semibold max-w-xl mx-auto leading-relaxed">
-            Khám chẩn đoán lâm sàng 5 bước chuyên sâu và lập phác đồ y khoa cá nhân hóa cùng Bác sĩ Chuyên khoa hàng đầu.
-          </p>
-        </div>
-
-        {/* Booking Interface columns (Asymmetric 33/66 layout) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
-          {/* LEFT COLUMN: Service information & Clinical Details (Anti-Sparsity Expansion) */}
-          <div className="lg:col-span-4 space-y-6 animate-slide-up stagger-delay-1">
+        {/* REDESIGNED HERO SECTION (Stripe/Apple Clean aesthetic) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          {/* Hero left content */}
+          <div className="lg:col-span-6 space-y-6 text-left">
+            <motion.h1
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-4xl sm:text-5xl lg:text-6xl font-jakarta font-black text-[#0F172A] tracking-tight leading-[1.05]"
+            >
+              Khởi đầu hành trình <br />
+              <span className="text-[#2EC4B6]">phục hồi</span> của bạn
+            </motion.h1>
             
-            {/* Main Service Card with Illustration */}
-            <div className="bg-white rounded-[24px] shadow-sm border border-gray-150 overflow-hidden relative group">
-              <div className="h-44 bg-gradient-to-br from-secondary to-[#1E293B] relative p-6 flex flex-col justify-end">
-                <div className="absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-700 overflow-hidden">
-                  <img 
-                    src="/clinical_examination_illustration_1779796536526.png" 
-                    alt="Khám Lâm Sàng" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-secondary via-secondary/70 to-transparent"></div>
+            <motion.p
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-slate-500 font-medium text-base sm:text-lg leading-relaxed max-w-xl"
+            >
+              Đặt lịch khám lượng giá hoặc trị liệu với chuyên gia để xác định nguyên nhân đau nhức và xây dựng lộ trình phục hồi sức khỏe phù hợp.
+            </motion.p>
+
+            {/* Micro badges & benefits */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="grid grid-cols-2 gap-4 max-w-md pt-2"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100/50">
+                  <Star size={16} className="fill-emerald-500 text-emerald-500" />
                 </div>
-                
-                <div className="relative z-10 text-white">
-                  <span className="bg-primary/20 text-primary border border-primary/30 text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full">
-                    PhysioFlow Rehab
-                  </span>
-                  <h2 className="text-lg font-heading font-black leading-tight mt-2.5">
-                    Khám Lâm sàng & Lượng giá
-                  </h2>
-                  <p className="text-zinc-400 text-[10px] font-bold mt-1">Chẩn đoán nguyên nhân tận gốc</p>
-                </div>
+                <span className="text-xs font-extrabold text-[#0F172A]">Đánh giá 4.9/5</span>
               </div>
-              
-              <div className="p-6 space-y-5">
-                <div className="flex items-start gap-3.5 text-gray-500">
-                  <MapPin className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-xs font-semibold leading-relaxed">Tầng 3, Tòa nhà ABC, Quận 7, TP. Hồ Chí Minh</span>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#2EC4B6]/10 text-[#2EC4B6] flex items-center justify-center border border-[#2EC4B6]/20">
+                  <Stethoscope size={16} />
                 </div>
-                
-                <div className="flex items-start gap-3.5 text-gray-500">
-                  <Activity className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-xs font-semibold leading-relaxed">Trị liệu Cơ xương khớp cấp tính, cột sống & phục hồi vận động</span>
-                </div>
-
-                <div className="pt-5 border-t border-gray-100 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phí khám ban đầu</span>
-                    <span className="text-xs font-black text-emerald-500 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                      Miễn phí 100%
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-start gap-3 bg-[#E6F4F1] text-secondary p-4 rounded-[20px] text-xs border border-primary/10 leading-relaxed font-medium">
-                    <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-gray-600 leading-relaxed">
-                      Chúng tôi **MIỄN PHÍ 100%** chi phí khám ban đầu cùng Bác sĩ để giúp bạn chẩn đoán chính xác tình trạng đau nhức mà không lo về giá.
-                    </p>
-                  </div>
-                </div>
+                <span className="text-xs font-extrabold text-[#0F172A]">Đội ngũ giàu kinh nghiệm</span>
               </div>
-            </div>
-
-            {/* Rich Content: 5-Step Clinical Process */}
-            <div className="bg-white rounded-[24px] shadow-sm border border-gray-150 p-6 space-y-6">
-              <h3 className="text-sm font-heading font-black text-secondary uppercase tracking-wider flex items-center gap-2">
-                <Stethoscope size={18} className="text-primary" />
-                Quy trình lượng giá 5 bước
-              </h3>
-              
-              <div className="relative border-l border-zinc-100 ml-2.5 pl-5 space-y-5 text-xs text-gray-500">
-                <div className="relative">
-                  <div className="absolute -left-[26px] top-0 size-3 bg-primary rounded-full border-2 border-white ring-4 ring-primary/10"></div>
-                  <h4 className="font-extrabold text-secondary">Bước 1: Tiếp nhận triệu chứng</h4>
-                  <p className="mt-1 leading-relaxed text-[11px]">Khai thác lịch sử đau nhức, thói quen sinh hoạt và các vùng nhức mỏi cục bộ.</p>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#2EC4B6]/10 text-[#2EC4B6] flex items-center justify-center border border-[#2EC4B6]/20">
+                  <ShieldCheck size={16} />
                 </div>
-                
-                <div className="relative">
-                  <div className="absolute -left-[26px] top-0 size-3 bg-zinc-300 rounded-full border-2 border-white ring-4 ring-zinc-100"></div>
-                  <h4 className="font-extrabold text-secondary">Bước 2: Lượng giá tầm vận động (ROM)</h4>
-                  <p className="mt-1 leading-relaxed text-[11px]">Đo độ linh hoạt khớp xương, kiểm tra co rút cơ lực bằng thiết bị chuyên khoa.</p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[26px] top-0 size-3 bg-zinc-300 rounded-full border-2 border-white ring-4 ring-zinc-100"></div>
-                  <h4 className="font-extrabold text-secondary">Bước 3: Chẩn đoán hình ảnh y khoa</h4>
-                  <p className="mt-1 leading-relaxed text-[11px]">Đọc và đối chiếu kết quả phim X-Quang/MRI cũ để xác định tổn thương thực thể.</p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[26px] top-0 size-3 bg-zinc-300 rounded-full border-2 border-white ring-4 ring-zinc-100"></div>
-                  <h4 className="font-extrabold text-secondary">Bước 4: Hội chẩn cùng Bác sĩ</h4>
-                  <p className="mt-1 leading-relaxed text-[11px]">Bác sĩ chuyên khoa chẩn đoán gốc rễ nguyên nhân gây đau nhức lâm sàng.</p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[26px] top-0 size-3 bg-zinc-300 rounded-full border-2 border-white ring-4 ring-zinc-100"></div>
-                  <h4 className="font-extrabold text-secondary">Bước 5: Thiết lập phác đồ cá nhân hóa</h4>
-                  <p className="mt-1 leading-relaxed text-[11px]">Xây dựng liệu trình phục hồi, thời gian trị liệu và kế hoạch bài tập chi tiết.</p>
-                </div>
+                <span className="text-xs font-extrabold text-[#0F172A]">Quy trình chuẩn y khoa</span>
               </div>
-            </div>
-
-            {/* Quality Commitments */}
-            <div className="bg-white rounded-[24px] shadow-sm border border-gray-150 p-6 space-y-4">
-              <h3 className="text-sm font-heading font-black text-secondary uppercase tracking-wider flex items-center gap-2">
-                <Award size={18} className="text-primary" />
-                Cam kết y khoa tại PhysioFlow
-              </h3>
-              <ul className="space-y-3 text-[11px] font-semibold text-gray-500 leading-relaxed">
-                <li className="flex items-center gap-2">
-                  <span className="size-1.5 bg-emerald-500 rounded-full"></span>
-                  Đội ngũ Bác sĩ/KTV 100% có chứng chỉ hành nghề y khoa chuyên môn.
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="size-1.5 bg-emerald-500 rounded-full"></span>
-                  Không chèo kéo dịch vụ, tập trung phục hồi gốc rễ bệnh lý.
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="size-1.5 bg-emerald-500 rounded-full"></span>
-                  Thiết bị hiện đại nhập khẩu đạt chứng nhận an toàn FDA.
-                </li>
-              </ul>
-            </div>
-
-          </div>
-
-          {/* RIGHT COLUMN: Interactive Form with time slots */}
-          <div className="lg:col-span-8 bg-white rounded-[24px] shadow-sm border border-gray-150 p-6 sm:p-8 animate-slide-up stagger-delay-2">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              
-              {/* Step 1: Time selectors */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-heading font-black text-secondary flex items-center gap-2">
-                  <CalendarIcon className="w-5 h-5 text-primary" />
-                  1. Chọn thời gian khám lâm sàng
-                </h3>
-                
-                {/* Modern Custom Grid Calendar (Bounce & Interaction Effect) */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center bg-zinc-50 p-3.5 rounded-xl border border-zinc-150">
-                    <span className="text-sm font-black text-secondary uppercase tracking-wider">
-                      {currentMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
-                    </span>
-                    
-                    <div className="flex gap-1.5">
-                      <button 
-                        type="button"
-                        onClick={() => handleMonthChange('prev')}
-                        className="p-2 bg-white rounded-lg border border-gray-200 text-secondary hover:text-primary hover:border-primary/20 hover:bg-primary/5 transition-all active:scale-90"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => handleMonthChange('next')}
-                        className="p-2 bg-white rounded-lg border border-gray-200 text-secondary hover:text-primary hover:border-primary/20 hover:bg-primary/5 transition-all active:scale-90"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Calendar Grid wrapper */}
-                  <div className="border border-zinc-100 rounded-2xl p-4 bg-white shadow-xs">
-                    {/* Days of week */}
-                    <div className="grid grid-cols-7 gap-1 text-center mb-2.5">
-                      {weekDays.map(day => (
-                        <span key={day} className="text-[10px] font-black text-zinc-400 uppercase tracking-widest py-1 block">
-                          {day}
-                        </span>
-                      ))}
-                    </div>
-                    
-                    {/* Month Days Grid */}
-                    <div className="grid grid-cols-7 gap-1.5">
-                      {daysGrid.map((day, idx) => {
-                        if (!day) return <div key={`empty-${idx}`} />;
-                        
-                        const dateStr = day.toISOString().split('T')[0];
-                        const isPast = dateStr < todayStr;
-                        const isSelected = selectedDate === dateStr;
-                        
-                        return (
-                          <button
-                            type="button"
-                            key={dateStr}
-                            disabled={isPast}
-                            onClick={() => dispatch({ type: 'SET_DATE', date: dateStr })}
-                            className={`py-3.5 text-xs font-black rounded-xl transition-all duration-250 select-none outline-none relative flex flex-col items-center justify-center
-                              ${isPast 
-                                ? 'bg-zinc-50 text-zinc-300 cursor-not-allowed opacity-40' 
-                                : isSelected
-                                  ? 'bg-primary text-white shadow-md shadow-primary/20 scale-108 active:scale-95 z-10'
-                                  : 'bg-white text-secondary border border-zinc-100 hover:border-primary/20 hover:bg-primary/5 hover:text-primary active:scale-95'
-                              }`}
-                          >
-                            <span>{day.getDate()}</span>
-                            {dateStr === todayStr && !isSelected && (
-                              <span className="absolute bottom-1 size-1 bg-primary rounded-full"></span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#2EC4B6]/10 text-[#2EC4B6] flex items-center justify-center border border-[#2EC4B6]/20">
+                  <Clock size={16} />
                 </div>
-
-                {/* Clock Slot Grid */}
-                <div className="space-y-3 pt-3">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block flex items-center gap-1.5">
-                    <Clock size={14} className="text-primary" />
-                    Khung giờ trống ({formatFullDate(selectedDate)})
-                  </label>
-                  
-                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
-                    {timeSlots.map((time) => (
-                      <button
-                        type="button"
-                        key={time}
-                        onClick={() => dispatch({ type: 'SET_TIME', time })}
-                        className={`py-3 px-2 text-xs font-extrabold rounded-xl border transition-all active:scale-95 duration-200
-                          ${selectedTime === time 
-                            ? 'bg-primary border-primary text-white shadow-xs scale-102 font-black' 
-                            : 'bg-zinc-50 border-transparent text-secondary hover:border-primary/20 hover:bg-primary/5 hover:text-primary'
-                          }`}
-                      >
-                        {time}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <span className="text-xs font-extrabold text-[#0F172A]">Trị liệu chuyên sâu</span>
               </div>
+            </motion.div>
 
-              <hr className="border-gray-150" />
-
-              {/* Step 2: Customer Identity info */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-heading font-black text-secondary flex items-center gap-2">
-                  <User className="w-5 h-5 text-primary" />
-                  2. Thông tin bệnh nhân liên hệ
-                </h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label htmlFor="ho_ten_khach" className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Họ và tên *</label>
-                    <input
-                      id="ho_ten_khach"
-                      type="text"
-                      name="ho_ten_khach"
-                      required
-                      readOnly={!!user?.ho_ten}
-                      placeholder="Nguyễn Văn A"
-                      className={`w-full rounded-xl p-4 border font-bold text-secondary text-sm outline-none transition-colors ${
-                        user?.ho_ten 
-                          ? 'bg-zinc-100 text-gray-400 border-zinc-200 cursor-not-allowed' 
-                          : 'border-gray-250 focus:border-primary'
-                      }`}
-                      value={formData.ho_ten_khach}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  
-                  <div className="space-y-1.5">
-                    <label htmlFor="so_dien_thoai" className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Số điện thoại *</label>
-                    <input
-                      id="so_dien_thoai"
-                      type="tel"
-                      name="so_dien_thoai"
-                      required
-                      placeholder="0901234567"
-                      className="w-full rounded-xl border-gray-250 focus:border-primary p-4 border font-bold text-secondary text-sm outline-none transition-colors"
-                      value={formData.so_dien_thoai}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2 space-y-2">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Giới tính</span>
-                    <div className="flex gap-6">
-                      <label className="flex items-center cursor-pointer group">
-                        <input 
-                          type="radio" 
-                          name="gioi_tinh_khach" 
-                          value="nam" 
-                          checked={formData.gioi_tinh_khach === 'nam'} 
-                          onChange={handleChange} 
-                          className="text-primary focus:ring-primary border-zinc-300 w-4 h-4 cursor-pointer" 
-                        />
-                        <span className="ml-2 text-xs font-bold text-secondary group-hover:text-primary transition-colors">Nam</span>
-                      </label>
-                      <label className="flex items-center cursor-pointer group">
-                        <input 
-                          type="radio" 
-                          name="gioi_tinh_khach" 
-                          value="nu" 
-                          checked={formData.gioi_tinh_khach === 'nu'} 
-                          onChange={handleChange} 
-                          className="text-primary focus:ring-primary border-zinc-300 w-4 h-4 cursor-pointer" 
-                        />
-                        <span className="ml-2 text-xs font-bold text-secondary group-hover:text-primary transition-colors">Nữ</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
+            {/* Elegant trust info banner */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="flex items-start gap-3 bg-slate-50 border border-slate-100 p-4 rounded-2xl max-w-md mt-4"
+            >
+              <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-[10px] font-bold">✓</span>
               </div>
-
-              <hr className="border-gray-150" />
-
-              {/* Step 3: Symptoms Description */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-heading font-black text-secondary flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-primary" />
-                  3. Mô tả tình trạng đau nhức
-                </h3>
-                
-                <div className="space-y-1.5">
-                  <label htmlFor="trieu_chung" className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-                    Triệu chứng & Vùng đau nhức (Vị trí, cảm giác tê mỏi...) *
-                  </label>
-                  <textarea
-                    id="trieu_chung"
-                    name="trieu_chung"
-                    required
-                    rows={4}
-                    placeholder="VD: Tôi bị đau mỏi thắt lưng lan nhẹ xuống hông phải khi ngồi làm việc lâu, kèm cảm giác căng cứng cơ vào buổi sáng..."
-                    className="w-full rounded-xl border-gray-250 focus:border-primary p-4 border font-medium text-secondary text-sm resize-none outline-none transition-colors leading-relaxed"
-                    value={formData.trieu_chung}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-
-              {/* Submit button layout */}
-              <div className="pt-4">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-primary hover:opacity-95 text-white font-extrabold text-xs uppercase tracking-widest py-4 rounded-xl shadow-xs disabled:opacity-75 disabled:cursor-not-allowed flex justify-center items-center transition-all active:scale-98"
-                >
-                  {isSubmitting ? 'Đang gửi thông tin đăng ký...' : 'Xác nhận đăng ký lịch khám'}
-                </button>
-                <p className="text-center text-[10px] font-bold text-zinc-400 mt-4 leading-relaxed">
-                  Bằng việc gửi đăng ký lịch hẹn, bạn đã đồng ý với chính sách và quy trình đón tiếp lâm sàng của Office Care.
+              <div className="space-y-1">
+                <h4 className="text-xs font-extrabold text-slate-800">Đặt lịch hẹn nhanh trong 3 bước</h4>
+                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                  Lựa chọn dịch vụ, thời gian và chuyên gia mong muốn ở biểu mẫu bên dưới. Lịch hẹn của bạn sẽ được đồng bộ và xác nhận.
                 </p>
               </div>
+            </motion.div>
+          </div>
 
+          {/* Hero right visual (Custom illustration overlay) */}
+          <div className="lg:col-span-6 relative flex justify-center items-center">
+            {/* Soft gradient blur backdrops */}
+            <div className="absolute w-72 h-72 rounded-full bg-gradient-to-br from-[#2EC4B6]/20 to-[#E6F4F1]/30 blur-3xl -z-10 animate-pulse" />
+            <div className="absolute w-96 h-96 rounded-full bg-gradient-to-tr from-[#0F172A]/5 to-[#2EC4B6]/10 blur-2xl -z-10" />
+
+            <div className="relative max-w-md w-full h-[380px] rounded-[32px] overflow-hidden border border-slate-100 shadow-2xl bg-white/60 p-4">
+              <img
+                src="/images/physio_hero.png"
+                alt="Physio Clinic Hero Visual"
+                className="w-full h-full object-cover rounded-[24px]"
+              />
+
+              {/* Floating trust card 1 */}
+              <div className="absolute top-8 -left-6 bg-white/80 backdrop-blur-md border border-slate-100 rounded-2xl shadow-xl p-3 flex items-center gap-3 animate-float stagger-delay-1 max-w-[190px]">
+                <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+                  <ShieldCheck size={16} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Tiêu chuẩn</p>
+                  <p className="text-xs font-extrabold text-[#0F172A]">FDA Approved</p>
+                </div>
+              </div>
+
+              {/* Floating trust card 2 */}
+              <div className="absolute bottom-10 -right-6 bg-white/80 backdrop-blur-md border border-slate-100 rounded-2xl shadow-xl p-3.5 flex items-center gap-3 animate-float stagger-delay-3 max-w-[190px]">
+                <div className="w-8 h-8 rounded-full bg-[#2EC4B6] text-white flex items-center justify-center">
+                  <User size={16} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">Đội ngũ</p>
+                  <p className="text-xs font-extrabold text-[#0F172A]">100% KTV Cấp Chứng Chỉ</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* BOOKING INTERFACE CONTAINER (Asymmetric Layout) */}
+        <div id="booking-experience-card" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pt-8">
+          
+          {/* WIZARD EXPERIENCE CARD (Left 8-cols) */}
+          <div className="lg:col-span-8 bg-white rounded-[24px] border border-slate-100 shadow-xl overflow-hidden p-6 sm:p-8 space-y-8">
+            
+            {/* Step progress bar */}
+            <BookingWizard activeStep={activeStep} />
+
+            {/* Wizard Form Panels */}
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <AnimatePresence mode="wait">
+                <BookingStepCard
+                  activeStep={activeStep}
+                  setActiveStep={setActiveStep}
+                  bookingType={bookingType}
+                  setBookingType={setBookingType}
+                  selectedServiceId={selectedServiceId}
+                  setSelectedServiceId={setSelectedServiceId}
+                  onTimeout={handleTimeout}
+                  services={services}
+                  servicesLoading={servicesLoading}
+                  state={state}
+                  bookedSlots={bookedSlots}
+                  specialists={specialists}
+                  slotAvailability={slotAvailability}
+                  selectedStaffId={selectedStaffId}
+                  setSelectedStaffId={setSelectedStaffId}
+                  hasExistingClinicalExam={hasExistingClinicalExam}
+                  tempHoldId={tempHoldId}
+                  onViewAppointments={() => navigate('/appointments')}
+                  onChange={handleChange}
+                  handleGenderChange={handleGenderChange}
+                  handleFile={handleFile}
+                  removeImage={removeImage}
+                  setDateField={setDateField}
+                  setTimeField={setTimeField}
+                  isSubmitting={isSubmitting}
+                  user={user}
+                />
+              </AnimatePresence>
             </form>
           </div>
-        </div>
 
-      </div>
-
-      {/* POPUP MODAL REQUIRES ACCOUNT */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-secondary/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] max-w-md w-full p-8 shadow-md overflow-hidden border border-gray-150 animate-slide-up">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-primary/10 text-primary rounded-[20px] flex items-center justify-center mx-auto border border-primary/20">
-                <User size={30} />
+          {/* STICKY APPOINTMENT SUMMARY (Right 4-cols) */}
+          <div className="lg:col-span-4 lg:sticky lg:top-28 space-y-6">
+            <div className="bg-white/80 backdrop-blur-md border border-slate-150 shadow-lg rounded-[24px] overflow-hidden p-6 space-y-6">
+              <div className="space-y-4 text-left">
+                <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
+                  bookingType === 'dich_vu' ? 'bg-teal-50 text-teal-700 border-teal-100' : 'bg-emerald-50 text-emerald-650 border-emerald-100'
+                }`}>
+                  {bookingType === 'dich_vu' ? 'Trị liệu lẻ' : 'Lịch khám'}
+                </span>
+                
+                <div className="space-y-1">
+                  <h3 className="text-lg font-jakarta font-black text-[#0F172A]">
+                    {selectedService?.ten_dich_vu || (bookingType === 'dich_vu' ? 'Chọn dịch vụ' : 'Chọn gói khám')}
+                  </h3>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    {bookingType === 'dich_vu' ? 'Trị liệu dịch vụ lẻ nhanh' : 'Đánh giá & lượng giá chuyên sâu'}
+                  </p>
+                </div>
               </div>
-              <h3 className="text-2xl font-heading font-black text-secondary">Đăng nhập thành viên</h3>
-              <p className="text-xs font-semibold text-gray-500 leading-relaxed">
-                Để bảo vệ an toàn hồ sơ bệnh lý của bạn và thuận tiện cập nhật kết quả sau khám, xin vui lòng đăng nhập hoặc tạo tài khoản trước khi hoàn tất đăng ký.
-              </p>
-            </div>
-            
-            <div className="mt-8 flex flex-col gap-3">
-              <button 
-                onClick={handleRedirectToLogin}
-                className="w-full bg-primary hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-xs"
-              >
-                Đăng nhập hoặc Tạo tài khoản
-              </button>
-              <button 
-                onClick={() => setShowAuthModal(false)}
-                className="w-full bg-zinc-50 hover:bg-zinc-100 text-secondary font-bold py-3.5 rounded-xl text-xs border border-gray-200 transition-all"
-              >
-                Hủy bỏ
-              </button>
+
+              <div className="h-px bg-slate-100" />
+
+              {/* Summary Details */}
+              <div className="space-y-4 text-xs font-jakarta">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-450 font-bold uppercase tracking-wider">
+                    {bookingType === 'dich_vu' ? 'Ngày hẹn' : 'Ngày khám'}
+                  </span>
+                  <span className="text-[#0F172A] font-extrabold capitalize">
+                    {selectedDate && isClient ? formatFullDate(selectedDate).split(',').slice(0, 2).join(',') : 'Chưa chọn'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-450 font-bold uppercase tracking-wider">
+                    {bookingType === 'dich_vu' ? 'Giờ hẹn' : 'Giờ khám'}
+                  </span>
+                  <span className="text-[#0F172A] font-extrabold">
+                    {selectedTime ? `${selectedTime}` : 'Chưa chọn'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-450 font-bold uppercase tracking-wider">Thời lượng</span>
+                  <span className="text-[#0F172A] font-extrabold">
+                    {selectedService ? `${selectedService.thoi_luong_phut + 10} phút` : '...'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-450 font-bold uppercase tracking-wider">Chi phí</span>
+                  <span className="text-teal-600 bg-teal-50 border-teal-100 font-extrabold px-2.5 py-0.5 rounded-full border">
+                    {selectedService ? `${Number(selectedService.don_gia).toLocaleString('vi-VN')}đ` : '...'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="h-px bg-slate-100" />
+
+              {/* Benefit checks */}
+              <div className="space-y-3 text-left">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {bookingType === 'dich_vu' ? 'Nội dung thực hiện' : 'Quyền lợi khám'}
+                </p>
+                <ul className="space-y-2 text-xs font-bold text-slate-650">
+                  {selectedService?.muc_tieu ? (
+                    selectedService.muc_tieu.split('\n').filter((l: string) => l.trim()).slice(0, 3).map((goal: string, idx: number) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <span className="text-[#2EC4B6]">✓</span>
+                        <span>{goal.replace(/^-\s*/, '').replace(/^\*\s*/, '')}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <>
+                      <li className="flex items-center gap-2">
+                        <span className="text-[#2EC4B6]">✓</span> Lượng giá tầm vận động (ROM)
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-[#2EC4B6]">✓</span> Xác định tận gốc nguyên nhân đau
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="text-[#2EC4B6]">✓</span> Nhận phác đồ y khoa cá nhân hóa
+                      </li>
+                    </>
+                  )}
+                </ul>
+              </div>
             </div>
           </div>
         </div>
-      )}
 
+        {/* DYNAMIC PROCESS & OBJECTIVE SECTION (Replaces TrustSection) */}
+        {selectedService ? (
+          <div className="bg-white rounded-[32px] border border-slate-100 p-8 shadow-xl text-left space-y-8 animate-fade-in">
+            <div className="text-center max-w-2xl mx-auto space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-teal-55 text-[#2EC4B6] border border-teal-100">
+                Chi tiết dịch vụ đã chọn
+              </span>
+              <h3 className="text-2xl font-jakarta font-black text-slate-800 tracking-tight leading-tight">
+                Quy trình & Mục tiêu trị liệu của {selectedService.ten_dich_vu}
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+              {/* Quy trình thực hiện (Process) */}
+              <div className="bg-slate-50/50 rounded-3xl p-6.5 border border-slate-100 space-y-4">
+                <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200/60 pb-3">
+                  <span className="text-[#2EC4B6]">📋</span> Quy trình thực hiện
+                </h4>
+                {selectedService.quy_trinh ? (
+                  <ul className="space-y-3 pl-0 list-none">
+                    {selectedService.quy_trinh.split('\n').filter((line: string) => line.trim()).map((step: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-3 text-xs font-bold text-slate-650 leading-relaxed">
+                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#2EC4B6]/15 text-[#2EC4B6] text-[10px] font-black shrink-0 mt-0.5">
+                          {idx + 1}
+                        </span>
+                        <span>{step.replace(/^\d+\.\s*/, '')}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-slate-455 font-bold italic text-slate-400">Chưa có quy trình cụ thể cho dịch vụ này.</p>
+                )}
+              </div>
+
+              {/* Mục tiêu trị liệu (Objective) */}
+              <div className="bg-slate-50/50 rounded-3xl p-6.5 border border-slate-100 space-y-4">
+                <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200/60 pb-3">
+                  <span className="text-[#2EC4B6]">🎯</span> Mục tiêu trị liệu
+                </h4>
+                {selectedService.muc_tieu ? (
+                  <ul className="space-y-3 pl-0 list-none">
+                    {selectedService.muc_tieu.split('\n').filter((line: string) => line.trim()).map((goal: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-3 text-xs font-bold text-slate-650 leading-relaxed">
+                        <span className="text-emerald-500 font-extrabold shrink-0 mt-0.5">✓</span>
+                        <span>{goal.replace(/^-\s*/, '').replace(/^\*\s*/, '')}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-slate-455 font-bold italic text-slate-400">Chưa có mục tiêu cụ thể cho dịch vụ này.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-50/50 border border-slate-150 border-dashed rounded-[32px] p-10 text-center text-slate-400 font-bold">
+            💡 Vui lòng chọn một dịch vụ khám hoặc trị liệu lẻ để xem Quy trình & Mục tiêu điều trị chi tiết.
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }

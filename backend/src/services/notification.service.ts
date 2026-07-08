@@ -2,13 +2,14 @@ import prisma from '../config/prisma';
 
 class NotificationService {
   /**
-   * Tạo thông báo mới cho người dùng
+   * Tạo thông báo mới cho người dùng hoặc khách hàng
    */
-  async createNotification(nguoi_dung_id: string, tieu_de: string, noi_dung: string, loai: string = 'he_thong') {
+  async createNotification(id: string, tieu_de: string, noi_dung: string, loai: string = 'he_thong', isCustomer: boolean = false) {
     try {
       return await prisma.thong_bao.create({
         data: {
-          nguoi_dung_id,
+          nguoi_dung_id: isCustomer ? null : parseInt(id, 10),
+          khach_hang_id: isCustomer ? id : null,
           tieu_de,
           noi_dung,
           loai,
@@ -23,11 +24,11 @@ class NotificationService {
   }
 
   /**
-   * Lấy danh sách 50 thông báo gần nhất của người dùng
+   * Lấy danh sách 50 thông báo gần nhất của người dùng hoặc khách hàng
    */
-  async getNotifications(nguoi_dung_id: string) {
+  async getNotifications(id: string, isCustomer: boolean = false) {
     return prisma.thong_bao.findMany({
-      where: { nguoi_dung_id },
+      where: isCustomer ? { khach_hang_id: id } : { nguoi_dung_id: parseInt(id, 10) },
       orderBy: { thoi_gian_tao: 'desc' },
       take: 50
     });
@@ -36,9 +37,9 @@ class NotificationService {
   /**
    * Đánh dấu 1 thông báo cụ thể là đã đọc
    */
-  async markAsRead(id: string, nguoi_dung_id: string) {
+  async markAsRead(id: string, userId: string, isCustomer: boolean = false) {
     const notification = await prisma.thong_bao.findFirst({
-      where: { id, nguoi_dung_id }
+      where: isCustomer ? { id, khach_hang_id: userId } : { id, nguoi_dung_id: parseInt(userId, 10) }
     });
 
     if (!notification) {
@@ -54,9 +55,9 @@ class NotificationService {
   /**
    * Đánh dấu toàn bộ thông báo của người dùng là đã đọc
    */
-  async markAllAsRead(nguoi_dung_id: string) {
+  async markAllAsRead(userId: string, isCustomer: boolean = false) {
     return prisma.thong_bao.updateMany({
-      where: { nguoi_dung_id, da_doc: false },
+      where: isCustomer ? { khach_hang_id: userId, da_doc: false } : { nguoi_dung_id: parseInt(userId, 10), da_doc: false },
       data: { da_doc: true }
     });
   }
@@ -70,54 +71,65 @@ class NotificationService {
       
       // Nếu không truyền dữ liệu lịch hẹn, tiến hành fetch từ DB
       if (!appointment) {
-        appointment = await prisma.lich_dat.findUnique({
+        appointment = await prisma.cuoc_hen.findUnique({
           where: { id: lich_dat_id },
           include: {
             khach_hang: true,
-            dich_vu_lich_dat_dich_vu_idTodich_vu: true,
-            chuyen_gia_y_te: {
-              include: {
-                nguoi_dung: true
-              }
-            },
-            phong: true
+            dich_vu: true,
+            nguoi_dung: true
           }
         });
       }
 
       if (!appointment || !appointment.khach_hang) return;
 
-      const nguoi_dung_id = appointment.khach_hang.nguoi_dung_id;
-      const ma_lich_dat = appointment.ma_lich_dat;
-      const ten_dich_vu = appointment.dich_vu_lich_dat_dich_vu_idTodich_vu?.ten_dich_vu || 'Khám Lâm sàng & Lượng giá';
+      const customerId = appointment.khach_hang.id;
+      const ma_lich_dat = 'LH-' + appointment.id.substring(0, 6).toUpperCase();
+      const ten_dich_vu = appointment.dich_vu?.ten_dich_vu || 'Khám Lâm sàng & Lượng giá';
 
       let tieu_de = 'Cập nhật trạng thái lịch khám';
       let noi_dung = '';
 
       switch (trang_thai) {
         case 'da_xac_nhan':
-          const doctorName = appointment.chuyen_gia_y_te?.nguoi_dung?.ho_ten || 'Đang chờ phân công';
-          const roomName = appointment.phong?.ten_phong || 'Đang chờ xếp phòng';
-          noi_dung = `Lịch khám "${ten_dich_vu}" (Mã: ${ma_lich_dat}) của bạn đã được Lễ tân duyệt thành công. Phòng khám: ${roomName}. Bác sĩ/KTV phụ trách: ${doctorName}.`;
+          const doctorName = appointment.nguoi_dung?.ho_ten || 'Đang chờ phân công';
+          noi_dung = `Lịch khám "${ten_dich_vu}" (Mã: ${ma_lich_dat}) của bạn đã được Lễ tân duyệt thành công. Bác sĩ/KTV phụ trách: ${doctorName}.`;
           break;
         case 'da_checkin':
-          const activeRoom = appointment.phong?.ten_phong || 'Phòng khám lâm sàng';
-          noi_dung = `Bạn đã hoàn tất thủ tục check-in cho lịch khám ${ma_lich_dat}. Vui lòng di chuyển đến ${activeRoom} để được hỗ trợ điều trị.`;
+        case 'check_in':
+          noi_dung = `Bạn đã hoàn tất thủ tục check-in cho lịch khám ${ma_lich_dat}. Vui lòng chuẩn bị để vào trị liệu.`;
           break;
         case 'hoan_thanh':
           noi_dung = `Buổi khám lượng giá ${ma_lich_dat} của bạn đã hoàn thành. Chúc bạn một ngày tốt lành và nhiều sức khỏe!`;
           break;
         case 'da_huy':
-          const lyDo = appointment.ly_do_huy || 'Hủy bởi hệ thống phòng khám';
-          noi_dung = `Lịch hẹn khám ${ma_lich_dat} của bạn đã bị hủy bỏ. Lý do chi tiết: "${lyDo}".`;
+        case 'huy':
+          noi_dung = `Lịch hẹn khám ${ma_lich_dat} của bạn đã bị hủy bỏ.`;
           break;
         default:
           return;
       }
 
-      await this.createNotification(nguoi_dung_id, tieu_de, noi_dung, 'lich_hen');
+      await this.createNotification(customerId, tieu_de, noi_dung, 'lich_hen', true);
     } catch (error) {
       console.error('Lỗi khi trigger thông báo lịch hẹn:', error);
+    }
+  }
+
+  /**
+   * Gửi thông báo cho toàn bộ người dùng theo vai trò
+   */
+  async notifyRole(vai_tro_id: number, tieu_de: string, noi_dung: string, loai: string = 'he_thong') {
+    try {
+      const users = await prisma.nguoi_dung.findMany({
+        where: { vai_tro_id }
+      });
+      const promises = users.map(user => 
+        this.createNotification(String(user.id), tieu_de, noi_dung, loai, false)
+      );
+      await Promise.all(promises);
+    } catch (error) {
+      console.error('Lỗi khi gửi thông báo theo vai trò:', error);
     }
   }
 }

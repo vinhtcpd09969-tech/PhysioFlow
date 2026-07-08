@@ -2,33 +2,21 @@ import adminRepository from '../repositories/admin.repository';
 import bcrypt from 'bcryptjs';
 
 class AdminService {
-  // --- QUẢN LÝ DỊCH VỤ & DANH MỤC ---
-  async getCategories() {
-    return adminRepository.getCategories();
-  }
-
+  // --- QUẢN LÝ PHÒNG KHÁM ---
   async getRooms() {
     return adminRepository.getRooms();
   }
 
-  async createCategory(data: any) {
-    return adminRepository.createCategory(data);
+  async createRoom(data: any) {
+    return adminRepository.createRoom(data);
   }
 
-  async getServices() {
-    return adminRepository.getServices();
+  async updateRoom(id: string | number, data: any) {
+    return adminRepository.updateRoom(id, data);
   }
 
-  async createService(data: any) {
-    return adminRepository.createService(data);
-  }
-
-  async updateService(id: string, data: any) {
-    return adminRepository.updateService(id, data);
-  }
-
-  async deleteService(id: string) {
-    return adminRepository.deleteService(id);
+  async deleteRoom(id: string | number) {
+    return adminRepository.deleteRoom(id);
   }
 
   // --- QUẢN LÝ GÓI ĐIỀU TRỊ ---
@@ -46,6 +34,23 @@ class AdminService {
 
   async deletePackage(id: string) {
     return adminRepository.deletePackage(id);
+  }
+
+  // --- QUẢN LÝ DANH MỤC GÓI ---
+  async getCategories() {
+    return adminRepository.getCategories();
+  }
+
+  async createCategory(data: any) {
+    return adminRepository.createCategory(data);
+  }
+
+  async updateCategory(id: string, data: any) {
+    return adminRepository.updateCategory(id, data);
+  }
+
+  async deleteCategory(id: string) {
+    return adminRepository.deleteCategory(id);
   }
 
   // --- QUẢN LÝ NHÂN SỰ ---
@@ -80,9 +85,17 @@ class AdminService {
   }
 
   async createEquipment(data: any) {
-    const ma_thiet_bi = data.ma_thiet_bi || 'TB-' + Math.floor(1000 + Math.random() * 9000);
-    return adminRepository.createEquipment(ma_thiet_bi, data);
+    return adminRepository.createEquipment('', data);
   }
+
+  async updateEquipment(id: string, data: any) {
+    return adminRepository.updateEquipment(id, data);
+  }
+
+  async deleteEquipment(id: string) {
+    return adminRepository.deleteEquipment(id);
+  }
+
 
   // --- QUẢN LÝ LỊCH LÀM VIỆC ---
   async getSchedules() {
@@ -93,14 +106,17 @@ class AdminService {
     return adminRepository.createSchedule(data);
   }
 
+  async updateSchedule(id: string, data: any) {
+    return adminRepository.updateSchedule(id, data);
+  }
+
+  async deleteSchedule(id: string) {
+    return adminRepository.deleteSchedule(id);
+  }
+
   // --- QUẢN LÝ HỒ SƠ ĐIỀU TRỊ ---
   async getMedicalRecords() {
     return adminRepository.getMedicalRecords();
-  }
-
-  // --- AUDIT LOGS ---
-  async getAuditLogs() {
-    return adminRepository.getAuditLogs();
   }
 
   // --- QUẢN LÝ TÀI CHÍNH ---
@@ -151,7 +167,6 @@ class AdminService {
     return adminRepository.getFeedback();
   }
 
-
   // --- BÁO CÁO & THỐNG KÊ ---
   async getDashboardSummary() {
     return adminRepository.getDashboardSummary();
@@ -171,4 +186,3 @@ class AdminService {
 }
 
 export default new AdminService();
-

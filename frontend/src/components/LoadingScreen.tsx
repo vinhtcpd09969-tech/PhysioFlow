@@ -19,7 +19,7 @@ export default function LoadingScreen() {
       <div className="absolute bottom-[-10%] left-[-10%] w-80 h-80 bg-emerald-200/20 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="flex flex-col items-center max-w-sm px-6 text-center z-10">
-        {/* Animated Custom Ring (PhysioFlow Premium Aesthetic) */}
+        {/* Animated Custom Ring (OfficeCare Premium Aesthetic) */}
         <div className="relative w-16 h-16 mb-6">
           {/* Inner circle pulsing */}
           <div className="absolute inset-2 bg-gradient-to-tr from-teal-400 to-emerald-500 rounded-full opacity-20 animate-ping"></div>
