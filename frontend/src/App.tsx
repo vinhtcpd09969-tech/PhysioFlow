@@ -1,12 +1,13 @@
 import { BrowserRouter as Router } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import AppRoutes from './routes/AppRoutes';
 import ScrollToAnchor from './components/ScrollToAnchor';
 import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
-    <>
-      <Toaster 
+    <HelmetProvider>
+      <Toaster
         position="top-right"
         toastOptions={{
           style: {
@@ -38,7 +39,7 @@ function App() {
         <ScrollToAnchor />
         <AppRoutes />
       </Router>
-    </>
+    </HelmetProvider>
   );
 }
 

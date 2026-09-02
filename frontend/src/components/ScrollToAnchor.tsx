@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 export default function ScrollToAnchor() {
-  const { hash, pathname } = useLocation();
+  const { hash, pathname, search } = useLocation();
 
   useEffect(() => {
     if (hash) {
@@ -16,10 +16,14 @@ export default function ScrollToAnchor() {
         return () => clearTimeout(timer);
       }
     } else {
-      // Scroll to top on standard page navigation
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const params = new URLSearchParams(search);
+      const hasFocusTarget = params.has('appointmentId') || params.has('treatmentId') || params.has('triggerFocus');
+      if (!hasFocusTarget) {
+        // Scroll to top on standard page navigation
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
-  }, [hash, pathname]);
+  }, [hash, pathname, search]);
 
   return null;
 }

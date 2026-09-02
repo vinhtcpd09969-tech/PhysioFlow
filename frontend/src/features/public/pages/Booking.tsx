@@ -1,269 +1,512 @@
-import { useReducer, useState, useEffect } from 'react';
-import { 
-  Calendar as CalendarIcon, 
-  MapPin, 
-  User, 
-  Info, 
-  CheckCircle2, 
-  Activity, 
-  ShieldCheck, 
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Stethoscope,
-  Award
+import { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  Sparkles,
+  CheckCircle2,
+  Loader2,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../../stores/authStore';
+import { useNavigate, useLocation } from 'react-router-dom';
+import api from '../../../api/axios';
+import { useAuthStore, useAuthActions } from '../../../stores/authStore';
+import { agreeTerms } from '../../customer/api/customer.api';
 import { toast } from 'react-hot-toast';
+import { useBookingState } from '../components/booking/hooks/useBookingState';
+import { calculateVoucherDiscount } from '../../admin/pages/ManageFinance/components/VoucherPicker';
+import { BookingServiceSection } from '../components/booking/ui/sections/BookingServiceSection';
+import { BookingDateTimeStaffSection } from '../components/booking/ui/sections/BookingDateTimeStaffSection';
+import { BookingCustomerFormSection } from '../components/booking/ui/sections/BookingCustomerFormSection';
+import { BookingPaymentSection } from '../components/booking/ui/sections/BookingPaymentSection';
+import { BookingSummaryCard } from '../components/booking/ui/sections/BookingSummaryCard';
+import { BookingTermsModal } from '../components/booking/ui/sections/BookingTermsModal';
 
-const timeSlots = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00',
-  '17:30', '18:00', '18:30', '19:00'
-];
-
-interface BookingState {
-  selectedDate: string;
-  selectedTime: string;
-  isSubmitting: boolean;
-  isSuccess: boolean;
-  formData: {
-    ho_ten_khach: string;
-    so_dien_thoai: string;
-    gioi_tinh_khach: string;
-    trieu_chung: string;
-    ly_do_kham: string;
-    anh_dinh_kem_url: string;
-  };
-}
-
-type BookingAction = 
-  | { type: 'SET_DATE', date: string }
-  | { type: 'SET_TIME', time: string }
-  | { type: 'SET_FORM_FIELD', field: string, value: string }
-  | { type: 'SET_SUBMITTING', isSubmitting: boolean }
-  | { type: 'SET_SUCCESS', isSuccess: boolean };
-
-function bookingReducer(state: BookingState, action: BookingAction): BookingState {
-  switch (action.type) {
-    case 'SET_DATE':
-      return { ...state, selectedDate: action.date, selectedTime: '' };
-    case 'SET_TIME':
-      return { ...state, selectedTime: action.time };
-    case 'SET_FORM_FIELD':
-      return { ...state, formData: { ...state.formData, [action.field]: action.value } };
-    case 'SET_SUBMITTING':
-      return { ...state, isSubmitting: action.isSubmitting };
-    case 'SET_SUCCESS':
-      return { ...state, isSuccess: action.isSuccess };
-    default:
-      return state;
-  }
-}
-
-const fullDateFormatter = new Intl.DateTimeFormat('vi-VN', {
-  weekday: 'long',
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 export default function Booking() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navState = (location.state || {}) as { bookingType?: 'kham' | 'dich_vu'; selectedServiceId?: string; from?: string };
+
   const [isClient, setIsClient] = useState(false);
   const { user, isAuthenticated } = useAuthStore();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  
-  // Custom Datepicker state
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  
-  const [state, dispatch] = useReducer(bookingReducer, {
-    selectedDate: new Date().toISOString().split('T')[0],
-    selectedTime: '',
-    isSubmitting: false,
-    isSuccess: false,
-    formData: {
-      ho_ten_khach: user?.ho_ten || '',
-      so_dien_thoai: (user as any)?.so_dien_thoai || '',
-      gioi_tinh_khach: 'nam',
-      trieu_chung: '',
-      ly_do_kham: '',
-      anh_dinh_kem_url: ''
-    }
-  });
+  const { updateUser } = useAuthActions();
+
+  // Terms acceptance modal gate for accounts missing timestamp
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [agreeingLoading, setAgreeingLoading] = useState(false);
+
+  // Modal Terms popup state for online payment terms agreement
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [modalTermsChecked, setModalTermsChecked] = useState(false);
+
+  // Initialize booking type & selected service
+  const [bookingType, setBookingType] = useState<'kham' | 'dich_vu'>(navState.bookingType || 'kham');
+  const [selectedServiceId, setSelectedServiceId] = useState<string>(navState.selectedServiceId ? String(navState.selectedServiceId) : '');
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
+  const initializedFromNavRef = useRef(false);
+
+  const [services, setServices] = useState<any[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [specialists, setSpecialists] = useState<any[]>([]);
+
+  // Payment method state
+  const [paymentMethod, setPaymentMethod] = useState<'tai_quay' | 'payos'>('tai_quay');
+  const [payTermsAccepted, setPayTermsAccepted] = useState(false);
+
+  // Official PayOS SDK response data & polling timer states
+  const [payosData, setPayosData] = useState<any | null>(null);
+  const [payosLoading, setPayosLoading] = useState(false);
+  const [payosTimeLeft, setPayosTimeLeft] = useState(600); // 10 minutes (600s)
+  const pollingTimerRef = useRef<any>(null);
+  const countdownTimerRef = useRef<any>(null);
+  const isCreatingBookingRef = useRef(false);
+
+  // Vouchers state for Online payment
+  const [activeVouchers, setActiveVouchers] = useState<any[]>([]);
+  const [selectedVoucher, setSelectedVoucher] = useState<any | null>(null);
+
+  const {
+    state,
+    buoiAvailability,
+    isPhoneTakenByOther,
+    setDateField,
+    setBuoiField,
+    setFormField,
+    setSubmitting
+  } = useBookingState(user, bookingType, selectedServiceId, services);
+
+  const { selectedDate, selectedBuoi, isSubmitting, formData } = state;
+
+  const selectedService = services.find(s => String(s.id) === String(selectedServiceId));
+  const serviceDuration = Number(selectedService?.thoi_luong_phut) || 30;
+
+  const staffList = useMemo(() => {
+    if (buoiAvailability.nhanSu.length === 0) return specialists;
+    if (!selectedBuoi) return [];
+    return buoiAvailability.nhanSu.filter((ns: any) => {
+      const conLai = selectedBuoi === 'sang' ? ns.conLaiSang : ns.conLaiChieu;
+      return conLai >= serviceDuration;
+    });
+  }, [buoiAvailability.nhanSu, selectedBuoi, serviceDuration, specialists]);
+  const selectedStaffObj = staffList.find(s => String(s.id) === selectedStaffId);
 
   useEffect(() => {
-    setIsClient(true);
-    
-    // Khôi phục dữ liệu đặt lịch tạm thời (nếu có) sau khi đăng nhập thành công
-    const saved = localStorage.getItem('temp_booking');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.selectedDate) dispatch({ type: 'SET_DATE', date: parsed.selectedDate });
-        if (parsed.selectedTime) dispatch({ type: 'SET_TIME', time: parsed.selectedTime });
-        if (parsed.formData) {
-          Object.keys(parsed.formData).forEach(key => {
-            if (key === 'ho_ten_khach' && user?.ho_ten) return;
-            dispatch({ type: 'SET_FORM_FIELD', field: key, value: parsed.formData[key] });
-          });
-        }
-        toast.success('Đã khôi phục dữ liệu đăng ký lịch hẹn của bạn!');
-      } catch (e) {
-        console.error('Lỗi khôi phục lịch đặt tạm thời:', e);
-      }
-      localStorage.removeItem('temp_booking');
-    }
-  }, [user]);
+    setSelectedStaffId('');
+  }, [selectedBuoi]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    dispatch({ type: 'SET_FORM_FIELD', field: e.target.name, value: e.target.value });
+  // Intercept Route: Ensure user authentication & client role
+  useEffect(() => {
+    setIsClient(true);
+    if (isAuthenticated() && user) {
+      const roleId = Number(user.vai_tro_id);
+      if (roleId !== 1 && roleId !== 0) {
+        toast.error('Tài khoản nhân sự không thể sử dụng chức năng đặt lịch của Khách hàng. Vui lòng đăng ký tài khoản khách hàng riêng.');
+        const defaultRoute = roleId === 5 || roleId === 6 ? '/admin' : roleId === 2 ? '/receptionist' : roleId === 4 ? '/doctor' : '/technician/appointments';
+        navigate(defaultRoute, { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  // Enforce PayOS Online payment if customer has >= 2 no-shows
+  useEffect(() => {
+    if (buoiAvailability?.buoc_thanh_toan_online && paymentMethod !== 'payos') {
+      setPaymentMethod('payos');
+    }
+  }, [buoiAvailability?.buoc_thanh_toan_online, paymentMethod]);
+
+  // Fetch list of services & staff
+  useEffect(() => {
+    setServicesLoading(true);
+    fetch(`${BASE_URL}/client/services`)
+      .then(res => res.json())
+      .then(data => setServices(data || []))
+      .catch(err => console.error('Lỗi tải danh sách dịch vụ:', err))
+      .finally(() => setServicesLoading(false));
+
+    fetch(`${BASE_URL}/client/specialists`)
+      .then(res => res.json())
+      .then(data => setSpecialists(data || []))
+      .catch(err => console.error('Lỗi tải danh sách nhân sự:', err));
+  }, []);
+
+  // Smart auto-selection: Prioritize passed navigation state service on first load, otherwise default
+  useEffect(() => {
+    if (services.length === 0) return;
+
+    if (!initializedFromNavRef.current && navState.selectedServiceId) {
+      const matched = services.find(s => String(s.id) === String(navState.selectedServiceId));
+      if (matched) {
+        const isExam = matched.loai_goi === 'KHAM' || matched.loai_dich_vu === 'KHAM';
+        setBookingType(isExam ? 'kham' : 'dich_vu');
+        setSelectedServiceId(String(matched.id));
+        initializedFromNavRef.current = true;
+        return;
+      }
+    }
+    initializedFromNavRef.current = true;
+
+    if (bookingType === 'kham') {
+      const cur = services.find(s => String(s.id) === String(selectedServiceId));
+      if (!cur || (cur.loai_goi !== 'KHAM' && cur.loai_dich_vu !== 'KHAM')) {
+        const examService = services.find(s => s.loai_goi === 'KHAM' || s.loai_dich_vu === 'KHAM');
+        if (examService) setSelectedServiceId(String(examService.id));
+      }
+    } else {
+      const cur = services.find(s => String(s.id) === String(selectedServiceId));
+      if (!cur || cur.loai_goi === 'KHAM' || cur.loai_dich_vu === 'KHAM') {
+        const regularService = services.find(s => s.loai_goi !== 'KHAM' && s.loai_dich_vu !== 'KHAM');
+        if (regularService) setSelectedServiceId(String(regularService.id));
+      }
+    }
+  }, [bookingType, services, navState.selectedServiceId]);
+
+  const handleSetBookingType = (type: 'kham' | 'dich_vu') => {
+    setBookingType(type);
+    if (type === 'kham') {
+      const examService = services.find(s => s.loai_goi === 'KHAM' || s.loai_dich_vu === 'KHAM');
+      if (examService) setSelectedServiceId(String(examService.id));
+    } else {
+      const regularService = services.find(s => s.loai_goi !== 'KHAM' && s.loai_dich_vu !== 'KHAM');
+      if (regularService) setSelectedServiceId(String(regularService.id));
+    }
+    setSelectedStaffId('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!state.selectedTime) {
-      toast.error('Vui lòng chọn khung giờ khám lâm sàng!');
+  // Fetch active vouchers for Client Online booking
+  useEffect(() => {
+    const url = user?.id 
+      ? `${BASE_URL}/client/vouchers/active?khach_hang_id=${user.id}` 
+      : `${BASE_URL}/client/vouchers/active`;
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const list = data.vouchers || [];
+        setActiveVouchers(list);
+      })
+      .catch(err => console.error('Lỗi tải voucher client:', err));
+  }, [user?.id]);
+
+  // Price calculations
+  const examService = services.find(s => s.loai_goi === 'KHAM' || s.loai_dich_vu === 'KHAM');
+  const rawPrice = selectedService 
+    ? Number(selectedService.don_gia) 
+    : (bookingType === 'kham' ? Number(examService?.don_gia || 0) : 0);
+
+  const handleApplyVoucher = async (code: string, isSilent = false) => {
+    const matched = activeVouchers.find((v: any) => v.ma_voucher?.toUpperCase() === code.trim().toUpperCase());
+    if (matched) {
+      setSelectedVoucher(matched);
+      if (!isSilent) toast.success(`Đã áp dụng mã "${matched.ma_voucher}"!`);
+    } else {
+      try {
+        const res = await api.post('/client/vouchers/apply', {
+          ma_voucher: code,
+          khach_hang_id: user?.id,
+          loai_thanh_toan: 'tra_thang',
+          kenh: 'online',
+          loai_goi: bookingType === 'kham' ? 'KHAM' : 'LE',
+        });
+        if (res.data?.voucher) {
+          setSelectedVoucher(res.data.voucher);
+          if (!isSilent) toast.success(`Đã áp dụng mã "${res.data.voucher.ma_voucher}"!`);
+        }
+      } catch (err: any) {
+        if (!isSilent) toast.error(err.response?.data?.message || 'Mã giảm giá không tồn tại hoặc chưa thỏa điều kiện.');
+      }
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setSelectedVoucher(null);
+  };
+
+  const discountAmount = selectedVoucher ? calculateVoucherDiscount(selectedVoucher, rawPrice) : 0;
+  const finalPrice = Math.max(0, rawPrice - discountAmount);
+
+  // Trigger PayOS Link creation via official PayOS SDK backend endpoint
+  useEffect(() => {
+    if (paymentMethod === 'payos' && payTermsAccepted && finalPrice > 0) {
+      setPayosLoading(true);
+      fetch(`${BASE_URL}/client/payment/create-payos-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: finalPrice,
+          phone: formData.so_dien_thoai || user?.so_dien_thoai || '0987654321',
+          description: `DAT LICH ${formData.so_dien_thoai || 'OFFICECARE'}`
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.qrCode || data.checkoutUrl) {
+            setPayosData(data);
+          } else {
+            toast.error(data.message || 'Không thể khởi tạo mã QR PayOS');
+          }
+        })
+        .catch(err => {
+          console.error('Lỗi khởi tạo PayOS link:', err);
+          toast.error('Lỗi kết nối khởi tạo mã QR PayOS');
+        })
+        .finally(() => setPayosLoading(false));
+    } else {
+      setPayosData(null);
+    }
+  }, [paymentMethod, payTermsAccepted, finalPrice, formData.so_dien_thoai, user]);
+
+  // Reset terms agreement when switching back to Cash at Counter
+  useEffect(() => {
+    if (paymentMethod === 'tai_quay') {
+      setPayTermsAccepted(false);
+      setPayosData(null);
+    }
+  }, [paymentMethod]);
+
+  // Real-time PayOS Webhook Polling & 10-minute Countdown Timer
+  useEffect(() => {
+    if (!payosData || !payosData.orderCode) {
+      if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      setPayosTimeLeft(600);
       return;
     }
 
-    // NẾU CHƯA ĐĂNG NHẬP -> Bật Modal Popup xin ý kiến chuyển hướng
-    if (!isAuthenticated()) {
-      setShowAuthModal(true);
-      return;
+    setPayosTimeLeft(600);
+    isCreatingBookingRef.current = false;
+
+    countdownTimerRef.current = setInterval(() => {
+      setPayosTimeLeft((prev) => {
+        if (prev <= 1) {
+          if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+          if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+          toast.error('Mã thanh toán QR PayOS đã hết hạn (quá 10 phút)! Vui lòng thử lại.');
+          setPayosData(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    pollingTimerRef.current = setInterval(async () => {
+      if (isCreatingBookingRef.current) return;
+      try {
+        const res = await fetch(`${BASE_URL}/client/payment/status/${payosData.orderCode}`);
+        const data = await res.json();
+        if (data && (data.paid || data.status === 'PAID' || data.status === 'PAID_SUCCESS')) {
+          isCreatingBookingRef.current = true;
+          if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+          if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+          toast.success('🎉 Hệ thống đã nhận tiền chuyển khoản PayOS thành công!');
+          await executeBookingCreation('payos');
+        }
+      } catch (err) {
+        console.error('Lỗi kiểm tra thanh toán PayOS:', err);
+      }
+    }, 3000);
+
+    return () => {
+      if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+    };
+  }, [payosData]);
+
+  // Reset session and staff when service or booking type changes
+  useEffect(() => {
+    setBuoiField('');
+    setSelectedStaffId('');
+  }, [selectedServiceId, bookingType, setBuoiField]);
+
+  const validateFormFields = (): boolean => {
+    if (!selectedDate) {
+      toast.error('Vui lòng chọn ngày!');
+      return false;
+    }
+    if (!selectedBuoi) {
+      toast.error('Vui lòng chọn buổi (Sáng hoặc Chiều)!');
+      return false;
+    }
+    const nameTrimmed = (formData.ho_ten_khach || user?.ho_ten || '').trim();
+    const phoneTrimmed = (formData.so_dien_thoai || user?.so_dien_thoai || '').trim();
+    const symptomTrimmed = formData.trieu_chung.trim();
+
+    if (!nameTrimmed) {
+      toast.error('Thông tin họ tên tài khoản không hợp lệ!');
+      return false;
     }
 
-    const toastId = toast.loading('Đang gửi đăng ký lịch hẹn y khoa...');
-    dispatch({ type: 'SET_SUBMITTING', isSubmitting: true });
-    
-    const [year, month, day] = state.selectedDate.split('-');
-    const [hours, minutes] = state.selectedTime.split(':');
-    const ngay_gio_bat_dau = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes)).toISOString();
+    if (!phoneTrimmed) {
+      toast.error('Thông tin số điện thoại tài khoản không hợp lệ!');
+      return false;
+    }
+
+    if (bookingType === 'kham') {
+      if (!symptomTrimmed) {
+        toast.error('Vui lòng nhập lý do đến lượng giá / triệu chứng!');
+        return false;
+      }
+    }
+
+    if (isPhoneTakenByOther) {
+      toast.error('Số điện thoại tài khoản đã thuộc về hồ sơ khách hàng khác — vui lòng cập nhật lại trước khi thanh toán.');
+      return false;
+    }
+    return true;
+  };
+
+  const handleAgreeTermsModalGate = async () => {
+    if (!acceptedTerms) return;
+    setAgreeingLoading(true);
+    try {
+      await agreeTerms();
+      updateUser({ ngay_dong_y_dieu_khoan: new Date().toISOString() });
+      toast.success('Xác nhận đồng ý điều khoản dịch vụ thành công!');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Lỗi khi ghi nhận đồng ý điều khoản. Vui lòng thử lại.');
+    } finally {
+      setAgreeingLoading(false);
+    }
+  };
+
+  const handleConfirmModalTerms = () => {
+    if (!validateFormFields()) return;
+    if (!modalTermsChecked) {
+      toast.error('Vui lòng tích chọn đồng ý với tất cả điều khoản dịch vụ & thanh toán!');
+      return;
+    }
+    setPayTermsAccepted(true);
+    setIsTermsModalOpen(false);
+    toast.success('Đã xác nhận đồng ý điều khoản! Đang khởi tạo mã QR PayOS...');
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormField(e.target.name, e.target.value);
+  };
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Chỉ chấp nhận tệp hình ảnh (.jpg, .png, .webp)!');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Kích thước ảnh tối đa là 5MB!');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormField('anh_dinh_kem_url', reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setFormField('anh_dinh_kem_url', '');
+  };
+
+  const executeBookingCreation = async (method: 'payos' | 'tai_quay') => {
+    if (isSubmitting) return;
+    if (!selectedBuoi || (selectedBuoi !== 'sang' && selectedBuoi !== 'chieu')) {
+      toast.error('Vui lòng chọn buổi (Buổi Sáng hoặc Buổi Chiều) trước khi hoàn tất đặt lịch.');
+      return;
+    }
+    const toastId = toast.loading(method === 'payos' ? 'Đang tự động kích hoạt lịch hẹn...' : 'Đang gửi đăng ký lịch hẹn...');
+    setSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/client/appointments/public', {
+      const examService = services.find(s => s.loai_goi === 'KHAM' || s.loai_dich_vu === 'KHAM');
+      const targetDichVuId = bookingType === 'dich_vu' ? selectedServiceId : (examService?.id || services[0]?.id);
+      const payNow = method === 'payos';
+
+      const response = await fetch(`${BASE_URL}/client/appointments/public`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...state.formData,
-          ngay_gio_bat_dau,
-          nguoi_dung_id: user?.id,
+          ...formData,
+          ho_ten_khach: user?.ho_ten || formData.ho_ten_khach,
+          so_dien_thoai: user?.so_dien_thoai || formData.so_dien_thoai,
+          ngay: selectedDate,
+          buoi: selectedBuoi,
+          khach_hang_id: user?.id,
+          nhan_su_id: selectedStaffId ? parseInt(selectedStaffId, 10) : null,
+          goi_dich_vu_id: targetDichVuId,
+          trieu_chung: bookingType === 'dich_vu' ? `Đặt lịch gói lẻ: ${selectedService?.ten_dich_vu || 'Dịch vụ lẻ PHCN'}` : formData.trieu_chung,
+          ly_do_kham: bookingType === 'dich_vu' ? `Trị liệu lẻ: ${selectedService?.ten_dich_vu || 'Không rõ'}` : (formData.ly_do_kham || 'Lượng giá chức năng ban đầu'),
+          trang_thai: 'da_xac_nhan',
+          trang_thai_thanh_toan: payNow ? 'da_thanh_toan' : 'chua_thanh_toan',
+          hinh_thuc_thanh_toan: method,
+          ma_voucher: selectedVoucher ? selectedVoucher.ma_voucher : null
         }),
       });
 
       if (response.ok) {
-        toast.success('Đăng ký lịch khám thành công!', { id: toastId });
-        dispatch({ type: 'SET_SUCCESS', isSuccess: true });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (user && user.ngay_dong_y_dieu_khoan === null) {
+          await agreeTerms().catch(() => {});
+          updateUser({ ngay_dong_y_dieu_khoan: new Date().toISOString() });
+        }
+
+        await response.json();
+        toast.success(payNow ? '🎉 Thanh toán PayOS thành công & Lịch hẹn đã được xác nhận!' : 'Đăng ký lịch hẹn thành công!', { id: toastId });
+
+        navigate('/appointments');
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Không thể tạo lịch hẹn. Hãy thử lại.', { id: toastId });
+        toast.error(error.message || 'Không thể đăng ký lịch hẹn. Hãy thử lại.', { id: toastId });
       }
     } catch (error) {
       toast.error('Lỗi kết nối máy chủ trị liệu!', { id: toastId });
     } finally {
-      dispatch({ type: 'SET_SUBMITTING', isSubmitting: false });
+      setSubmitting(false);
     }
   };
 
-  const handleRedirectToLogin = () => {
-    localStorage.setItem('temp_booking', JSON.stringify({
-      selectedDate,
-      selectedTime,
-      formData
-    }));
-    navigate('/login', { state: { from: '/booking' } });
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateFormFields()) return;
 
-  const formatFullDate = (dateString: string) => {
-    if (!isClient) return '';
-    return fullDateFormatter.format(new Date(dateString));
-  };
-
-  const { selectedDate, selectedTime, isSubmitting, isSuccess, formData } = state;
-
-  // Custom Grid Calendar Generator
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1).getDay(); // 0 is Sunday
-    const totalDays = new Date(year, month + 1, 0).getDate();
-    
-    const days = [];
-    
-    // Pad previous month's days
-    const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Align to Monday
-    for (let i = 0; i < adjustedFirstDay; i++) {
-      days.push(null);
-    }
-    
-    for (let d = 1; d <= totalDays; d++) {
-      days.push(new Date(year, month, d));
-    }
-    
-    return days;
-  };
-
-  const daysGrid = getDaysInMonth(currentMonth);
-  const weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  const handleMonthChange = (direction: 'prev' | 'next') => {
-    const newMonth = new Date(currentMonth);
-    if (direction === 'prev') {
-      newMonth.setMonth(newMonth.getMonth() - 1);
-    } else {
-      newMonth.setMonth(newMonth.getMonth() + 1);
-    }
-    
-    // Prevent moving before current month
-    const now = new Date();
-    if (direction === 'prev' && newMonth.getFullYear() === now.getFullYear() && newMonth.getMonth() < now.getMonth()) {
+    if (paymentMethod === 'payos' && !payTermsAccepted) {
+      toast.error('Bạn vui lòng tích xem & đồng ý Điều khoản thanh toán để tiếp tục!');
       return;
     }
-    setCurrentMonth(newMonth);
+
+    await executeBookingCreation(paymentMethod);
   };
 
-  if (isSuccess) {
+  if (!isAuthenticated()) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-[32px] shadow-soft-ui-hover p-8 text-center space-y-6 border border-gray-150 animate-slide-up">
-          <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[24px] flex items-center justify-center mx-auto shadow-inner border border-emerald-100/50">
-            <CheckCircle2 size={40} />
-          </div>
-          <h2 className="text-2xl font-heading font-black text-secondary">Đăng ký thành công!</h2>
-          
-          <div className="text-sm font-medium text-gray-500 leading-relaxed bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-            Cảm ơn bạn đã lựa chọn <span className="text-primary font-bold">Office Care</span>. Yêu cầu của bạn đã được chuyển tới bộ phận tiếp đón. Chúng tôi sẽ gửi thông báo phê duyệt ngay sau khi Lễ tân xác thực thông tin.
+      <div className="min-h-screen bg-slate-900/70 backdrop-blur-xl flex items-center justify-center p-4 relative overflow-hidden font-jakarta">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative max-w-[500px] w-full bg-white/95 dark:bg-zinc-900/95 backdrop-blur-2xl rounded-[36px] p-8 sm:p-10 border border-teal-100 dark:border-zinc-800 shadow-2xl shadow-teal-950/20 z-10 text-center animate-in fade-in zoom-in-95 duration-300">
+          <div className="relative inline-flex mb-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-teal-400 to-cyan-600 rounded-3xl flex items-center justify-center shadow-lg shadow-teal-500/30 text-white transform -rotate-3 hover:rotate-0 transition-all duration-300">
+              <Sparkles size={38} className="animate-pulse" />
+            </div>
           </div>
 
-          <div className="bg-primary/5 text-primary p-5 rounded-[20px] text-left text-xs border border-primary/10">
-            <p className="font-extrabold mb-2 flex items-center gap-1">
-              <Info size={14} /> Lưu ý trước khi đến khám:
-            </p>
-            <ul className="list-disc list-inside space-y-1.5 font-medium text-gray-600">
-              <li>Mặc trang phục rộng rãi, co giãn tốt.</li>
-              <li>Mang theo chẩn đoán, phim chụp MRI/X-Quang cũ (nếu có).</li>
-              <li>Đến trước giờ khám 10 phút để làm hồ sơ y khoa.</li>
-            </ul>
+          <div className="inline-block px-3.5 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200/60 dark:border-teal-800/60 text-teal-700 dark:text-teal-300 text-[11px] font-black uppercase tracking-wider mb-3">
+            Bảo vệ hồ sơ & Chuẩn hóa lịch hẹn
           </div>
+
+          <h3 className="font-heading font-black text-2xl sm:text-[26px] text-slate-900 dark:text-white text-center mb-3 tracking-tight leading-snug">
+            Chào mừng bạn đến với OfficeCare 🌿
+          </h3>
           
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <p className="text-slate-600 dark:text-zinc-400 font-medium text-xs sm:text-sm leading-relaxed text-center mb-6 px-1">
+            Quý khách vui lòng đăng nhập hoặc đăng ký tài khoản để bắt đầu đặt lịch lượng giá & trị liệu cá nhân hóa.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
             <button
-              onClick={() => navigate('/dashboard')}
-              className="w-full bg-secondary hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+              className="bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 font-bold text-xs py-3.5 px-5 rounded-2xl flex-1 text-center transition-all cursor-pointer shadow-2xs"
             >
-              Vào Dashboard
+              Quay về Trang chủ
             </button>
             <button
-              onClick={() => navigate('/')}
-              className="w-full bg-primary hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-xs"
+              onClick={() => navigate('/login', { state: { from: '/booking' } })}
+              className="bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-black text-xs tracking-wide py-3.5 px-6 rounded-2xl flex-1 text-center transition-all shadow-lg shadow-teal-500/25 hover:shadow-teal-500/40 hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2"
             >
-              Quay lại Trang chủ
+              <span>Đăng nhập / Đăng ký</span>
+              <span className="text-sm">➔</span>
             </button>
           </div>
         </div>
@@ -271,413 +514,183 @@ export default function Booking() {
     );
   }
 
+  const payosQrImgUrl = payosData
+    ? `https://img.vietqr.io/image/${payosData.bin || 'MB'}-${payosData.accountNumber || '0358966332'}-compact2.png?amount=${payosData.amount}&addInfo=${encodeURIComponent(payosData.description)}&accountName=${encodeURIComponent(payosData.accountName || 'PHONG KHAM PHCN OFFICECARE')}`
+    : '';
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
-        
-        {/* Upper quick controls */}
-        <div className="flex justify-between items-center mb-8 animate-fade-in">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="flex items-center gap-1.5 text-zinc-400 hover:text-primary transition-all text-xs font-bold uppercase tracking-wider"
-          >
-            <ArrowLeft size={16} /> Quay lại
-          </button>
-          <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded-full font-bold uppercase tracking-wide">
-            Cổng đặt lịch trực tuyến
-          </span>
-        </div>
+    <div className="min-h-screen bg-[#F8FAFC] pt-6 pb-20 px-4 sm:px-6 lg:px-8 font-jakarta">
+      {/* Terms consent modal gate for new accounts */}
+      <BookingTermsModal
+        isOpen={!!user && user.ngay_dong_y_dieu_khoan === null}
+        onClose={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+        checked={acceptedTerms}
+        setChecked={setAcceptedTerms}
+        onConfirm={handleAgreeTermsModalGate}
+        loading={agreeingLoading}
+      />
 
-        {/* Hero Title */}
-        <div className="text-center mb-12 animate-slide-up">
-          <h1 className="text-3xl sm:text-5xl font-heading font-black text-secondary tracking-tight">
-            Đặt Lịch Khám Lượng Giá
+      {/* Online payment terms popup modal */}
+      <BookingTermsModal
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
+        checked={modalTermsChecked}
+        setChecked={setModalTermsChecked}
+        onConfirm={handleConfirmModalTerms}
+      />
+
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header Title */}
+        <div className="text-center space-y-3 max-w-4xl mx-auto pt-2 pb-2">
+          <div className="inline-flex items-center gap-2 bg-teal-50 border border-teal-200/80 px-4 py-1.5 rounded-full shadow-2xs">
+            <span className="text-teal-600 text-xs">🏥</span>
+            <span className="text-[10px] sm:text-[11px] font-black text-teal-800 uppercase tracking-wider">
+              Dịch vụ Phục hồi Chức năng Y khoa Chuẩn Quốc Tế
+            </span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-snug">
+            Đặt Lịch Hẹn <span className="text-teal-600">Lượng Giá &amp; Trị Liệu PHCN</span>
           </h1>
-          <p className="mt-3 text-base text-gray-500 font-semibold max-w-xl mx-auto leading-relaxed">
-            Khám chẩn đoán lâm sàng 5 bước chuyên sâu và lập phác đồ y khoa cá nhân hóa cùng Bác sĩ Chuyên khoa hàng đầu.
-          </p>
-        </div>
 
-        {/* Booking Interface columns (Asymmetric 33/66 layout) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
-          {/* LEFT COLUMN: Service information & Clinical Details (Anti-Sparsity Expansion) */}
-          <div className="lg:col-span-4 space-y-6 animate-slide-up stagger-delay-1">
-            
-            {/* Main Service Card with Illustration */}
-            <div className="bg-white rounded-[24px] shadow-sm border border-gray-150 overflow-hidden relative group">
-              <div className="h-44 bg-gradient-to-br from-secondary to-[#1E293B] relative p-6 flex flex-col justify-end">
-                <div className="absolute inset-0 opacity-40 group-hover:scale-105 transition-transform duration-700 overflow-hidden">
-                  <img 
-                    src="/clinical_examination_illustration_1779796536526.png" 
-                    alt="Khám Lâm Sàng" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-secondary via-secondary/70 to-transparent"></div>
-                </div>
-                
-                <div className="relative z-10 text-white">
-                  <span className="bg-primary/20 text-primary border border-primary/30 text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full">
-                    PhysioFlow Rehab
-                  </span>
-                  <h2 className="text-lg font-heading font-black leading-tight mt-2.5">
-                    Khám Lâm sàng & Lượng giá
-                  </h2>
-                  <p className="text-zinc-400 text-[10px] font-bold mt-1">Chẩn đoán nguyên nhân tận gốc</p>
-                </div>
-              </div>
-              
-              <div className="p-6 space-y-5">
-                <div className="flex items-start gap-3.5 text-gray-500">
-                  <MapPin className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-xs font-semibold leading-relaxed">Tầng 3, Tòa nhà ABC, Quận 7, TP. Hồ Chí Minh</span>
-                </div>
-                
-                <div className="flex items-start gap-3.5 text-gray-500">
-                  <Activity className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-xs font-semibold leading-relaxed">Trị liệu Cơ xương khớp cấp tính, cột sống & phục hồi vận động</span>
-                </div>
-
-                <div className="pt-5 border-t border-gray-100 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phí khám ban đầu</span>
-                    <span className="text-xs font-black text-emerald-500 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                      Miễn phí 100%
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-start gap-3 bg-[#E6F4F1] text-secondary p-4 rounded-[20px] text-xs border border-primary/10 leading-relaxed font-medium">
-                    <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-gray-600 leading-relaxed">
-                      Chúng tôi **MIỄN PHÍ 100%** chi phí khám ban đầu cùng Bác sĩ để giúp bạn chẩn đoán chính xác tình trạng đau nhức mà không lo về giá.
-                    </p>
-                  </div>
-                </div>
+          {/* Stepper Cards Header */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2 text-left">
+            <div className="p-3.5 rounded-2xl border-2 border-teal-200 bg-teal-50/70 transition-all flex items-center gap-3 shadow-2xs">
+              <div className="w-8 h-8 rounded-full font-black text-xs flex items-center justify-center shrink-0 shadow-xs bg-teal-600 text-white">1</div>
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase text-teal-700">Bước 1</p>
+                <p className="text-xs font-black text-slate-900 truncate">Gói Dịch Vụ</p>
               </div>
             </div>
-
-            {/* Rich Content: 5-Step Clinical Process */}
-            <div className="bg-white rounded-[24px] shadow-sm border border-gray-150 p-6 space-y-6">
-              <h3 className="text-sm font-heading font-black text-secondary uppercase tracking-wider flex items-center gap-2">
-                <Stethoscope size={18} className="text-primary" />
-                Quy trình lượng giá 5 bước
-              </h3>
-              
-              <div className="relative border-l border-zinc-100 ml-2.5 pl-5 space-y-5 text-xs text-gray-500">
-                <div className="relative">
-                  <div className="absolute -left-[26px] top-0 size-3 bg-primary rounded-full border-2 border-white ring-4 ring-primary/10"></div>
-                  <h4 className="font-extrabold text-secondary">Bước 1: Tiếp nhận triệu chứng</h4>
-                  <p className="mt-1 leading-relaxed text-[11px]">Khai thác lịch sử đau nhức, thói quen sinh hoạt và các vùng nhức mỏi cục bộ.</p>
-                </div>
-                
-                <div className="relative">
-                  <div className="absolute -left-[26px] top-0 size-3 bg-zinc-300 rounded-full border-2 border-white ring-4 ring-zinc-100"></div>
-                  <h4 className="font-extrabold text-secondary">Bước 2: Lượng giá tầm vận động (ROM)</h4>
-                  <p className="mt-1 leading-relaxed text-[11px]">Đo độ linh hoạt khớp xương, kiểm tra co rút cơ lực bằng thiết bị chuyên khoa.</p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[26px] top-0 size-3 bg-zinc-300 rounded-full border-2 border-white ring-4 ring-zinc-100"></div>
-                  <h4 className="font-extrabold text-secondary">Bước 3: Chẩn đoán hình ảnh y khoa</h4>
-                  <p className="mt-1 leading-relaxed text-[11px]">Đọc và đối chiếu kết quả phim X-Quang/MRI cũ để xác định tổn thương thực thể.</p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[26px] top-0 size-3 bg-zinc-300 rounded-full border-2 border-white ring-4 ring-zinc-100"></div>
-                  <h4 className="font-extrabold text-secondary">Bước 4: Hội chẩn cùng Bác sĩ</h4>
-                  <p className="mt-1 leading-relaxed text-[11px]">Bác sĩ chuyên khoa chẩn đoán gốc rễ nguyên nhân gây đau nhức lâm sàng.</p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[26px] top-0 size-3 bg-zinc-300 rounded-full border-2 border-white ring-4 ring-zinc-100"></div>
-                  <h4 className="font-extrabold text-secondary">Bước 5: Thiết lập phác đồ cá nhân hóa</h4>
-                  <p className="mt-1 leading-relaxed text-[11px]">Xây dựng liệu trình phục hồi, thời gian trị liệu và kế hoạch bài tập chi tiết.</p>
-                </div>
+            <div className="p-3.5 rounded-2xl border-2 border-sky-200 bg-sky-50/70 transition-all flex items-center gap-3 shadow-2xs">
+              <div className="w-8 h-8 rounded-full font-black text-xs flex items-center justify-center shrink-0 shadow-xs bg-sky-600 text-white">2</div>
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase text-sky-700">Bước 2</p>
+                <p className="text-xs font-black text-slate-900 truncate">Buổi &amp; Thời Gian</p>
               </div>
             </div>
-
-            {/* Quality Commitments */}
-            <div className="bg-white rounded-[24px] shadow-sm border border-gray-150 p-6 space-y-4">
-              <h3 className="text-sm font-heading font-black text-secondary uppercase tracking-wider flex items-center gap-2">
-                <Award size={18} className="text-primary" />
-                Cam kết y khoa tại PhysioFlow
-              </h3>
-              <ul className="space-y-3 text-[11px] font-semibold text-gray-500 leading-relaxed">
-                <li className="flex items-center gap-2">
-                  <span className="size-1.5 bg-emerald-500 rounded-full"></span>
-                  Đội ngũ Bác sĩ/KTV 100% có chứng chỉ hành nghề y khoa chuyên môn.
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="size-1.5 bg-emerald-500 rounded-full"></span>
-                  Không chèo kéo dịch vụ, tập trung phục hồi gốc rễ bệnh lý.
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="size-1.5 bg-emerald-500 rounded-full"></span>
-                  Thiết bị hiện đại nhập khẩu đạt chứng nhận an toàn FDA.
-                </li>
-              </ul>
+            <div className="p-3.5 rounded-2xl border-2 border-indigo-200 bg-indigo-50/70 transition-all flex items-center gap-3 shadow-2xs">
+              <div className="w-8 h-8 rounded-full font-black text-xs flex items-center justify-center shrink-0 shadow-xs bg-indigo-600 text-white">3</div>
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase text-indigo-700">Bước 3</p>
+                <p className="text-xs font-black text-slate-900 truncate">Thông Tin Khách</p>
+              </div>
             </div>
-
-          </div>
-
-          {/* RIGHT COLUMN: Interactive Form with time slots */}
-          <div className="lg:col-span-8 bg-white rounded-[24px] shadow-sm border border-gray-150 p-6 sm:p-8 animate-slide-up stagger-delay-2">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              
-              {/* Step 1: Time selectors */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-heading font-black text-secondary flex items-center gap-2">
-                  <CalendarIcon className="w-5 h-5 text-primary" />
-                  1. Chọn thời gian khám lâm sàng
-                </h3>
-                
-                {/* Modern Custom Grid Calendar (Bounce & Interaction Effect) */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center bg-zinc-50 p-3.5 rounded-xl border border-zinc-150">
-                    <span className="text-sm font-black text-secondary uppercase tracking-wider">
-                      {currentMonth.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
-                    </span>
-                    
-                    <div className="flex gap-1.5">
-                      <button 
-                        type="button"
-                        onClick={() => handleMonthChange('prev')}
-                        className="p-2 bg-white rounded-lg border border-gray-200 text-secondary hover:text-primary hover:border-primary/20 hover:bg-primary/5 transition-all active:scale-90"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => handleMonthChange('next')}
-                        className="p-2 bg-white rounded-lg border border-gray-200 text-secondary hover:text-primary hover:border-primary/20 hover:bg-primary/5 transition-all active:scale-90"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Calendar Grid wrapper */}
-                  <div className="border border-zinc-100 rounded-2xl p-4 bg-white shadow-xs">
-                    {/* Days of week */}
-                    <div className="grid grid-cols-7 gap-1 text-center mb-2.5">
-                      {weekDays.map(day => (
-                        <span key={day} className="text-[10px] font-black text-zinc-400 uppercase tracking-widest py-1 block">
-                          {day}
-                        </span>
-                      ))}
-                    </div>
-                    
-                    {/* Month Days Grid */}
-                    <div className="grid grid-cols-7 gap-1.5">
-                      {daysGrid.map((day, idx) => {
-                        if (!day) return <div key={`empty-${idx}`} />;
-                        
-                        const dateStr = day.toISOString().split('T')[0];
-                        const isPast = dateStr < todayStr;
-                        const isSelected = selectedDate === dateStr;
-                        
-                        return (
-                          <button
-                            type="button"
-                            key={dateStr}
-                            disabled={isPast}
-                            onClick={() => dispatch({ type: 'SET_DATE', date: dateStr })}
-                            className={`py-3.5 text-xs font-black rounded-xl transition-all duration-250 select-none outline-none relative flex flex-col items-center justify-center
-                              ${isPast 
-                                ? 'bg-zinc-50 text-zinc-300 cursor-not-allowed opacity-40' 
-                                : isSelected
-                                  ? 'bg-primary text-white shadow-md shadow-primary/20 scale-108 active:scale-95 z-10'
-                                  : 'bg-white text-secondary border border-zinc-100 hover:border-primary/20 hover:bg-primary/5 hover:text-primary active:scale-95'
-                              }`}
-                          >
-                            <span>{day.getDate()}</span>
-                            {dateStr === todayStr && !isSelected && (
-                              <span className="absolute bottom-1 size-1 bg-primary rounded-full"></span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Clock Slot Grid */}
-                <div className="space-y-3 pt-3">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block flex items-center gap-1.5">
-                    <Clock size={14} className="text-primary" />
-                    Khung giờ trống ({formatFullDate(selectedDate)})
-                  </label>
-                  
-                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
-                    {timeSlots.map((time) => (
-                      <button
-                        type="button"
-                        key={time}
-                        onClick={() => dispatch({ type: 'SET_TIME', time })}
-                        className={`py-3 px-2 text-xs font-extrabold rounded-xl border transition-all active:scale-95 duration-200
-                          ${selectedTime === time 
-                            ? 'bg-primary border-primary text-white shadow-xs scale-102 font-black' 
-                            : 'bg-zinc-50 border-transparent text-secondary hover:border-primary/20 hover:bg-primary/5 hover:text-primary'
-                          }`}
-                      >
-                        {time}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            <div className="p-3.5 rounded-2xl border-2 border-emerald-200 bg-emerald-50/70 transition-all flex items-center gap-3 shadow-2xs">
+              <div className="w-8 h-8 rounded-full font-black text-xs flex items-center justify-center shrink-0 shadow-xs bg-emerald-600 text-white">4</div>
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase text-emerald-700">Bước 4</p>
+                <p className="text-xs font-black text-slate-900 truncate">Thanh Toán &amp; Đặt</p>
               </div>
-
-              <hr className="border-gray-150" />
-
-              {/* Step 2: Customer Identity info */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-heading font-black text-secondary flex items-center gap-2">
-                  <User className="w-5 h-5 text-primary" />
-                  2. Thông tin bệnh nhân liên hệ
-                </h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label htmlFor="ho_ten_khach" className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Họ và tên *</label>
-                    <input
-                      id="ho_ten_khach"
-                      type="text"
-                      name="ho_ten_khach"
-                      required
-                      readOnly={!!user?.ho_ten}
-                      placeholder="Nguyễn Văn A"
-                      className={`w-full rounded-xl p-4 border font-bold text-secondary text-sm outline-none transition-colors ${
-                        user?.ho_ten 
-                          ? 'bg-zinc-100 text-gray-400 border-zinc-200 cursor-not-allowed' 
-                          : 'border-gray-250 focus:border-primary'
-                      }`}
-                      value={formData.ho_ten_khach}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  
-                  <div className="space-y-1.5">
-                    <label htmlFor="so_dien_thoai" className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Số điện thoại *</label>
-                    <input
-                      id="so_dien_thoai"
-                      type="tel"
-                      name="so_dien_thoai"
-                      required
-                      placeholder="0901234567"
-                      className="w-full rounded-xl border-gray-250 focus:border-primary p-4 border font-bold text-secondary text-sm outline-none transition-colors"
-                      value={formData.so_dien_thoai}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2 space-y-2">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Giới tính</span>
-                    <div className="flex gap-6">
-                      <label className="flex items-center cursor-pointer group">
-                        <input 
-                          type="radio" 
-                          name="gioi_tinh_khach" 
-                          value="nam" 
-                          checked={formData.gioi_tinh_khach === 'nam'} 
-                          onChange={handleChange} 
-                          className="text-primary focus:ring-primary border-zinc-300 w-4 h-4 cursor-pointer" 
-                        />
-                        <span className="ml-2 text-xs font-bold text-secondary group-hover:text-primary transition-colors">Nam</span>
-                      </label>
-                      <label className="flex items-center cursor-pointer group">
-                        <input 
-                          type="radio" 
-                          name="gioi_tinh_khach" 
-                          value="nu" 
-                          checked={formData.gioi_tinh_khach === 'nu'} 
-                          onChange={handleChange} 
-                          className="text-primary focus:ring-primary border-zinc-300 w-4 h-4 cursor-pointer" 
-                        />
-                        <span className="ml-2 text-xs font-bold text-secondary group-hover:text-primary transition-colors">Nữ</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <hr className="border-gray-150" />
-
-              {/* Step 3: Symptoms Description */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-heading font-black text-secondary flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-primary" />
-                  3. Mô tả tình trạng đau nhức
-                </h3>
-                
-                <div className="space-y-1.5">
-                  <label htmlFor="trieu_chung" className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-                    Triệu chứng & Vùng đau nhức (Vị trí, cảm giác tê mỏi...) *
-                  </label>
-                  <textarea
-                    id="trieu_chung"
-                    name="trieu_chung"
-                    required
-                    rows={4}
-                    placeholder="VD: Tôi bị đau mỏi thắt lưng lan nhẹ xuống hông phải khi ngồi làm việc lâu, kèm cảm giác căng cứng cơ vào buổi sáng..."
-                    className="w-full rounded-xl border-gray-250 focus:border-primary p-4 border font-medium text-secondary text-sm resize-none outline-none transition-colors leading-relaxed"
-                    value={formData.trieu_chung}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-
-              {/* Submit button layout */}
-              <div className="pt-4">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-primary hover:opacity-95 text-white font-extrabold text-xs uppercase tracking-widest py-4 rounded-xl shadow-xs disabled:opacity-75 disabled:cursor-not-allowed flex justify-center items-center transition-all active:scale-98"
-                >
-                  {isSubmitting ? 'Đang gửi thông tin đăng ký...' : 'Xác nhận đăng ký lịch khám'}
-                </button>
-                <p className="text-center text-[10px] font-bold text-zinc-400 mt-4 leading-relaxed">
-                  Bằng việc gửi đăng ký lịch hẹn, bạn đã đồng ý với chính sách và quy trình đón tiếp lâm sàng của Office Care.
-                </p>
-              </div>
-
-            </form>
+            </div>
           </div>
         </div>
 
+        {/* Main Unified Booking Form */}
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: 8-cols */}
+          <div className="lg:col-span-8">
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 space-y-8 shadow-xs text-left">
+              {/* Section 1: Service Type & Item Selection */}
+              <BookingServiceSection
+                bookingType={bookingType}
+                setBookingType={handleSetBookingType}
+                selectedServiceId={selectedServiceId}
+                setSelectedServiceId={setSelectedServiceId}
+                services={services}
+                servicesLoading={servicesLoading}
+              />
+
+              {/* Section 2: Date, Session, Staff Selection */}
+              <BookingDateTimeStaffSection
+                selectedDate={selectedDate}
+                setDateField={setDateField}
+                selectedBuoi={selectedBuoi}
+                setBuoiField={setBuoiField}
+                buoiAvailability={buoiAvailability}
+                serviceDuration={serviceDuration}
+                selectedService={selectedService}
+                bookingType={bookingType}
+                staffList={staffList}
+                selectedStaffId={selectedStaffId}
+                setSelectedStaffId={setSelectedStaffId}
+              />
+
+              {/* Section 3: Customer Information */}
+              <BookingCustomerFormSection
+                user={user}
+                formData={formData}
+                handleChange={handleChange}
+                bookingType={bookingType}
+                isPhoneTakenByOther={isPhoneTakenByOther}
+                handleFile={handleFile}
+                removeImage={removeImage}
+              />
+
+              {/* Section 4: Payment Methods, Voucher, PayOS */}
+              <BookingPaymentSection
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                buoiAvailability={buoiAvailability}
+                validateFormFields={validateFormFields}
+                selectedVoucher={selectedVoucher}
+                handleApplyVoucher={handleApplyVoucher}
+                handleRemoveVoucher={handleRemoveVoucher}
+                rawPrice={rawPrice}
+                discountAmount={discountAmount}
+                finalPrice={finalPrice}
+                activeVouchers={activeVouchers}
+                user={user}
+                bookingType={bookingType}
+                payTermsAccepted={payTermsAccepted}
+                setPayTermsAccepted={setPayTermsAccepted}
+                setIsTermsModalOpen={setIsTermsModalOpen}
+                payosLoading={payosLoading}
+                payosData={payosData}
+                payosQrImgUrl={payosQrImgUrl}
+                payosTimeLeft={payosTimeLeft}
+              />
+
+              {/* Submit CTA Button (Only shown for Cash at Counter) */}
+              {paymentMethod === 'tai_quay' && (
+                <div className="pt-4 border-t border-slate-100">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || isPhoneTakenByOther}
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white font-jakarta font-black text-sm uppercase tracking-widest rounded-2xl h-16 shadow-lg shadow-teal-600/20 transition-all hover:-translate-y-0.5 active:translate-y-0 duration-200 flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="animate-spin" size={18} /> Đang xử lý đăng ký...
+                      </span>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={18} /> Xác nhận đăng ký lượt lượng giá (Thanh toán tại quầy)
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Sticky Summary Card */}
+          <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
+            <BookingSummaryCard
+              bookingType={bookingType}
+              selectedService={selectedService}
+              selectedDate={selectedDate}
+              isClient={isClient}
+              selectedBuoi={selectedBuoi}
+              selectedStaffObj={selectedStaffObj}
+              paymentMethod={paymentMethod}
+              selectedVoucher={selectedVoucher}
+              discountAmount={discountAmount}
+              finalPrice={finalPrice}
+            />
+          </div>
+        </form>
       </div>
-
-      {/* POPUP MODAL REQUIRES ACCOUNT */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-secondary/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] max-w-md w-full p-8 shadow-md overflow-hidden border border-gray-150 animate-slide-up">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-primary/10 text-primary rounded-[20px] flex items-center justify-center mx-auto border border-primary/20">
-                <User size={30} />
-              </div>
-              <h3 className="text-2xl font-heading font-black text-secondary">Đăng nhập thành viên</h3>
-              <p className="text-xs font-semibold text-gray-500 leading-relaxed">
-                Để bảo vệ an toàn hồ sơ bệnh lý của bạn và thuận tiện cập nhật kết quả sau khám, xin vui lòng đăng nhập hoặc tạo tài khoản trước khi hoàn tất đăng ký.
-              </p>
-            </div>
-            
-            <div className="mt-8 flex flex-col gap-3">
-              <button 
-                onClick={handleRedirectToLogin}
-                className="w-full bg-primary hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-xs"
-              >
-                Đăng nhập hoặc Tạo tài khoản
-              </button>
-              <button 
-                onClick={() => setShowAuthModal(false)}
-                className="w-full bg-zinc-50 hover:bg-zinc-100 text-secondary font-bold py-3.5 rounded-xl text-xs border border-gray-200 transition-all"
-              >
-                Hủy bỏ
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

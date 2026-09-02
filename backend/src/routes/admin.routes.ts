@@ -1,173 +1,122 @@
 import { Router } from 'express';
 import { verifyToken, authorizeRoles } from '../middlewares/auth.middleware';
+import { requireActiveShift } from '../middlewares/shiftGuard.middleware';
+import { validate } from '../middlewares/validate.middleware';
 import * as adminController from '../controllers/admin.controller';
 import * as appointmentController from '../controllers/appointment.controller';
+import { uploadImage } from '../controllers/upload.controller';
+import { uploadMiddleware } from '../middlewares/upload.middleware';
+import {
+  packageSchema,
+  staffSchema,
+  roomSchema,
+  equipmentSchema,
+  scheduleSchema,
+} from '../schemas/admin.schema';
+import {
+  refundSchema,
+  packageRefundSchema,
+  expirePackageNoRefundSchema,
+} from '../schemas/finance.schema';
+import { voucherSchema } from '../schemas/marketing.schema';
+import { articleSchema } from '../schemas/article.schema';
+import { createAppointmentSchema, updateAppointmentStatusSchema } from '../schemas/appointment.schema';
 
 const router = Router();
 
-// Tất cả các route trong file này đều yêu cầu đăng nhập và có quyền Admin (vai_tro_id = 5) hoặc Quản lý (vai_tro_id = 6)
+// Tất cả các route trong file này đều yêu cầu đăng nhập
 router.use(verifyToken);
-router.use(authorizeRoles(5, 6));
 
-// Danh mục & Dịch vụ
-router.get('/categories', adminController.getCategories);
-router.post('/categories', adminController.createCategory);
-router.get('/services', adminController.getServices);
-router.post('/services', adminController.createService);
-router.put('/services/:id', adminController.updateService);
-router.delete('/services/:id', adminController.deleteService);
+// ─── NHÂN SỰ ─────────────────────────────────────────────────────────────────
+router.get('/staff/available', authorizeRoles(2, 3, 4, 5, 6), adminController.getAvailableStaff);
+router.get('/staff', authorizeRoles(2, 3, 4, 5, 6), adminController.getStaff);
+router.post('/staff', authorizeRoles(5), validate(staffSchema), adminController.createStaff);
+router.put('/staff/:id', authorizeRoles(5), adminController.updateStaff);
+router.patch('/staff/:id/status', authorizeRoles(5), adminController.updateStaffStatus);
+router.delete('/staff/:id/avatar', authorizeRoles(5), adminController.deleteStaffAvatar);
+router.post('/staff/:id/update-password', authorizeRoles(5), adminController.updateStaffPassword);
+router.post('/staff/send-security-otp', authorizeRoles(5), adminController.sendAdminOTP);
 
-// Phòng lâm sàng (Rooms)
-router.get('/rooms', adminController.getRooms);
+// ─── GÓI ĐIỀU TRỊ ─────────────────────────────────────────────────────────────
+router.get('/packages', authorizeRoles(2, 3, 4, 5, 6), adminController.getPackages);
+router.post('/packages', authorizeRoles(5, 6), validate(packageSchema), adminController.createPackage);
+router.put('/packages/:id', authorizeRoles(5, 6), validate(packageSchema), adminController.updatePackage);
+router.delete('/packages/:id', authorizeRoles(5, 6), adminController.deletePackage);
 
-// Gói điều trị
-router.get('/packages', adminController.getPackages);
-router.post('/packages', adminController.createPackage);
-router.put('/packages/:id', adminController.updatePackage);
-router.delete('/packages/:id', adminController.deletePackage);
+// ─── PHÒNG KHÁM ────────────────────────────────────────────────────────────────
+router.get('/rooms', authorizeRoles(2, 3, 4, 5, 6), adminController.getRooms);
+router.post('/rooms', authorizeRoles(5, 6), validate(roomSchema), adminController.createRoom);
+router.put('/rooms/:id', authorizeRoles(5, 6), validate(roomSchema), adminController.updateRoom);
+router.delete('/rooms/:id', authorizeRoles(5, 6), adminController.deleteRoom);
 
-// Nhân sự (Staff)
-router.get('/staff/available', adminController.getAvailableStaff);
-router.get('/staff', adminController.getStaff);
-router.post('/staff', adminController.createStaff);
-router.patch('/staff/:id/status', adminController.updateStaffStatus);
+// ─── THIẾT BỊ ──────────────────────────────────────────────────────────────────
+router.get('/equipment', authorizeRoles(2, 3, 4, 5, 6), adminController.getEquipment);
+router.post('/equipment', authorizeRoles(5, 6), validate(equipmentSchema), adminController.createEquipment);
+router.put('/equipment/:id', authorizeRoles(5, 6), validate(equipmentSchema), adminController.updateEquipment);
+router.delete('/equipment/:id', authorizeRoles(5, 6), adminController.deleteEquipment);
 
-// Khách hàng
-router.get('/customers', adminController.getCustomers);
+// ─── LỊCH LÀM VIỆC ────────────────────────────────────────────────────────────
+router.get('/schedules', authorizeRoles(2, 3, 4, 5, 6), adminController.getSchedules);
+router.post('/schedules', authorizeRoles(5, 6), validate(scheduleSchema), adminController.createSchedule);
+router.put('/schedules/:id', authorizeRoles(5, 6), validate(scheduleSchema), adminController.updateSchedule);
+router.delete('/schedules/:id', authorizeRoles(5, 6), adminController.deleteSchedule);
 
-// Thiết bị
-router.get('/equipment', adminController.getEquipment);
-router.post('/equipment', adminController.createEquipment);
+// ─── KHÁCH HÀNG ────────────────────────────────────────────────────────────────
+router.get('/customers', authorizeRoles(2, 4, 5, 6), adminController.getCustomers);
+// /overview, /treatment-plans, /completed-single-visits khai báo TRƯỚC /:id để không bị route :id nuốt mất làm id.
+router.get('/customers/overview', authorizeRoles(5, 6), adminController.getCustomersOverview);
+router.get('/customers/treatment-plans', authorizeRoles(5, 6), adminController.getTreatmentPlans);
+router.get('/customers/completed-single-visits', authorizeRoles(5, 6), adminController.getCompletedSingleVisits);
+router.get('/customers/:id/emr', authorizeRoles(5, 6), adminController.getCustomerEmr);
+router.get('/customers/:id/lock-impact', authorizeRoles(5, 6), adminController.getCustomerLockImpact);
+router.put('/customers/:id', authorizeRoles(5, 6), adminController.updateCustomer);
+router.patch('/customers/:id/toggle-lock', authorizeRoles(5, 6), adminController.toggleCustomerLock);
 
-// Ca làm việc / Lịch làm việc
-/**
- * @swagger
- * /admin/schedules:
- *   get:
- *     summary: Lấy danh sách lịch trực của toàn bộ nhân sự (Bác sĩ, KTV, Lễ tân)
- *     tags: [Admin - Lịch trực]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Danh sách lịch làm việc kèm vai trò và họ tên nhân sự
- *   post:
- *     summary: Tạo lịch trực mới cho nhân sự
- *     tags: [Admin - Lịch trực]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - nguoi_dung_id
- *               - thu_trong_tuan
- *               - gio_bat_dau
- *               - gio_ket_thuc
- *             properties:
- *               nguoi_dung_id: { type: string, format: uuid, description: "ID của người dùng (nhân sự)" }
- *               thu_trong_tuan: { type: string, enum: [thu_2, thu_3, thu_4, thu_5, thu_6, thu_7, chu_nhat] }
- *               gio_bat_dau: { type: string, example: "08:00" }
- *               gio_ket_thuc: { type: string, example: "17:00" }
- *               trang_thai: { type: string, enum: [hoat_dong, tam_nghi], default: hoat_dong }
- *     responses:
- *       201:
- *         description: Đã xếp lịch trực thành công
- */
-router.get('/schedules', adminController.getSchedules);
-router.post('/schedules', adminController.createSchedule);
+// ─── HỒ SƠ ĐIỀU TRỊ ───────────────────────────────────────────────────────────
+router.get('/medical-records', authorizeRoles(4, 5, 6), adminController.getMedicalRecords);
 
-// Hồ sơ điều trị (Tra cứu Bệnh án)
-router.get('/medical-records', adminController.getMedicalRecords);
+// ─── TÀI CHÍNH ────────────────────────────────────────────────────────────────
+router.get('/invoices', authorizeRoles(2, 5, 6), adminController.getInvoices);
+router.get('/payments', authorizeRoles(2, 5, 6), adminController.getPayments);
+router.post('/payments/:id/refund', authorizeRoles(5, 6), validate(refundSchema), adminController.handleRefund);
+router.post('/invoices/:id/refund-package', authorizeRoles(5, 6), validate(packageRefundSchema), adminController.handlePackageRefund);
+router.post('/invoices/:id/expire-no-refund', authorizeRoles(5, 6), validate(expirePackageNoRefundSchema), adminController.handleExpirePackageNoRefund);
 
-// Nhật ký hệ thống (Audit Logs)
-router.get('/audit-logs', adminController.getAuditLogs);
+// ─── BÀI VIẾT (BLOG) ──────────────────────────────────────────────────────────
+router.get('/articles', authorizeRoles(5, 6), adminController.getArticles);
+router.get('/articles/:id', authorizeRoles(5, 6), adminController.getArticleById);
+router.post('/articles', authorizeRoles(5, 6), validate(articleSchema), adminController.createArticle);
+router.put('/articles/:id', authorizeRoles(5, 6), validate(articleSchema), adminController.updateArticle);
+router.delete('/articles/:id', authorizeRoles(5, 6), adminController.deleteArticle);
 
-// Tài chính (Finance)
-router.get('/invoices', adminController.getInvoices);
-router.get('/payments', adminController.getPayments);
-router.post('/payments/:id/refund', adminController.handleRefund);
+// ─── UPLOAD ẢNH ────────────────────────────────────────────────────────────────
+router.post('/uploads/image', authorizeRoles(5, 6), uploadMiddleware.single('image'), uploadImage);
 
-// Marketing (Vouchers)
-router.get('/vouchers', adminController.getVouchers);
-router.post('/vouchers', adminController.createVoucher);
-router.put('/vouchers/:id', adminController.updateVoucher);
-router.delete('/vouchers/:id', adminController.deleteVoucher);
+// ─── MARKETING ─────────────────────────────────────────────────────────────────
+router.get('/vouchers', authorizeRoles(2, 5, 6), adminController.getVouchers);
+router.post('/vouchers', authorizeRoles(5, 6), validate(voucherSchema), adminController.createVoucher);
+router.put('/vouchers/:id', authorizeRoles(5, 6), adminController.updateVoucher);
+router.delete('/vouchers/:id', authorizeRoles(5, 6), adminController.deleteVoucher);
 
+router.get('/feedback', authorizeRoles(2, 5, 6), adminController.getFeedback);
+router.post('/feedback/service/:id/reply', authorizeRoles(2, 5, 6), adminController.replyServiceFeedback);
+router.post('/feedback/staff/:id/reply', authorizeRoles(2, 5, 6), adminController.replyStaffFeedback);
+router.post('/feedback/:type/:id/analyze', authorizeRoles(2, 5, 6), adminController.analyzeFeedback);
 
-// Đánh giá (Feedback)
-router.get('/feedback', adminController.getFeedback);
+// ─── BÁO CÁO ──────────────────────────────────────────────────────────────────
+router.get('/analytics/summary', authorizeRoles(2, 5, 6), adminController.getDashboardSummary);
+router.get('/analytics/revenue', authorizeRoles(5, 6), adminController.getRevenueStats);
+router.get('/analytics/performance', authorizeRoles(5, 6), adminController.getStaffPerformance);
+router.get('/analytics/top-packages', authorizeRoles(5, 6), adminController.getTopPackages);
+router.get('/analytics/top-vip-customers', authorizeRoles(5, 6), adminController.getTopVipCustomers);
 
-// Báo cáo (Analytics)
-router.get('/analytics/summary', adminController.getDashboardSummary);
-router.get('/analytics/revenue', adminController.getRevenueStats);
-router.get('/analytics/performance', adminController.getStaffPerformance);
-
-// Quản lý Lịch hẹn (Admin Master View)
-/**
- * @swagger
- * /admin/appointments:
- *   get:
- *     summary: Lấy danh sách tất cả lịch hẹn
- *     tags: [Admin - Lịch hẹn]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Danh sách lịch hẹn
- *   post:
- *     summary: Tạo lịch hẹn mới (Admin/Lễ tân)
- *     tags: [Admin - Lịch hẹn]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               khach_hang_id: { type: string, format: uuid }
- *               ho_ten_khach: { type: string }
- *               so_dien_thoai: { type: string }
- *               dich_vu_id: { type: string, format: uuid }
- *               ngay_gio_bat_dau: { type: string, format: date-time }
- *               ngay_gio_ket_thuc: { type: string, format: date-time }
- *     responses:
- *       201:
- *         description: Đã tạo lịch hẹn
- * 
- * /admin/appointments/{id}/status:
- *   patch:
- *     summary: Cập nhật trạng thái lịch hẹn
- *     tags: [Admin - Lịch hẹn]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               trang_thai: { type: string, enum: [cho_xac_nhan, da_xac_nhan, da_checkin, hoan_thanh, da_huy, khong_den] }
- *     responses:
- *       200:
- *         description: Cập nhật thành công
- */
-router.get('/appointments', appointmentController.getAllAppointments);
-router.post('/appointments', appointmentController.createAppointment);
-router.patch('/appointments/:id/status', appointmentController.updateAppointmentStatus);
-router.put('/appointments/:id/medical-record', appointmentController.updateMedicalRecord);
+// ─── LỊCH HẸN (ADMIN MASTER VIEW) ─────────────────────────────────────────────
+router.get('/appointments', authorizeRoles(2, 4, 5, 6), appointmentController.getAllAppointments);
+router.get('/appointments/staff-budget', authorizeRoles(5, 6), appointmentController.getStaffBudgetForBuoi);
+router.post('/appointments', authorizeRoles(2, 5, 6), validate(createAppointmentSchema), appointmentController.createAppointment);
+router.patch('/appointments/:id/status', authorizeRoles(2, 4, 5, 6), validate(updateAppointmentStatusSchema), appointmentController.updateAppointmentStatus);
+router.post('/appointments/:id/push-back', authorizeRoles(2, 5, 6), requireActiveShift, appointmentController.pushBackAppointment);
+router.delete('/appointments/break-time', authorizeRoles(5, 6), appointmentController.cancelBreakTimeAppointments);
+router.post('/appointments/:id/keep-alive', authorizeRoles(2, 5, 6), appointmentController.keepAliveAppointment);
 
 export default router;

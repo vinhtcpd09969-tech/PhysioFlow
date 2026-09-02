@@ -1,1 +1,0 @@
-Read all project memory files and continue from the most recent session state, remembering the execution stop scheduling mechanism; execute only when approved by the supervisor.

@@ -28,7 +28,30 @@ lerna-debug.log*
 .env.*
 !.env.example
 
+# MCP local config (may contain local DB connection string)
+.mcp.json
+
 # Docker
 .docker/data/
 docker/data/
 pgdata/
+
+# Playwright MCP session artifacts
+.playwright-mcp/
+
+# Uploaded images (keep folder structure via .gitkeep, not the actual files)
+backend/uploads/**/*
+!backend/uploads/**/.gitkeep
+
+# Claude Code local settings (per-machine, not shared)
+.claude/settings.local.json
+
+# Backup/scratch files not meant for version control
+*.bak
+backup/
+
+# Non-code personal files dropped in repo root
+document/
+
+# Antigravity agent tool scaffolding (per-machine, not project source)
+.agentantigravity/

@@ -31,7 +31,7 @@ export const errorHandler = (
   if (err instanceof ZodError) {
     res.status(400).json({
       success: false,
-      message: err.errors[0].message,
+      message: err.errors[0]?.message || 'Dữ liệu yêu cầu không hợp lệ.',
       errors: err.errors,
     });
     return;
@@ -54,7 +54,18 @@ export const errorHandler = (
     return;
   }
 
-  // 4. Default Unknown errors
+  // 4. Errors with explicit status or statusCode (4xx, 5xx)
+  const explicitStatus = err?.statusCode || err?.status;
+  if (typeof explicitStatus === 'number' && explicitStatus >= 400 && explicitStatus < 600) {
+    res.status(explicitStatus).json({
+      success: false,
+      message: err.message || 'Yêu cầu không thể thực hiện.',
+      ...(err.extra || {}),
+    });
+    return;
+  }
+
+  // 5. Default Unexpected Internal Server Errors
   console.error('💥 CENTRALIZED UNHANDLED ERROR:', err);
 
   res.status(500).json({
@@ -62,3 +73,5 @@ export const errorHandler = (
     message: err.message || 'Lỗi máy chủ nội bộ.',
   });
 };
+
+export default errorHandler;

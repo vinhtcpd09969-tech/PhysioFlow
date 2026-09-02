@@ -1,427 +1,430 @@
 import { Request, Response } from 'express';
-import { ZodError } from 'zod';
 import adminService from '../services/admin.service';
-import { categorySchema, serviceSchema, packageSchema, staffSchema } from '../schemas/admin.schema';
-import { refundSchema } from '../schemas/finance.schema';
-import { voucherSchema } from '../schemas/marketing.schema';
-import { logAudit } from '../utils/audit.util';
+import authRepository from '../repositories/auth';
+import { sendAdminSecurityOTP } from '../utils/mailer';
+import { asyncHandler } from '../utils/asyncHandler';
+import { BadRequestError } from '../utils/appError';
 
-// --- QUẢN LÝ DỊCH VỤ & DANH MỤC ---
+// --- QUẢN LÝ PHÒNG KHÁM ---
 
-export const getCategories = async (req: Request, res: Response) => {
-  try {
-    const categories = await adminService.getCategories();
-    res.json(categories);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy danh mục' });
-  }
-};
+export const getRooms = asyncHandler(async (req: Request, res: Response) => {
+  const rooms = await adminService.getRooms();
+  res.json(rooms);
+});
 
-export const getRooms = async (req: Request, res: Response) => {
-  try {
-    const rooms = await adminService.getRooms();
-    res.json(rooms);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi khi lấy danh sách phòng', error });
-  }
-};
+export const createRoom = asyncHandler(async (req: Request, res: Response) => {
+  const room = await adminService.createRoom(req.body);
+  res.status(201).json(room);
+});
 
-export const createCategory = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { body } = categorySchema.parse({ body: req.body });
-    const category = await adminService.createCategory(body);
-    
-    await logAudit(req, 'CREATE_CATEGORY', 'CATEGORY', category.id.toString(), body);
-    res.status(201).json(category);
-  } catch (error) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-};
+export const updateRoom = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const room = await adminService.updateRoom(id, req.body);
+  res.json(room);
+});
 
-export const getServices = async (req: Request, res: Response) => {
-  try {
-    const services = await adminService.getServices();
-    res.json(services);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy dịch vụ' });
-  }
-};
-
-export const createService = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { body } = serviceSchema.parse({ body: req.body });
-    const service = await adminService.createService(body);
-
-    await logAudit(req, 'CREATE_SERVICE', 'SERVICE', service.id.toString(), body);
-    res.status(201).json(service);
-  } catch (error) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-};
-
-export const updateService = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params as { id: string };
-    const { body } = serviceSchema.parse({ body: req.body });
-    const service = await adminService.updateService(id, body);
-
-    await logAudit(req, 'UPDATE_SERVICE', 'SERVICE', id, body);
-    res.json(service);
-  } catch (error) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    res.status(500).json({ message: 'Lỗi server khi cập nhật dịch vụ' });
-  }
-};
-
-export const deleteService = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params as { id: string };
-    await adminService.deleteService(id);
-
-    await logAudit(req, 'DELETE_SERVICE', 'SERVICE', id, { id });
-    res.json({ message: 'Xóa dịch vụ thành công' });
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi xóa dịch vụ' });
-  }
-};
+export const deleteRoom = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const room = await adminService.deleteRoom(id);
+  res.json({ message: 'Xóa phòng thành công', room });
+});
 
 // --- QUẢN LÝ GÓI ĐIỀU TRỊ ---
 
-export const getPackages = async (req: Request, res: Response) => {
-  try {
-    const packages = await adminService.getPackages();
-    res.json(packages);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy gói điều trị' });
-  }
-};
+export const getPackages = asyncHandler(async (req: Request, res: Response) => {
+  const packages = await adminService.getPackages();
+  res.json(packages);
+});
 
-export const createPackage = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { body } = packageSchema.parse({ body: req.body });
-    const packageData = await adminService.createPackage(body);
+export const createPackage = asyncHandler(async (req: Request, res: Response) => {
+  const packageData = await adminService.createPackage(req.body);
+  res.status(201).json(packageData);
+});
 
-    await logAudit(req, 'CREATE_PACKAGE', 'PACKAGE', packageData.id.toString(), body);
-    res.status(201).json(packageData);
-  } catch (error) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-};
+export const updatePackage = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const packageData = await adminService.updatePackage(id, req.body);
+  res.json(packageData);
+});
 
-export const updatePackage = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params as { id: string };
-    const { body } = packageSchema.parse({ body: req.body });
-    const packageData = await adminService.updatePackage(id, body);
-
-    await logAudit(req, 'UPDATE_PACKAGE', 'PACKAGE', id, body);
-    res.json(packageData);
-  } catch (error) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-};
-
-export const deletePackage = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params as { id: string };
-    await adminService.deletePackage(id);
-
-    await logAudit(req, 'DELETE_PACKAGE', 'PACKAGE', id, {});
-    res.json({ message: 'Xóa gói điều trị thành công' });
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi xóa gói điều trị' });
-  }
-};
+export const deletePackage = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  await adminService.deletePackage(id);
+  res.json({ message: 'Xóa gói điều trị thành công' });
+});
 
 // --- QUẢN LÝ NHÂN SỰ ---
 
-export const getStaff = async (req: Request, res: Response) => {
-  try {
-    const staff = await adminService.getStaff();
-    res.json(staff);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy danh sách nhân sự' });
+export const getStaff = asyncHandler(async (req: Request, res: Response) => {
+  const staff = await adminService.getStaff();
+  res.json(staff);
+});
+
+export const createStaff = asyncHandler(async (req: Request, res: Response) => {
+  const staff = await adminService.createStaff(req.body);
+  res.status(201).json(staff);
+});
+
+export const updateStaffStatus = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const { trang_thai } = req.body;
+
+  if (!['hoat_dong', 'vo_hieu'].includes(trang_thai)) {
+    throw new BadRequestError('Trạng thái không hợp lệ');
   }
-};
 
-export const createStaff = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { body } = staffSchema.parse({ body: req.body });
-    
-    const staff = await adminService.createStaff(body);
+  const updatedStaff = await adminService.updateStaffStatus(id, trang_thai);
+  res.json(updatedStaff);
+});
 
-    const { mat_khau: _, ...logPayload } = body;
-    await logAudit(req, 'CREATE_STAFF', 'USER', staff.id, logPayload);
+export const getAvailableStaff = asyncHandler(async (req: Request, res: Response) => {
+  const { dich_vu_id, dang_ky_goi_id, ngay, gio_bat_dau } = req.query as Record<string, string | undefined>;
+  const staff = await adminService.getAvailableStaff(
+    dich_vu_id || null,
+    dang_ky_goi_id || null,
+    ngay || new Date().toISOString().split('T')[0],
+    gio_bat_dau || '08:00'
+  );
+  res.json(staff);
+});
 
-    res.status(201).json(staff);
-  } catch (error: any) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    if (error.message === 'Email đã được sử dụng') return res.status(400).json({ message: error.message });
-    res.status(500).json({ message: 'Lỗi server' });
+export const updateStaff = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const updatedStaff = await adminService.updateStaffDetails(id, req.body);
+  res.json(updatedStaff);
+});
+
+export const deleteStaffAvatar = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const updatedStaff = await adminService.deleteStaffAvatar(id);
+  res.json({ message: 'Xóa ảnh đại diện thành công', staff: updatedStaff });
+});
+
+export const updateStaffPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const { newPassword, otpCode } = req.body;
+  const currentAdmin = (req as any).user;
+
+  if (!newPassword || newPassword.length < 6) {
+    throw new BadRequestError('Mật khẩu mới phải có ít nhất 6 ký tự.');
   }
-};
-
-export const updateStaffStatus = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params as { id: string };
-    const { trang_thai } = req.body;
-    
-    if (!['hoat_dong', 'vo_hieu'].includes(trang_thai)) {
-      return res.status(400).json({ message: 'Trạng thái không hợp lệ' });
-    }
-
-    const staff = await adminService.updateStaffStatus(id, trang_thai);
-
-    await logAudit(req, 'UPDATE_STAFF_STATUS', 'USER', id, { trang_thai });
-    res.json(staff);
-  } catch (error: any) {
-    if (error.message === 'Không tìm thấy nhân sự') return res.status(404).json({ message: error.message });
-    res.status(500).json({ message: 'Lỗi server khi cập nhật nhân sự' });
+  if (!otpCode) {
+    throw new BadRequestError('Vui lòng cung cấp mã OTP xác thực an toàn.');
   }
-};
+
+  const validOTP = await authRepository.findValidOTP(currentAdmin.email, otpCode);
+  if (!validOTP) {
+    throw new BadRequestError('Mã OTP không hợp lệ hoặc đã hết hạn.');
+  }
+
+  await authRepository.deleteOTPsByEmail(currentAdmin.email);
+  const updated = await adminService.updateStaffPassword(id, newPassword);
+  res.json({ message: 'Cập nhật mật khẩu nhân sự thành công!', staff: updated });
+});
+
+export const sendAdminOTP = asyncHandler(async (req: Request, res: Response) => {
+  const currentAdmin = (req as any).user;
+  const { actionTitle } = req.body;
+
+  if (!actionTitle) {
+    throw new BadRequestError('Tiêu đề hành động là bắt buộc.');
+  }
+
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  await authRepository.saveOTP(currentAdmin.email, otpCode, expiresAt);
+  await sendAdminSecurityOTP(currentAdmin.email, otpCode, actionTitle, currentAdmin.ho_ten || 'Quản trị viên');
+  res.json({ message: 'Mã xác thực an toàn đã được gửi đến email quản trị của bạn.' });
+});
 
 // --- QUẢN LÝ KHÁCH HÀNG ---
 
-export const getCustomers = async (req: Request, res: Response) => {
-  try {
-    const customers = await adminService.getCustomers();
-    res.json(customers);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy danh sách khách hàng' });
-  }
-};
+export const getCustomers = asyncHandler(async (req: Request, res: Response) => {
+  const customers = await adminService.getCustomers();
+  res.json(customers);
+});
 
-// --- QUẢN LÝ THIẾT BỊ Y TẾ ---
+export const getCustomersOverview = asyncHandler(async (req: Request, res: Response) => {
+  const { page = '1', pageSize = '10', search = '', status, repTier } = req.query as Record<string, string | undefined>;
+  const statusArr = status ? status.split(',') : [];
+  const overview = await adminService.getCustomersOverview({
+    page: parseInt(page, 10),
+    pageSize: parseInt(pageSize, 10),
+    search,
+    status: statusArr,
+    repTier: repTier as any,
+  });
+  res.json(overview);
+});
 
-export const getEquipment = async (req: Request, res: Response) => {
-  try {
-    const equipment = await adminService.getEquipment();
-    res.json(equipment);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy danh sách thiết bị' });
-  }
-};
+export const getCustomerEmr = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const emr = await adminService.getCustomerEmr(id);
+  res.json(emr);
+});
 
-export const createEquipment = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { body } = require('../schemas/admin.schema').equipmentSchema.parse({ body: req.body });
-    const equipment = await adminService.createEquipment(body);
+export const getCustomerLockImpact = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const impact = await adminService.getCustomerLockImpact(id);
+  res.json(impact);
+});
 
-    await logAudit(req, 'CREATE_EQUIPMENT', 'EQUIPMENT', equipment.id.toString(), body);
-    res.status(201).json(equipment);
-  } catch (error) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-};
+export const updateCustomer = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const updatedCustomer = await adminService.updateCustomer(id, req.body);
+  res.json(updatedCustomer);
+});
+
+export const toggleCustomerLock = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const { isLocked } = req.body;
+  const result = await adminService.updateCustomerLock(id, Boolean(isLocked));
+  res.json(result);
+});
+
+export const getTreatmentPlans = asyncHandler(async (req: Request, res: Response) => {
+  const { page = '1', pageSize = '10', search = '', status } = req.query as Record<string, string | undefined>;
+  const plans = await adminService.getTreatmentPlansOverview({
+    page: parseInt(page, 10),
+    pageSize: parseInt(pageSize, 10),
+    search,
+    status,
+  });
+  res.json(plans);
+});
+
+export const getCompletedSingleVisits = asyncHandler(async (req: Request, res: Response) => {
+  const { page = '1', pageSize = '10', search = '', loai } = req.query as Record<string, string | undefined>;
+  const visits = await adminService.getCompletedSingleVisits({
+    page: parseInt(page, 10),
+    pageSize: parseInt(pageSize, 10),
+    search,
+    loai,
+  });
+  res.json(visits);
+});
+
+// --- QUẢN LÝ HỒ SƠ ĐIỀU TRỊ ---
+
+export const getMedicalRecords = asyncHandler(async (req: Request, res: Response) => {
+  const records = await adminService.getMedicalRecords();
+  res.json(records);
+});
+
+// --- QUẢN LÝ THIẾT BỊ ---
+
+export const getEquipment = asyncHandler(async (req: Request, res: Response) => {
+  const equipment = await adminService.getEquipment();
+  res.json(equipment);
+});
+
+export const createEquipment = asyncHandler(async (req: Request, res: Response) => {
+  const equipment = await adminService.createEquipment(req.body);
+  res.status(201).json(equipment);
+});
+
+export const updateEquipment = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const equipment = await adminService.updateEquipment(id, req.body);
+  res.json(equipment);
+});
+
+export const deleteEquipment = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const equipment = await adminService.deleteEquipment(id);
+  res.json({ message: 'Xóa thiết bị thành công', equipment });
+});
 
 // --- QUẢN LÝ LỊCH LÀM VIỆC (CA LÀM VIỆC) ---
 
-export const getSchedules = async (req: Request, res: Response) => {
-  try {
-    const schedules = await adminService.getSchedules();
-    res.json(schedules);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy lịch làm việc' });
-  }
-};
+export const getSchedules = asyncHandler(async (req: Request, res: Response) => {
+  const schedules = await adminService.getSchedules();
+  res.json(schedules);
+});
 
-export const createSchedule = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { body } = require('../schemas/admin.schema').scheduleSchema.parse({ body: req.body });
-    const schedule = await adminService.createSchedule(body);
+export const createSchedule = asyncHandler(async (req: Request, res: Response) => {
+  const schedule = await adminService.createSchedule(req.body);
+  res.status(201).json(schedule);
+});
 
-    await logAudit(req, 'CREATE_SCHEDULE', 'SCHEDULE', schedule.id.toString(), body);
-    res.status(201).json(schedule);
-  } catch (error) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    res.status(500).json({ message: 'Lỗi server' });
-  }
-};
+export const updateSchedule = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const schedule = await adminService.updateSchedule(id, req.body);
+  res.json(schedule);
+});
 
-// --- QUẢN LÝ HỒ SƠ ĐIỀU TRỊ (READ-ONLY) ---
+export const deleteSchedule = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  await adminService.deleteSchedule(id);
+  res.json({ message: 'Xóa lịch làm việc thành công' });
+});
 
-export const getMedicalRecords = async (req: Request, res: Response) => {
-  try {
-    const records = await adminService.getMedicalRecords();
-    res.json(records);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy hồ sơ điều trị' });
-  }
-};
+// --- QUẢN LÝ TÀI CHÍNH ---
 
-// --- AUDIT LOGS ---
+export const getInvoices = asyncHandler(async (req: Request, res: Response) => {
+  const invoices = await adminService.getInvoices();
+  res.json(invoices);
+});
 
-export const getAuditLogs = async (req: Request, res: Response) => {
-  try {
-    const logs = await adminService.getAuditLogs();
-    res.json(logs);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy audit log' });
-  }
-};
+export const getPayments = asyncHandler(async (req: Request, res: Response) => {
+  const payments = await adminService.getPayments();
+  res.json(payments);
+});
 
-// --- QUẢN LÝ TÀI CHÍNH (INVOICES & PAYMENTS) ---
+export const handleRefund = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const result = await adminService.handleRefund(id, req.body);
+  res.json({ message: 'Hoàn tiền thành công', invoice: result.invoice });
+});
 
-export const getInvoices = async (req: Request, res: Response) => {
-  try {
-    const invoices = await adminService.getInvoices();
-    res.json(invoices);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy danh sách hóa đơn' });
-  }
-};
+export const handlePackageRefund = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const user = (req as any).user;
+  const userId = user ? Number(user.id) : 1;
 
-export const getPayments = async (req: Request, res: Response) => {
-  try {
-    const payments = await adminService.getPayments();
-    res.json(payments);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy danh sách giao dịch' });
-  }
-};
+  const result = await adminService.handlePackageRefund(id, req.body, userId);
+  res.json({
+    message: 'Hủy gói và hoàn tiền thành công',
+    invoice: result.invoice,
+    so_tien_hoan_tra: result.so_tien_hoan_tra
+  });
+});
 
-export const handleRefund = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params as { id: string };
-    const { body } = refundSchema.parse({ body: req.body });
+export const handleExpirePackageNoRefund = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const user = (req as any).user;
+  const userId = user ? Number(user.id) : 1;
 
-    const result = await adminService.handleRefund(id, body);
-
-    await logAudit(req, 'REFUND_PAYMENT', 'PAYMENT', id, { ...body, original_amount: result.originalAmount });
-    res.json({ message: 'Hoàn tiền thành công', invoice: result.invoice });
-  } catch (error: any) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    if (error.code) return res.status(error.code).json({ message: error.message });
-    res.status(500).json({ message: 'Lỗi server khi xử lý hoàn tiền' });
-  }
-};
+  const result = await adminService.expirePackageNoRefund(id, req.body, userId);
+  res.json({
+    message: 'Đã hủy gói do quá hạn sử dụng (không hoàn tiền)',
+    invoice: result.invoice,
+    so_tien_giu_lai: result.so_tien_giu_lai
+  });
+});
 
 // --- QUẢN LÝ MARKETING (VOUCHERS) ---
 
-export const getVouchers = async (req: Request, res: Response) => {
-  try {
-    const vouchers = await adminService.getVouchers();
-    res.json(vouchers);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy danh sách voucher' });
+export const getVouchers = asyncHandler(async (req: Request, res: Response) => {
+  const vouchers = await adminService.getVouchers();
+  res.json(vouchers);
+});
+
+export const createVoucher = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const voucher = await adminService.createVoucher(req.body, userId);
+  res.status(201).json(voucher);
+});
+
+export const updateVoucher = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const voucher = await adminService.updateVoucher(id, req.body);
+  res.json(voucher);
+});
+
+export const deleteVoucher = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  await adminService.deleteVoucher(id);
+  res.json({ message: 'Xóa voucher thành công' });
+});
+
+// --- QUẢN LÝ PHẢN HỒI & ĐÁNH GIÁ (FEEDBACK) ---
+
+export const getFeedback = asyncHandler(async (req: Request, res: Response) => {
+  const feedback = await adminService.getFeedback();
+  res.json(feedback);
+});
+
+export const replyServiceFeedback = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const noi_dung_tra_loi = (req.body?.phanHoi ?? req.body?.noi_dung_tra_loi ?? req.body?.phan_hoi ?? req.body?.noi_dung ?? '') as string;
+  const user = (req as any).user;
+
+  if (!noi_dung_tra_loi?.trim()) {
+    throw new BadRequestError('Nội dung phản hồi không được để trống');
   }
-};
 
-export const createVoucher = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { body } = voucherSchema.parse({ body: req.body });
-    const userId = (req as any).user.id;
-    
-    const voucher = await adminService.createVoucher(body, userId);
+  const result = await adminService.replyServiceFeedback(id, noi_dung_tra_loi.trim(), user.id);
+  res.json(result);
+});
 
-    await logAudit(req, 'CREATE_VOUCHER', 'VOUCHER', voucher.id, body);
-    res.status(201).json(voucher);
-  } catch (error: any) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    if (error.message === 'Mã voucher đã tồn tại') return res.status(400).json({ message: error.message });
-    res.status(500).json({ message: 'Lỗi server khi tạo voucher' });
+export const replyStaffFeedback = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const noi_dung_tra_loi = (req.body?.phanHoi ?? req.body?.noi_dung_tra_loi ?? req.body?.phan_hoi ?? req.body?.noi_dung ?? '') as string;
+  const user = (req as any).user;
+
+  if (!noi_dung_tra_loi?.trim()) {
+    throw new BadRequestError('Nội dung phản hồi không được để trống');
   }
-};
 
-export const updateVoucher = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params as { id: string };
-    const { body } = voucherSchema.parse({ body: req.body });
+  const result = await adminService.replyStaffFeedback(id, noi_dung_tra_loi.trim(), user.id);
+  res.json(result);
+});
 
-    const voucher = await adminService.updateVoucher(id, body);
+export const analyzeFeedback = asyncHandler(async (req: Request, res: Response) => {
+  const { type, id } = req.params as { type: 'service' | 'staff'; id: string };
+  const result = await adminService.analyzeFeedback(type, id);
+  res.json({ message: 'Phân tích cảm xúc thành công', data: result });
+});
 
-    await logAudit(req, 'UPDATE_VOUCHER', 'VOUCHER', id, body);
-    res.json(voucher);
-  } catch (error: any) {
-    if (error instanceof ZodError) return res.status(400).json({ message: error.errors[0].message });
-    if (error.message === 'Không tìm thấy voucher') return res.status(404).json({ message: error.message });
-    res.status(500).json({ message: 'Lỗi server khi cập nhật voucher' });
-  }
-};
+// --- BÁO CÁO THỐNG KÊ (ANALYTICS & DASHBOARD) ---
 
-export const deleteVoucher = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { id } = req.params as { id: string };
-    
-    const voucher = await adminService.deleteVoucher(id);
+export const getDashboardSummary = asyncHandler(async (req: Request, res: Response) => {
+  const { range, startDate, endDate } = req.query as Record<string, string | undefined>;
+  const summary = await adminService.getDashboardSummary(range, startDate, endDate);
+  res.json(summary);
+});
 
-    await logAudit(req, 'DELETE_VOUCHER', 'VOUCHER', id, voucher);
-    res.json({ message: 'Xóa voucher thành công' });
-  } catch (error: any) {
-    if (error.message === 'Không tìm thấy voucher') return res.status(404).json({ message: error.message });
-    res.status(500).json({ message: 'Lỗi server khi xóa voucher' });
-  }
-};
+export const getRevenueStats = asyncHandler(async (req: Request, res: Response) => {
+  const { range, startDate, endDate, bucket } = req.query as Record<string, string | undefined>;
+  const stats = await adminService.getRevenueStats(range, startDate, endDate, bucket);
+  res.json(stats);
+});
 
-// --- QUẢN LÝ ĐÁNH GIÁ (FEEDBACK) ---
+export const getStaffPerformance = asyncHandler(async (req: Request, res: Response) => {
+  const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+  const performance = await adminService.getStaffPerformance(startDate, endDate);
+  res.json(performance);
+});
 
-export const getFeedback = async (req: Request, res: Response) => {
-  try {
-    const feedback = await adminService.getFeedback();
-    res.json(feedback);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy danh sách đánh giá' });
-  }
-};
+export const getTopPackages = asyncHandler(async (req: Request, res: Response) => {
+  const packages = await adminService.getTopPackages();
+  res.json(packages);
+});
 
-// --- BÁO CÁO & THỐNG KÊ (ANALYTICS) ---
+export const getTopVipCustomers = asyncHandler(async (req: Request, res: Response) => {
+  const customers = await adminService.getTopVipCustomers();
+  res.json(customers);
+});
 
-export const getDashboardSummary = async (req: Request, res: Response) => {
-  try {
-    const summary = await adminService.getDashboardSummary();
-    res.json(summary);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy tổng quan dashboard' });
-  }
-};
+// --- QUẢN LÝ BÀI VIẾT & TIN TỨC (ARTICLES CMS) ---
 
-export const getRevenueStats = async (req: Request, res: Response) => {
-  try {
-    const stats = await adminService.getRevenueStats();
-    res.json(stats);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy thống kê doanh thu' });
-  }
-};
+export const getArticles = asyncHandler(async (req: Request, res: Response) => {
+  const { danh_muc, trang_thai, search } = req.query as { danh_muc?: string; trang_thai?: string; search?: string };
+  const articles = await adminService.getArticles({ danh_muc, trang_thai, search });
+  res.json(articles);
+});
 
-export const getStaffPerformance = async (req: Request, res: Response) => {
-  try {
-    const stats = await adminService.getStaffPerformance();
-    res.json(stats);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy hiệu suất nhân viên' });
-  }
-};
+export const getArticleById = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const article = await adminService.getArticleById(id);
+  res.json(article);
+});
 
-export const getAvailableStaff = async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { dich_vu_id, dang_ky_goi_id, ngay, gio_bat_dau } = req.query as {
-      dich_vu_id?: string;
-      dang_ky_goi_id?: string;
-      ngay?: string;
-      gio_bat_dau?: string;
-    };
+export const createArticle = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id ? Number((req as any).user.id) : 1;
+  const article = await adminService.createArticle(req.body, userId);
+  res.status(201).json(article);
+});
 
-    if (!ngay || !gio_bat_dau) {
-      return res.status(400).json({ message: 'Thiếu thông tin ngày hoặc giờ bắt đầu' });
-    }
+export const updateArticle = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const article = await adminService.updateArticle(id, req.body);
+  res.json(article);
+});
 
-    const availableStaff = await adminService.getAvailableStaff(
-      dich_vu_id || null,
-      dang_ky_goi_id || null,
-      ngay,
-      gio_bat_dau
-    );
-
-    res.json(availableStaff);
-  } catch (error) {
-    console.error('Lỗi khi lấy danh sách kỹ thuật viên khả dụng:', error);
-    res.status(500).json({ message: 'Lỗi server khi lấy kỹ thuật viên khả dụng' });
-  }
-};
-
+export const deleteArticle = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  await adminService.deleteArticle(id);
+  res.json({ message: 'Đã xóa bài viết thành công' });
+});

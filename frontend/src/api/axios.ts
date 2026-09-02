@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -19,7 +19,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Flag to prevent multiple simultaneous refresh token requests
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -39,10 +38,13 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Check if the error is 401 (Unauthorized) and the request hasn't been retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Không thực hiện Refresh Token interceptor đối với các request đăng nhập/đăng ký/refresh token
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
+                           originalRequest.url?.includes('/auth/register') ||
+                           originalRequest.url?.includes('/auth/refresh-token');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
-        // If already refreshing, wait for the new token and then retry this request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -64,18 +66,15 @@ api.interceptors.response.use(
       }
 
       try {
-        // Request a new access token using the refresh token
-        // Use a clean axios instance to avoid infinite loops
-        const response = await axios.post('http://localhost:5000/api/auth/refresh-token', {
-          refreshToken,
-        });
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/auth/refresh-token`,
+          { refreshToken }
+        );
 
         const { accessToken } = response.data;
         updateAccessToken(accessToken);
 
-        // Update the header of the current request and execute it
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        
         processQueue(null, accessToken);
         return api(originalRequest);
       } catch (refreshError) {
